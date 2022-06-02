@@ -1,5 +1,8 @@
 import copy
+import string
 from os import walk
+
+import networkx as nx
 import numpy as np
 import gurobipy as gb
 from itertools import combinations
@@ -31,8 +34,8 @@ solution_xp = np.array([[0, 2, 4, 5, 5, 3],
                         [5, 5, 3, 2, 0, 4],
                         [3, 3, 3, 4, 4, 0]])
 
-# M = range(m)
-# print(sum(2 ** float(-solution_xp[i, j]) * D[i, j] for j in M for i in M if i != j))
+M = range(m)
+print(sum(2 ** float(-solution_xp[i, j]) * D[i, j] for j in M for i in M if i != j))
 
 d = copy.deepcopy(D[:m, :m])
 
@@ -44,10 +47,29 @@ for i in order:
         sorted_d[i, j] = d[order[i], order[j]]
 
 
-labels = [pb_0.labels[i] for i in order]
-pb_1 = Instance(sorted_d, labels)
+
+pb_1 = Instance(sorted_d)
 print(pb_1.T)
 print(pb_1.obj_val)
 
 pb_0.print_graph()
 pb_1.print_graph()
+
+import string
+pb_1.graph.edges
+nodes = [s for s in string.ascii_uppercase[:6]] + [i for i in range(6,10)]
+node_dict = dict(zip(nodes, range(len(nodes))))
+
+ad_mat = np.zeros((len(nodes), len(nodes)))
+for edge in pb_1.graph.edges:
+    a, b = edge
+    ad_mat[node_dict[a], node_dict[b]] = 1
+    ad_mat[node_dict[b], node_dict[a]] = 1
+
+ad_mat_1 = copy.deepcopy(ad_mat)
+
+leafs = nodes[:6]
+leafs = leafs[::-1]
+
+for l in leafs:
+    j = np.where(ad_mat_1[nodenode])

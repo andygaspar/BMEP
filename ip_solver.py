@@ -124,3 +124,4 @@ def solve(D):
                     sol[i, j] = k + 1
 
     return bmep, sol
+

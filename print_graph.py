@@ -51,7 +51,7 @@ def get_graph(matrix, labels=None):
             G.add_nodes_from([(s[0, j], {"color": "red"})])
             G.add_edges_from([(s[0, i], s[0, j])])
             over = True
-    print(G.nodes)
+
     mapping = dict(zip(G, [labels[int(node)] if int(node) < n else int(node) for node in G]))
     G = nx.relabel_nodes(G, mapping)
 
