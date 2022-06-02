@@ -139,10 +139,13 @@ for i in T:
 
 print(sol.astype(int))
 
+print(bmep.getObjective().getValue())
+
 solution_xp = np.array([[0, 2, 4, 5, 5, 3],
                         [2, 0, 4, 5, 5, 3],
                         [4, 4, 0, 3, 3, 3],
                         [5, 5, 3, 0, 2, 4],
                         [5, 5, 3, 2, 0, 4],
                         [3, 3, 3, 4, 4, 0]])
-print("\n", solution_xp)
+
+print(sum(2 ** float(-solution_xp[i, j]) * D[i, j] for j in T for i in T if i != j))
