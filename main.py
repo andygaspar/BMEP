@@ -65,7 +65,7 @@ bmep.addConstr(
 )
 
 # (36) (37)
-combs = list(combinations(range(2 * n), 4))
+combs = list(combinations(TuV, 4))
 for c in combs:
     i, j, q, t = c
     bmep.addConstr(
@@ -87,6 +87,7 @@ for c in combs:
     i, j = c
     bmep.addConstr(x[i, j, 0] == 0)
 
+for i in T:
     bmep.addConstr(
         gb.quicksum(x[i, j, 0] for j in V) == 1
     )
@@ -98,7 +99,7 @@ for i in V:
     )
 
 # (41)
-combs = list(combinations(range(n, 2 * n), 3))
+combs = list(combinations(V, 3))
 for c in combs:
     i, j, l = c
     bmep.addConstr(
@@ -123,7 +124,7 @@ for c in combs:
             x[i, j, k] + x[i, j, k - 2] + 1 >= x[i, l, k - 1] + x[l, j, 0]
         )
 
-bmep.optimize()  # equivalent to solve() for xpress
+bmep.optimize()
 print("optimal" if bmep.status == 2 else ("infeasible" if bmep.status == 3 else (
     "unbounded" if bmep.status == 5 else "check the link page for other status codes")))
 
@@ -136,7 +137,7 @@ for i in T:
             if x.x[i, j, k] > 0.5:
                 sol[i, j] = k + 1
 
-print(sol)
+print(sol.astype(int))
 
 solution_xp = np.array([[0, 2, 4, 5, 5, 3],
                         [2, 0, 4, 5, 5, 3],
@@ -144,3 +145,4 @@ solution_xp = np.array([[0, 2, 4, 5, 5, 3],
                         [5, 5, 3, 0, 2, 4],
                         [5, 5, 3, 2, 0, 4],
                         [3, 3, 3, 4, 4, 0]])
+print("\n", solution_xp)
