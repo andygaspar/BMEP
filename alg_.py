@@ -21,8 +21,22 @@ T = np.array([[0, 4, 2, 4, 4, 4],
               [4, 4, 4, 2, 0, 4],
               [4, 2, 4, 4, 4, 0]])
 
+T = np.array([[0, 4, 2, 5, 5, 4, 4],
+              [4, 0, 4, 5, 5, 2, 4],
+              [2, 4, 0, 5, 5, 4, 4],
+              [5, 5, 5, 0, 2, 5, 3],
+              [5, 5, 5, 2, 0, 5, 3],
+              [4, 2, 4, 5, 5, 0, 4],
+              [4, 4, 4, 3, 3, 4, 0]])
+
+# T = np.array([[0, 4, 2, 4, 3],
+#               [4, 0, 4, 2, 3],
+#               [2, 4, 0, 4, 3],
+#               [4, 2, 4, 0, 3],
+#               [3, 3, 3, 3, 0]])
+
 m = T.shape[0]
-labels = [s for s in string.ascii_uppercase[:6]]
+labels = [s for s in string.ascii_uppercase[:m]]
 G = get_graph(T, labels)
 nx.draw(G, node_color=[G.nodes[node]["color"] for node in G.nodes],
         with_labels=True, font_weight='bold')
