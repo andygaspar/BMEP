@@ -55,28 +55,3 @@ print(pb_1.obj_val)
 pb_0.print_graph()
 pb_1.print_graph()
 
-import string
-pb_1.graph.edges
-nodes = [s for s in string.ascii_uppercase[:6]] + [i for i in range(6,10)]
-node_dict = dict(zip(nodes, range(len(nodes))))
-
-ad_mat = np.zeros((len(nodes), len(nodes)))
-for edge in pb_1.graph.edges:
-    a, b = edge
-    ad_mat[node_dict[a], node_dict[b]] = 1
-    ad_mat[node_dict[b], node_dict[a]] = 1
-
-ad_mat_1 = copy.deepcopy(ad_mat)
-
-leafs = nodes[:6]
-leafs = leafs[::-1]
-
-for l in leafs:
-    j = np.where(ad_mat_1[nodenode])
-
-[[0 3 2 5 4 5]
- [3 0 3 4 3 4]
- [2 3 0 5 4 5]
- [5 4 5 0 3 2]
- [4 3 4 3 0 3]
- [5 4 5 2 3 0]]
