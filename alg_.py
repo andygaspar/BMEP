@@ -57,13 +57,19 @@ ad_mat_1 = copy.deepcopy(ad_mat)
 
 leafs = nodes[:m]
 leafs = leafs[::-1]
+internal_nodes = []
 
 for l in leafs[:-3]:
     x = node_dict[l]
     j = np.where(ad_mat_1[x] == 1)[0][-1]
+    internal_nodes.append(j)
     ad_mat_1[j, x] = 0
     i = np.where(ad_mat_1[j] == 1)[0][0]
-    print(l, "->", node_dict_back[i])
+    if i < m:
+        print(l, "->", node_dict_back[i])
+    else:
+        ii = np.where(ad_mat_1[j] == 1)[0][1]
+        print(l, "->", node_dict_back[i], node_dict[ii])
     k = np.where(ad_mat_1[j] == 1)[0][-1]
     ad_mat_1[k, j] = 0
     ad_mat_1[k, i] = 1
@@ -79,3 +85,13 @@ for l in leafs[:-3]:
     nx.draw(g, node_color=["red" if i < m else "green" for i in range(2 * m - 2)],
             with_labels=True, font_weight='bold')
     plt.show()
+
+print(internal_nodes)
+map_nodes = dict(zip(internal_nodes[::-1], range(8, 12)))
+mapping = dict(zip(G, [node if node not in internal_nodes else map_nodes[node] for node in G.nodes ]))
+G = nx.relabel_nodes(G, mapping)
+nx.draw(G, node_color=["red" if i < m else "green" for i in range(2 * m - 2)],
+        with_labels=True, font_weight='bold')
+plt.show()
+
+
