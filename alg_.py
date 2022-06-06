@@ -10,6 +10,7 @@ import numpy as np
 
 def get_pardi(g, labels):
     m = (len(g) + 2) // 2
+    n = len(g)
     nodes = labels + [i for i in range(m, 2 * m - 2)]
     node_dict = dict(zip(nodes, range(len(nodes))))
     node_dict_back = dict(zip(range(len(nodes)), nodes))
@@ -25,21 +26,21 @@ def get_pardi(g, labels):
 
     leafs = nodes[:m]
     leafs = leafs[::-1]
-    internal_nodes = []
-    pardi = []
-    for l in leafs[:-3]:
+    internal_nodes = {m: m}
+    pardi = {}
+    for k, l in enumerate(leafs[:-3]):
         x = node_dict[l]
         j = np.where(ad_mat_1[x] == 1)[0][-1]
-        internal_nodes.append(j)
+        internal_nodes[j] = n - 1 - k
         ad_mat_1[j, x] = 0
         i = np.where(ad_mat_1[j] == 1)[0][0]
         if i < m:
             print(l, "->", node_dict_back[i])
-            pardi.append((l, [node_dict_back[i]]))
+            pardi[l] = [node_dict_back[i]]
         else:
             ii = np.where(ad_mat_1[j] == 1)[0][1]
             print(l, "->", node_dict_back[i], node_dict[ii])
-            pardi.append((l, [node_dict_back[i], node_dict_back[ii]]))
+            pardi[l] = [node_dict_back[i], node_dict_back[ii]]
         k = np.where(ad_mat_1[j] == 1)[0][-1]
         ad_mat_1[k, j] = 0
         ad_mat_1[k, i] = 1
@@ -56,15 +57,22 @@ def get_pardi(g, labels):
         #         with_labels=True, font_weight='bold')
         # plt.show()
 
-    # print(internal_nodes)
-    map_nodes = dict(zip(internal_nodes[::-1], range(m + 1, 2*m - 2)))
-    mapping = dict(zip(g, [node if node not in internal_nodes else map_nodes[node] for node in g.nodes]))
-    g = nx.relabel_nodes(g, mapping)
-    # nx.draw(G, node_color=[G.nodes[node]["color"] for node in G.nodes],
+    print(internal_nodes)
+    # map_nodes = dict(zip(list(internal_nodes.values())[::-1], range(m + 1, 2*m - 2)))
+    # mapping = dict(zip(g, [node if node not in internal_nodes else map_nodes[node] for node in g.nodes]))
+    # g = nx.relabel_nodes(g, mapping)
+    # nx.draw(g, node_color=["red" if i < m else "green" for i in range(2 * m - 2)],
     #         with_labels=True, font_weight='bold')
     # plt.show()
 
-    pardi = pardi[::-1]
+    pardi = dict(zip(list(pardi.keys())[::-1], list(pardi.values())[::-1]))
+    for key in pardi.keys():
+        insertion = pardi[key]
+        if len(insertion) == 2:
+            pardi[key] = [internal_nodes[pardi[key][0]], internal_nodes[pardi[key][1]]]
+    print(pardi)
     return pardi, g
+
+
 
 
