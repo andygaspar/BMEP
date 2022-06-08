@@ -44,6 +44,10 @@ def get_graph(matrix, labels=None):
             k += 1
             s = np.delete(s, j, axis=0)
             s = np.delete(s, j, axis=1)
+
+            nx.draw(G, node_color=[G.nodes[node]["color"] for node in G.nodes],
+                    with_labels=True, font_weight='bold')
+            plt.show()
         else:
             idx = np.array(np.where(np.triu(s[1:, 1:]) == 1)).T[0] + 1
             i, j = idx
@@ -51,6 +55,8 @@ def get_graph(matrix, labels=None):
             G.add_nodes_from([(s[0, j], {"color": "red"})])
             G.add_edges_from([(s[0, i], s[0, j])])
             over = True
+
+
 
     mapping = dict(zip(G, [labels[int(node)] if int(node) < n else int(node) for node in G]))
     G = nx.relabel_nodes(G, mapping)
