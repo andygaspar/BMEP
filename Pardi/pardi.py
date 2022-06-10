@@ -63,7 +63,7 @@ class Pardi:
         for leaf in self.leaves:
             leaf.node = leaf.node if leaf.node is not None else leaf.insertion
 
-    def get_pardi(self, print_=False):
+    def get_pardi_assignment(self, print_=False):
         for leaf in self.leaves[3:]:
             leaf.get_assignment(print_)
 
