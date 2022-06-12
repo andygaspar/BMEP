@@ -4,7 +4,7 @@ import string
 import networkx as nx
 from matplotlib import pyplot as plt
 import numpy as np
-from Pardi.Leaf import Leaf
+from Pardi.leaf import Leaf
 
 
 class Pardi:
