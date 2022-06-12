@@ -1,9 +1,11 @@
 import copy
 import string
-
+import scipy
 import networkx as nx
 from matplotlib import pyplot as plt
 import numpy as np
+
+from Pardi.graph import GraphAndData
 from Pardi.leaf import Leaf
 
 
@@ -14,8 +16,8 @@ class Pardi:
         self.n = self.T.shape[0]
         self.leaves = self.make_leaves()
         self.compute_pardi()
-
-        self.graph = None
+        self.graph_and_data_maker = GraphAndData()
+        self.graph, self.adj_mats = self.graph_and_data_maker.get_graph(self.leaves, self.n)
 
     def make_leaves(self):
         leaves = []
@@ -68,32 +70,10 @@ class Pardi:
             leaf.get_assignment(print_)
 
     def get_graph(self, show=False):
-        self.graph = nx.Graph()
-        self.graph.add_nodes_from([("A", {"color": "red"}), ("B", {"color": "red"}),
-                                   ("C", {"color": "red"}), (1, {"color": "green"})])
-        self.graph.add_edges_from([("A", 1), ("B", 1), ("C", 1)])
-
-        for k, leaf in enumerate(self.leaves[3:]):
-            assignment = leaf.get_assignment()
-            if not type(assignment) == Leaf:
-                internal_node = k + 2
-                self.graph.add_nodes_from([(leaf.label, {"color": "red"}), (internal_node, {"color": "green"})])
-                self.graph.remove_edge(assignment[0], assignment[1])
-                self.graph.add_edges_from([(leaf.label, internal_node), (assignment[0], internal_node),
-                                           (assignment[1], internal_node)])
-
-            else:
-                internal_node = k + 2
-                self.graph.add_nodes_from([(leaf.label, {"color": "red"}), (internal_node, {"color": "green"})])
-                removing_edge = list(self.graph.edges(assignment.label))[0]
-                self.graph.remove_edge(removing_edge[0], removing_edge[1])
-                self.graph.add_edges_from([(leaf.label, internal_node), (assignment.label, internal_node),
-                                           (internal_node, removing_edge[1])])
         if show:
             nx.draw(self.graph, node_color=[self.graph.nodes[node]["color"] for node in self.graph.nodes],
                     with_labels=True, font_weight='bold')
             plt.show()
-
         return self.graph
 
 
