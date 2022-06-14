@@ -3,10 +3,12 @@ import gurobipy as gb
 from itertools import combinations
 
 
-def solve(D):
+def solve(D, max_time):
     bmep = gb.Model()
     bmep.modelSense = gb.GRB.MINIMIZE
     bmep.setParam('OutputFlag', 0)
+    if max_time is not None:
+        bmep.setParam('TimeLimit', max_time)
 
     n = D.shape[0]
     TuV = range(2 * n)
@@ -112,16 +114,18 @@ def solve(D):
             )
 
     bmep.optimize()
-    print("optimal" if bmep.status == 2 else ("infeasible" if bmep.status == 3 else (
-        "unbounded" if bmep.status == 5 else "check the link page for other status codes")))
+    out_time = bmep.status == 9
 
-    sol = np.zeros((n, n), dtype=int)
+    if out_time:
+        return out_time, None, None, None
+    else:
+        sol = np.zeros((n, n), dtype=int)
 
-    for i in T:
-        for j in T:
-            for k in L:
-                if x.x[i, j, k] > 0.5:
-                    sol[i, j] = k + 1
+        for i in T:
+            for j in T:
+                for k in L:
+                    if x.x[i, j, k] > 0.5:
+                        sol[i, j] = k + 1
 
-    return bmep, sol
+        return out_time, bmep, sol, bmep.objVal
 
