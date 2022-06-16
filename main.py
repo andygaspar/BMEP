@@ -17,6 +17,9 @@ mats = []
 for file in filenames:
     mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
 
+# random.seed(0)
 
-num_instances, d_mat_initial, dim, max_time, total_time = 6, mats[3], 6, 4, 3600*3
+num_instances, d_mat_initial, dim, max_time, total_time = 1000, mats[3], 6, 6, 3600 * 8
 gen = Generator(num_instances, d_mat_initial, dim, max_time=max_time, total_time=total_time)
+
+

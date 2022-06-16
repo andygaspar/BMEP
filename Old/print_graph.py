@@ -62,3 +62,13 @@ def get_graph(matrix, labels=None):
     G = nx.relabel_nodes(G, mapping)
 
     return G
+
+
+T = np.array([[0, 3, 5, 5, 2, 4],
+              [3, 0, 3, 4, 4, 3],
+              [5, 3, 0, 2, 5, 4],
+              [5, 4, 2, 0, 5, 3],
+              [2, 4, 5, 5, 0, 3],
+              [4, 3, 4, 3, 3, 0]])
+
+get_graph(T, ["A", "B", "C", "D", "E", "F"])

@@ -24,7 +24,7 @@ class Generator:
         self.generate()
 
     def generate(self):
-        # random.seed(0)
+        random.seed(0)
         i = 0
         t = time.time()
         while i < self.num_instances and time.time() - t < self.total_time:
@@ -32,6 +32,8 @@ class Generator:
             while time.time() - t < self.total_time and out_time:
                 idx = random.sample(range(self.d_mat_initial.shape[0]), k=self.dim)
                 print("start")
+                if i == 51:
+                    print("here")
                 instance = Instance(self.d_mat_initial[idx, :][:, idx], max_time=self.max_time)
                 out_time = instance.out_time
                 print("end", out_time)

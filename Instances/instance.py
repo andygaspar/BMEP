@@ -10,11 +10,16 @@ class Instance:
 
     def __init__(self, d, labels=None, max_time=None):
         self.d = self.sort_d(d)
+        print(self.d)
         self.labels = [i for i in string.ascii_uppercase] if labels is None else labels
         self.out_time, self.problem, self.obj_val, self.T = self.solve(max_time)
         if not self.out_time:
+            print(self.T)
+            print("solved", self.problem.status, self.out_time)
             self.pardi = Pardi(self.T)
+            print("pardi")
             self.graph = self.pardi.get_graph()
+            print("graph")
             self.adj_mats = self.pardi.adj_mats[:-1]
             self.masks = [np.triu(mat) for mat in self.adj_mats]
             self.results = self.set_results(self.pardi.adj_mats)

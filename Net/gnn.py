@@ -7,19 +7,39 @@ import torch.nn.functional as F
 # Variable = lambda *args, **kwargs: autograd.Variable(*args, **kwargs).cuda() if USE_CUDA else autograd.Variable(*args,
 #
 #                                                                                                                 **kwargs)
-from network import Network
+from Net.network import Network
+
+softmax = nn.functional.softmax
 
 
-class Encoder(nn.Module):
-    def __init__(self, din=32, hidden_dim=128, device=None):
-
-        super(Encoder, self).__init__()
+class LeafLayer(nn.Module):
+    def __init__(self, m, hidden_dim=128, device=None):
+        super(LeafLayer, self).__init__()
         self.device = device
-        self.fc = nn.Linear(din, hidden_dim).to(self.device)
+        self.eta_f = nn.Sequential(
+            nn.Linear(m, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, m)
+        ).to(self.device)
 
-    def forward(self, x):
-        embedding = F.relu(self.fc(x)).to(self.device)
-        return embedding
+    def forward(self, A, d, h):
+        h = torch.matmul(d, h) / (torch.max(d.view(d.shape[0], 1, -1), dim=-1)[0] * 6)
+        return A, d, self.eta_f(h)
+
+
+class NodesLayer(nn.Module):
+    def __init__(self, m, hidden_dim=128, device=None):
+        super(NodesLayer, self).__init__()
+        self.device = device
+        self.eta_g = nn.Sequential(
+            nn.Linear(m, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, m)
+        ).to(self.device)
+
+    def forward(self, A, d, h):
+        h = torch.matmul(A, h) / 3
+        return A, d, self.eta_g(h)
 
 
 class AttModel(nn.Module):
@@ -43,55 +63,33 @@ class AttModel(nn.Module):
         return out
 
 
-class Q_Net(nn.Module):
-    def __init__(self, hidden_dim, dout, device):
-        self.device = device
-        super(Q_Net, self).__init__()
-        self.fc = nn.Linear(hidden_dim, dout).to(self.device)
-
-    def forward(self, x):
-        q = self.fc(x)
-        return q
-
-class TestNet(nn.Module):
-    def __init__(self, num_inputs, device):
-        self.device = device
-        super(TestNet, self).__init__()
-        self.fc = nn.Linear(num_inputs*2, 32).to(self.device)
-        self.fc2 = nn.Linear(32, 3).to(self.device)
-
-    def forward(self, x):
-        x = F.relu(self.fc(x))
-        x = self.fc2(x)
-        return x
-
-
 class DGN(Network):
-    def __init__(self, n_agent, num_inputs, hidden_dim, num_actions, network=None):
+    def __init__(self, m, hidden_dim_f, hidden_dim_g, n_messages, composed=True, network=None):
         super().__init__()
+        self.m = m
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.mask = torch.ones((n_agent, n_agent)).to(self.device)
+        leaf_layers = [LeafLayer(m, hidden_dim_f, self.device)] * n_messages
+        nodes_layers = [NodesLayer(m, hidden_dim_g, self.device)] * n_messages
+        self.t_l = torch.normal(0, 1, size=(1, m), dtype=torch.float).to(self.device)
+        self.t_f = torch.normal(0, 1, size=(1, m), dtype=torch.float).to(self.device)
 
-        self.encoder = Encoder(num_inputs, hidden_dim, self.device)
-        self.att_1 = AttModel(n_agent, hidden_dim, hidden_dim, hidden_dim, self.device)
-        self.att_2 = AttModel(n_agent, hidden_dim, hidden_dim, hidden_dim, self.device)
-        self.att_3 = AttModel(n_agent, hidden_dim, hidden_dim, hidden_dim, self.device)
-        self.q_net = Q_Net(hidden_dim, num_actions, self.device)
+        self.layers = [val for pair in zip(leaf_layers, nodes_layers) for val in pair] if composed \
+            else leaf_layers + nodes_layers
+        # self.net = nn.Sequential(*layers)
 
         if network is not None:
             self.load_weights(network)
         # self.test_net = TestNet(num_inputs, self.device)
 
-    def forward(self, x):
-        h1 = self.encoder(x)
-        h2 = self.att_1(h1, self.mask)
-        h3 = self.att_2(h2, self.mask)
-        h4 = self.att_2(h3, self.mask)
-        q = self.q_net(h4)
-        # a = torch.zeros_like(x)
-        # a[:, 0, :] = x[:, 1, :]
-        # a[:, 1, :] = x[:, 0, :]
-        # x = torch.cat([x, a], dim=-1)
-        # q = self.test_net(x)
-        return q
+    def forward(self, A, d, x, mask):
+        h = self.t_l * x[:, :, -2].view((x.shape[0], -1, 1)) + self.t_f * x[:, :, -1].view((x.shape[0], -1, 1))
+        # h = self.net(A, d, h0)
+        for l in self.layers:
+            _, _, h = l(A, d, h)
 
+        y_hat = torch.matmul(h, h.permute(0, 2, 1))
+        mask[mask == 0] = -torch.inf
+        y_hat = y_hat * mask
+        y = y_hat.view((h.shape[0], -1))
+        y_hat = softmax(y_hat.view((h.shape[0], -1)), dim=-1)
+        return y_hat
