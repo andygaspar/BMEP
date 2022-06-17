@@ -1,45 +1,35 @@
 import torch
-
+from Data_.Dataset.bmep_dataset import BMEP_Dataset
 from Net.gnn import DGN
+import torch.optim as optim
+from torch import nn
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-d_mats = torch.load("Data_/Dataset/d_mats.pt").to(torch.float).to(device)
-initial_masks = torch.load("Data_/Dataset/initial_masks.pt").to(torch.float).to(device)
-adj_mats = torch.load("Data_/Dataset/adj_mats.pt").to(torch.float).to(device)
-masks = torch.load("Data_/Dataset/masks.pt").to(torch.float).to(device)
-y = torch.load("Data_/Dataset/y.pt").to(torch.float).to(device)
+from torch.utils.data import Dataset, DataLoader
 
-dgn = DGN(4, 64, 64, 7)
-y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
-                    masks[0].unsqueeze(0))
 
-from Pardi.pardi import Pardi
-import numpy as np
+data_ = BMEP_Dataset()
+dataloader = DataLoader(dataset=data_, batch_size=30, shuffle=True)
 
-T = np.array([[0, 3, 5, 5, 2, 4],
-              [3, 0, 3, 4, 4, 3],
-              [5, 3, 0, 2, 5, 4],
-              [5, 4, 2, 0, 5, 3],
-              [2, 4, 5, 5, 0, 3],
-              [4, 3, 4, 3, 3, 0]])
-p = Pardi(T)
 
-d = np.array([[0., 0.0093179, 0.015149, 0.0150827, 0.0187477, 0.0310693],
-              [0.0093179, 0., 0.0142182, 0.016167, 0.0207826, 0.0326569],
-              [0.015149, 0.0142182, 0., 0.0135819, 0.0246194, 0.0361711],
-              [0.0150827, 0.016167, 0.0135819, 0., 0.0252762, 0.033975],
-              [0.0187477, 0.0207826, 0.0246194, 0.0252762, 0., 0.0402366],
-              [0.0310693, 0.0326569, 0.0361711, 0.033975, 0.0402366, 0.]])
 
-from Instances.ip_solver import solve
+dgn = DGN(4, 64, 64, 3)
+# y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
+#                     masks[0].unsqueeze(0))
 
-t = solve(d, 600)
+loss_function = nn.MSELoss()
+optimizer = optim.Adam(dgn.parameters(), lr=0.001, weight_decay=0.001)
 
-T = np.array([[0, 3, 5, 5, 2, 4],
-              [3, 0, 3, 4, 4, 3],
-              [5, 3, 0, 2, 5, 4],
-              [5, 4, 2, 0, 5, 3],
-              [2, 4, 5, 5, 0, 3],
-              [4, 3, 4, 3, 3, 0]])
-p = Pardi(T)
+for epoch in range(1000):
+    for data in dataloader:
+        adj_mats, d_mats, initial_masks, masks, y = data
+
+        output = dgn(adj_mats, d_mats, initial_masks, masks)
+        loss = loss_function(output, y.view(y.shape[0], -1))
+        optimizer.zero_grad()
+        dgn.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(dgn.parameters(), max_norm=0.001, norm_type=float('inf'))
+        optimizer.step()
+        print(loss.item())
+

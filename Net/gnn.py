@@ -23,8 +23,12 @@ class LeafLayer(nn.Module):
         ).to(self.device)
 
     def forward(self, A, d, h):
-        h = torch.matmul(d, h) / (torch.max(d.view(d.shape[0], 1, -1), dim=-1)[0] * 6)
-        return A, d, self.eta_f(h)
+        mat_size = h.shape
+        h = torch.bmm(d, h)
+        max_d = torch.max(d.view(d.shape[0], 1, -1), dim=-1)[0] * 6
+        h = (h.view(h.shape[0], -1) / max_d).view(mat_size)
+        h = self.eta_f(h)
+        return A, d, h
 
 
 class NodesLayer(nn.Module):
@@ -38,8 +42,39 @@ class NodesLayer(nn.Module):
         ).to(self.device)
 
     def forward(self, A, d, h):
-        h = torch.matmul(A, h) / 3
+        h = torch.bmm(A, h) / 3
         return A, d, self.eta_g(h)
+
+
+class DGN(Network):
+    def __init__(self, m, hidden_dim_f, hidden_dim_g, n_messages, composed=True, network=None):
+        super().__init__()
+        self.m = m
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        leaf_layers = [LeafLayer(m, hidden_dim_f, self.device)] * n_messages
+        nodes_layers = [NodesLayer(m, hidden_dim_g, self.device)] * n_messages
+        self.t_l = torch.normal(0, 1, size=(1, m), dtype=torch.float).to(self.device)
+        self.t_f = torch.normal(0, 1, size=(1, m), dtype=torch.float).to(self.device)
+
+        self.layers = nn.ModuleList([val for pair in zip(leaf_layers, nodes_layers) for val in pair]
+                                    if composed else leaf_layers + nodes_layers)
+        # self.net = nn.Sequential(*layers)
+
+        if network is not None:
+            self.load_weights(network)
+        # self.test_net = TestNet(num_inputs, self.device)
+
+    def forward(self, A, d, x, mask):
+        h = self.t_l * x[:, :, -2].view((x.shape[0], -1, 1)) + self.t_f * x[:, :, -1].view((x.shape[0], -1, 1))
+        # h = self.net(A, d, h0)
+        for l in self.layers:
+            _, _, h = l(A, d, h)
+
+        y_hat = torch.matmul(h, h.permute(0, 2, 1))
+        mask[mask == 0] = -torch.inf
+        y_hat = y_hat * mask
+        y_hat = softmax(y_hat.view((h.shape[0], -1)), dim=-1)
+        return y_hat
 
 
 class AttModel(nn.Module):
@@ -61,35 +96,3 @@ class AttModel(nn.Module):
         # out = torch.add(out,v)
         out = F.relu(self.fcout(out))
         return out
-
-
-class DGN(Network):
-    def __init__(self, m, hidden_dim_f, hidden_dim_g, n_messages, composed=True, network=None):
-        super().__init__()
-        self.m = m
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        leaf_layers = [LeafLayer(m, hidden_dim_f, self.device)] * n_messages
-        nodes_layers = [NodesLayer(m, hidden_dim_g, self.device)] * n_messages
-        self.t_l = torch.normal(0, 1, size=(1, m), dtype=torch.float).to(self.device)
-        self.t_f = torch.normal(0, 1, size=(1, m), dtype=torch.float).to(self.device)
-
-        self.layers = [val for pair in zip(leaf_layers, nodes_layers) for val in pair] if composed \
-            else leaf_layers + nodes_layers
-        # self.net = nn.Sequential(*layers)
-
-        if network is not None:
-            self.load_weights(network)
-        # self.test_net = TestNet(num_inputs, self.device)
-
-    def forward(self, A, d, x, mask):
-        h = self.t_l * x[:, :, -2].view((x.shape[0], -1, 1)) + self.t_f * x[:, :, -1].view((x.shape[0], -1, 1))
-        # h = self.net(A, d, h0)
-        for l in self.layers:
-            _, _, h = l(A, d, h)
-
-        y_hat = torch.matmul(h, h.permute(0, 2, 1))
-        mask[mask == 0] = -torch.inf
-        y_hat = y_hat * mask
-        y = y_hat.view((h.shape[0], -1))
-        y_hat = softmax(y_hat.view((h.shape[0], -1)), dim=-1)
-        return y_hat

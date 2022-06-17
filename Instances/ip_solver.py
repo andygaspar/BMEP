@@ -1,6 +1,6 @@
 import numpy as np
 import gurobipy as gb
-from itertools import combinations
+from itertools import combinations, permutations
 
 
 def solve(D, max_time):
@@ -11,13 +11,13 @@ def solve(D, max_time):
         bmep.setParam('TimeLimit', max_time)
 
     n = D.shape[0]
-    TuV = range(2 * n)
+    TuV = range(2 * n - 2)
     T = range(n)
-    V = range(n, 2 * n)
-    L = range(D.shape[0] - 1)
+    V = range(n, 2 * n - 2)
+    L = range(n - 1)
 
-    x = bmep.addMVar((2 * n, 2 * n, n - 1), vtype=gb.GRB.BINARY)
-    y = bmep.addMVar((2 * n, 2 * n, 2 * n, 2 * n), vtype=gb.GRB.BINARY)
+    x = bmep.addMVar((2 * n - 2, 2 * n - 2, n - 1), vtype=gb.GRB.BINARY)
+    y = bmep.addMVar((2 * n - 2, 2 * n - 2, 2 * n - 2, 2 * n - 2), vtype=gb.GRB.BINARY)
 
     bmep.setObjective(
         gb.quicksum(
@@ -56,19 +56,20 @@ def solve(D, max_time):
     # (36) (37)
     combs = list(combinations(TuV, 4))
     for c in combs:
-        i, j, q, t = c
-        bmep.addConstr(
-            gb.quicksum((k + 1) * (x[i, j, k] + x[q, t, k]) for k in L) <=
-            gb.quicksum((k + 1) * (x[i, q, k] + x[j, t, k]) for k in L) + (2 * n - 2) * y[i, j, q, t]
+        for p in list(permutations(c)):
+            i, j, q, t = p
+            bmep.addConstr(
+                gb.quicksum((k + 1) * (x[i, j, k] + x[q, t, k]) for k in L) <=
+                gb.quicksum((k + 1) * (x[i, q, k] + x[j, t, k]) for k in L) + (2 * n - 2) * y[i, j, q, t]
 
-        )
+            )
 
-        bmep.addConstr(
-            gb.quicksum((k + 1) * (x[i, j, k] + x[q, t, k]) for k in L) <=
-            gb.quicksum((k + 1) * (x[i, t, k] + x[j, q, k]) for k in L) +
-            (2 * n - 2) * (1 - y[i, j, q, t])
+            bmep.addConstr(
+                gb.quicksum((k + 1) * (x[i, j, k] + x[q, t, k]) for k in L) <=
+                gb.quicksum((k + 1) * (x[i, t, k] + x[j, q, k]) for k in L) +
+                (2 * n - 2) * (1 - y[i, j, q, t])
 
-        )
+            )
 
     # (38) (39)
     combs = list(combinations(T, 2))

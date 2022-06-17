@@ -19,7 +19,10 @@ for file in filenames:
 
 # random.seed(0)
 
-num_instances, d_mat_initial, dim, max_time, total_time = 1000, mats[3], 6, 6, 3600 * 8
+
+
+
+num_instances, d_mat_initial, dim, max_time, total_time = 1000, mats[3], 6, 15, 3600 * 8
 gen = Generator(num_instances, d_mat_initial, dim, max_time=max_time, total_time=total_time)
 
 
