@@ -8,6 +8,7 @@ class BMEP_Dataset(Dataset):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.d_mats = torch.load("Data_/Dataset/d_mats.pt").to(torch.float).to(device)
+        self.d_mats /= torch.max(self.d_mats).item()
         self.initial_masks = torch.load("Data_/Dataset/initial_masks.pt").to(torch.float).to(device)
         self.adj_mats = torch.load("Data_/Dataset/adj_mats.pt").to(torch.float).to(device)
         self.masks = torch.load("Data_/Dataset/masks.pt").to(torch.float).to(device)
