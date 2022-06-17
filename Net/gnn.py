@@ -23,7 +23,7 @@ class LeafLayer(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, m)
         ).to(self.device)
-        self.eta_f.apply(init_weights)
+        # self.eta_f.apply(init_weights)
 
     def forward(self, A, d, h):
         mat_size = h.shape
@@ -43,6 +43,7 @@ class NodesLayer(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, m)
         ).to(self.device)
+        # self.eta_g.apply(init_weights)
 
     def forward(self, A, d, h):
         h = torch.bmm(A, h) / 3
