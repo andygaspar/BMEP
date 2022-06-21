@@ -50,8 +50,9 @@ class NodesLayer(nn.Module):
     def forward(self, A, h):
         k = torch.bmm(A, h) / 3
         k = self.eta_g(k)
-        h =
-        return A, self.eta_g(k)
+        A_mask = torch.max(A, dim=-1)[0].unsqueeze(-1)
+        h = k * A_mask + h * (A_mask - 1) * (-1)
+        return h
 
 
 class InnerLayer(nn.Module):
@@ -71,14 +72,19 @@ class InnerLayer(nn.Module):
 
     def forward(self, h, x):
         v = F.relu(self.fcv(h))
-        q = F.relu(self.fcq(h)) * x[:, :, -1].view((x.shape[0], -1, 1))
-        k = (F.relu(self.fck(h)) * x[:, :, -2].view((x.shape[0], -1, 1))).permute(0, 2, 1)
-        att = F.softmax(torch.bmm(q, k), dim=2) * x[:, :, -1].view((x.shape[0], -1, 1))
+        # q = F.relu(self.fcq(h)) * x[:, :, -1].view((x.shape[0], -1, 1))
+        # k = (F.relu(self.fck(h)) * x[:, :, -2].view((x.shape[0], -1, 1))).permute(0, 2, 1)
+        # att = F.softmax(torch.bmm(q, k), dim=2) * x[:, :, -1].view((x.shape[0], -1, 1))
+        # out = torch.bmm(att, v)
+        # out = F.relu(self.fcout(out)) * x[:, :, -1].view((x.shape[0], -1, 1))
+        # h = h * x[:, :, -2].view((x.shape[0], -1, 1)) + out
+        q = F.relu(self.fcq(h))
+        k = F.relu(self.fck(h)).permute(0, 2, 1)
+        att = F.softmax(torch.bmm(q, k), dim=2)
 
         out = torch.bmm(att, v)
         # out = torch.add(out,v)
-        out = F.relu(self.fcout(out)) * x[:, :, -1].view((x.shape[0], -1, 1))
-        h = h * x[:, :, -2].view((x.shape[0], -1, 1)) + out
+        h = F.relu(self.fcout(out))
         return h
 
 
@@ -120,15 +126,16 @@ class DGN_test(Network):
         for i in range(self.n_massages):
             h = self.leaf_layers[i](A, d, h, x)
             # h = self.inner_layers[i](A, d, h, x)
-            o = self.inner_layers[i](h, x)
-            _, _, k = self.leaf_layers[i](A, d, h)
+            h = self.inner_layers[i](h, x)
+            h = self.nodes_layers[i](A, h)
 
-        y_hat = torch.matmul(h, h.permute(0, 2, 1)) * mask
-        mat_size = y_hat.shape
-
-        y_hat = (y_hat.view(y_hat.shape[0], -1) / torch.sum(y_hat, dim=(-2, -1)).unsqueeze(1)).view(mat_size)
-        k = y_hat[y_hat > 0]
-
+        # y_hat = torch.matmul(h, h.permute(0, 2, 1)) * mask
+        # mat_size = y_hat.shape
+        #
+        # y_hat = (y_hat.view(y_hat.shape[0], -1) / torch.sum(y_hat, dim=(-2, -1)).unsqueeze(1)).view(mat_size)
+        # k = y_hat[y_hat > 0]
+        y_hat = torch.matmul(h, h.permute(0, 2, 1))
+        y_hat = torch.sigmoid(y_hat)
         return y_hat, h
 
 
