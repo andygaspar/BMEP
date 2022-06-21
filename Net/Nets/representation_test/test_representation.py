@@ -8,12 +8,13 @@ from torch import nn
 
 from torch.utils.data import DataLoader
 
+from Net.Nets.representation_test.representation_net import DGN_test
 
 data_ = BMEP_Dataset()
-dataloader = DataLoader(dataset=data_, batch_size=64, shuffle=True)
+dataloader = DataLoader(dataset=data_, batch_size=1, shuffle=True)
 
 
-dgn = DGN(8, 128, 128, 6)
+dgn = DGN_test(8, 128, 128, 6)
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
 #                     masks[0].unsqueeze(0))
 
