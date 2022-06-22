@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
@@ -12,10 +13,10 @@ from Net.Nets.representation_test.representation_net import DGN_test
 from Net.Nets.representation_test.representation_net_2 import DGN_test_2
 
 data_ = BMEP_Dataset()
-dataloader = DataLoader(dataset=data_, batch_size=64, shuffle=True)
+dataloader = DataLoader(dataset=data_, batch_size=1, shuffle=True)
 
 
-dgn = DGN_test_2(8, 128, 128, 6)
+dgn = DGN_test_2(8, 16, 16, 6)
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
 #                     masks[0].unsqueeze(0))
 
@@ -50,4 +51,45 @@ for epoch in range(1_000_000):
                 print(res)
                 print(torch.sum(torch.abs(res)))
 
+# import numpy as np
+# from itertools import combinations
+# A = data_.adj_mats[1].cpu().numpy()
+# T = np.copy(A).astype(int)
+# idx = np.where(A[0, :] == 1)
+#
+# for i in range(6,10):
+#     idx = np.where(A[i, :] == 1)[0]
+#     print(idx)
+#     for c in list(combinations(idx, 2)):
+#         print(c)
+#         T[c] = 2
+#         T[c[::-1]] = 2
+#
+#
+# z =np.array([[0, 3, 9, 8, 8, 9, 4, 6, 5, 8, 3, 3],
+#                             [3, 0, 10, 9, 9, 10, 5, 7, 6, 9, 2, 4],
+#                             [9, 10, 0, 5, 5, 2, 7, 5, 6, 3, 10, 8],
+#                             [8, 9, 5, 0, 2, 5, 6, 4, 5, 4, 9, 7],
+#                             [8, 9, 5, 2, 0, 5, 6, 4, 5, 4, 9, 7],
+#                             [9, 10, 2, 5, 5, 0, 7, 5, 6, 3, 10, 8],
+#                             [4, 5, 7, 6, 6, 7, 0, 4, 3, 6, 5, 3],
+#                             [6, 7, 5, 4, 4, 5, 4, 0, 3, 4, 7, 5],
+#                             [5, 6, 6, 5, 5, 6, 3, 3, 0, 5, 6, 4],
+#                             [8, 9, 3, 4, 4, 3, 6, 4, 5, 0, 9, 7],
+#                             [3, 2, 10, 9, 9, 10, 5, 7, 6, 9, 0, 4],
+#                             [3, 4, 8, 7, 7, 8, 3, 5, 4, 7, 4, 0]])
+#
+# from Pardi.pardi import Pardi
+#
+#
+# p = Pardi(z)
+# A = p.adj_mats[-1]
+# T = np.copy(A).astype(int)
+#
+# for i in range(12, 22):
+#     for j in range(i+1 ,22):
+#         found = False
+#         while not found:
+#             for k in np.where(T[i, i:]==1):
+#                 if k ==
 
