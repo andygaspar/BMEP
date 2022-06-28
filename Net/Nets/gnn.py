@@ -83,7 +83,6 @@ class DGN(Network):
         mat_size = y_hat.shape
 
         y_hat = (y_hat.view(y_hat.shape[0], -1) / torch.sum(y_hat, dim=(-2, -1)).unsqueeze(1)).view(mat_size)
-        k = y_hat[y_hat > 0]
 
         return y_hat, h
 

@@ -4,12 +4,22 @@ import torch.nn as nn
 import torch.autograd as autograd
 import torch.nn.functional as F
 from Net.network import Network
+from itertools import permutations
+
+
+def init_weights_(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
+    else:
+        print(m, "not")
 
 
 def init_weights(m):
     if isinstance(m, nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight)
-        m.bias.data.fill_(0.01)
+        init_weights_(m)
+    elif isinstance(m, nn.Sequential):
+        m.apply(init_weights)
 
 
 softmax = nn.functional.softmax
@@ -37,7 +47,8 @@ class LeafLayer(nn.Module):
         self.device = device
         self.fcv = nn.Linear(m, hidden_dim).to(self.device)
         self.fck = nn.Linear(m, hidden_dim).to(self.device)
-        self.fck.apply(init_weights)
+        self.fd = nn.Linear(1, hidden_dim).to(self.device)
+        # self.fck.apply(init_weights)
         self.fcq = nn.Linear(m, hidden_dim).to(self.device)
         self.fcout = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -51,18 +62,16 @@ class LeafLayer(nn.Module):
         ).to(self.device)
 
     def forward(self, d, h):
+        shape = d.shape
 
-        # v = F.relu(self.fcv(h))
-        # # print(v, "\ngggh")
-        # q = torch.relu(self.fcq(h))
-        # k = torch.relu(self.fck(h)).permute(0, 2, 1)
-        v = self.fcv(h)
-        # print(v, "\ngggh")
+        v = self.fcv(h) * 10
         q = self.fcq(h)
-        k = self.fck(h).permute(0, 2, 1)
-        att = torch.bmm(q, k) # * d
+        d_ = d.view(shape[0], shape[1]*shape[2], 1)
+        d_ = self.fd(d_)
+        q_ = torch.repeat_interleave(q, shape[1], dim=1)
+        att_ = torch.sum(torch.mul(q_, d_), dim=-1).view(shape)
         # print(att)
-        att = F.softmax(att, dim=2)
+        att = F.softmax(att_, dim=2)
         # print(att)
         out = torch.bmm(att, v)
 
@@ -105,25 +114,31 @@ class TreeLayer(nn.Module):
         return h
 
 
-class DGN_test_2(Network):
+class DGN_test_3(Network):
     def __init__(self, m, hidden_dim_f, hidden_dim_g, n_messages, composed=True, network=None):
         super().__init__()
         self.m = m
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.n_massages = n_messages
+        # self.W1 = nn.Parameter(torch.normal(0, 1, size=(hidden_dim_f, m), requires_grad=True).to(self.device))
+        # self.w = nn.Parameter(torch.normal(0, 1, size=(hidden_dim_f, 1), requires_grad=True).to(self.device))
         self.leaf_layers = nn.ModuleList([LeafLayer(m, hidden_dim_f, self.device) for _ in range(n_messages)])
         self.tree_layers = nn.ModuleList([TreeLayer(m, hidden_dim_g, self.device) for _ in range(n_messages)])
         # self.gru = torch.nn.GRUCell(hidden_dim, hidden_dim).to(self.device)
-        self.init_embedding = Embedding(m, 64, self.device)
+        self.init_embedding = Embedding(m, hidden_dim_f, self.device)
+
+        #
+        for child in self.children():
+            init_weights(child)
+
+        if network is not None:
+            self.load_weights(network)
+        # self.test_net = TestNet(num_inputs, self.device)
         self.f = nn.Sequential(
             nn.Linear(m * 2, hidden_dim_f),
             nn.ReLU(),
             nn.Linear(hidden_dim_f, m)
         ).to(self.device)
-
-        if network is not None:
-            self.load_weights(network)
-        # self.test_net = TestNet(num_inputs, self.device)
 
     def forward(self, A, d, x, mask):
         scaled_d = d
@@ -131,18 +146,16 @@ class DGN_test_2(Network):
         # h0 = torch.normal(0, 100, size=h0.shape).to(self.device)
         h0[:, :, 0] = torch.mean(scaled_d, dim=-1) * 10
         h0[:, :, 1] = torch.var(scaled_d, dim=-1) * 10
-        # t = h0[:, :, 0] - torch.mean(h0, dim=1)
-        #h0 -= torch.mean(h0, dim=1, keepdim=True)
-        # h0 /= torch.std(h0, dim=1, keepdim=True)
         h = self.init_embedding(h0)
+
         # h = torch.matmul(d*10, h)
         # scaled_d = (d * 100)**2
 
         for i in range(self.n_massages):
-            h = self.leaf_layers[i](scaled_d, h)
+            h_1 = self.leaf_layers[i](scaled_d, h)
             # h = self.f(torch.cat([h, h_], dim=-1))
             # h_2 = self.tree_layers[i](A, h)
-            # h = self.f(torch.cat([h, h_1, h_2], dim=-1))
+            h = self.f(torch.cat([h, h_1], dim=-1))
 
         # y_hat = torch.matmul(h, h.permute(0, 2, 1)) * mask
         # mat_size = y_hat.shape
