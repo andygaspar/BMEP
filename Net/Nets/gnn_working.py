@@ -7,10 +7,10 @@ from Net.network import Network
 
 
 class NodeEncoder(nn.Module):
-    def __init__(self, din, hidden_dim, device=None):
+    def __init__(self, din, h_dimension, device=None):
         super(NodeEncoder, self).__init__()
         self.device = device
-        self.fc = nn.Linear(din, hidden_dim).to(self.device)
+        self.fc = nn.Linear(din, h_dimension).to(self.device)
 
     def forward(self, x):
         embedding = F.leaky_relu(self.fc(x))
@@ -18,24 +18,24 @@ class NodeEncoder(nn.Module):
 
 
 class Message(nn.Module):
-    def __init__(self, hidden_dim, dout, device):
+    def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(Message, self).__init__()
-        self.f_alpha = nn.Linear(hidden_dim * 2, hidden_dim).to(self.device)
+        self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
         self.v = nn.Linear(hidden_dim, 1).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
         a = self.f_alpha(torch.cat([hi, hj], dim=-1))
         a = self.v(a).view(mat.shape)
-        alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-2)
+        alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
         return alpha
 
 
 class FD(nn.Module):
-    def __init__(self, hidden_dim, device):
+    def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(FD, self).__init__()
-        self.fe = nn.Linear(hidden_dim * 3, hidden_dim).to(self.device)
+        self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
         self.fd = nn.Linear(1, hidden_dim).to(self.device)
 
     def forward(self, hi, hj, d):
@@ -46,22 +46,32 @@ class FD(nn.Module):
 
 
 class F_ALL(nn.Module):
-    def __init__(self, hidden_dim, device):
+    def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(F_ALL, self).__init__()
-        self.f = nn.Linear(hidden_dim * 2, hidden_dim).to(self.device)
+        self.f = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
 
     def forward(self, hi, hj):
         out = F.leaky_relu(self.f(torch.cat([hi, hj], dim=-1)))
         return out
 
 
+class MessageNode(nn.Module):
+    def __init__(self, h_dimension, hidden_dim, device):
+        self.device = device
+        super(MessageNode, self).__init__()
+        self.fmn = nn.Linear(h_dimension + hidden_dim * 3, h_dimension).to(self.device)
+
+    def forward(self, h, m1, m2, m3):
+        return F.leaky_relu(self.fmn(torch.cat([h, m1, m2, m3], dim=-1)))
+
+
 class FA(nn.Module):
-    def __init__(self, hidden_dim, dout, device):
+    def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(FA, self).__init__()
-        self.fc1 = nn.Linear(hidden_dim * 2, hidden_dim).to(self.device)
-        self.fc2 = nn.Linear(hidden_dim, dout).to(self.device)
+        self.fc1 = nn.Linear(h_dimension, hidden_dim).to(self.device)
+        self.fc2 = nn.Linear(hidden_dim, h_dimension).to(self.device)
 
     def forward(self, x):
         x = self.fc1(x)
@@ -70,40 +80,28 @@ class FA(nn.Module):
         return q
 
 
-class MessageNode(nn.Module):
-    def __init__(self, hidden_dim, dout, device):
-        self.device = device
-        super(MessageNode, self).__init__()
-        self.fmn = nn.Linear(hidden_dim * 4, dout).to(self.device)
-
-    def forward(self, h, m1, m2, m3):
-        return F.leaky_relu(self.fmn(torch.cat([h, m1, m2, m3], dim=-1)))
-
-
 class GNN(Network):
-    def __init__(self, num_inputs, att_inputs, hidden_dim, num_messages=3, network=None):
+    def __init__(self, num_inputs, h_dimension, hidden_dim, num_messages=3, network=None):
         super().__init__()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.mask = torch.ones((10, 10)).to(self.device)
-        self.agent_din = num_inputs
-        self.att_din = att_inputs
-        self.hidden_dim = hidden_dim
+
         self.rounds = num_messages
 
-        self.encoder = NodeEncoder(num_inputs, hidden_dim, self.device)
+        self.encoder = NodeEncoder(num_inputs, h_dimension, self.device)
 
-        self.fd = nn.ModuleList([FD(hidden_dim, self.device) for _ in range(self.rounds)])
-        self.ft = nn.ModuleList([F_ALL(hidden_dim, self.device) for _ in range(self.rounds)])
-        self.fall = nn.ModuleList([F_ALL(hidden_dim, self.device) for _ in range(self.rounds)])
+        self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.ft = nn.ModuleList([F_ALL(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.fall = nn.ModuleList([F_ALL(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
-        self.alpha_d = nn.ModuleList([Message(hidden_dim, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.alpha_t = nn.ModuleList([Message(hidden_dim, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.alpha_all = nn.ModuleList([Message(hidden_dim, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.alpha_all = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
         # self.gru = torch.nn.GRU(hidden_dim, hidden_dim, num_layers=1, batch_first=True).to(self.device)
 
-        self.fmn = MessageNode(hidden_dim, hidden_dim, self.device)
-        self.fa = FA(hidden_dim, hidden_dim, self.device)
+        self.fmn = MessageNode(h_dimension, hidden_dim, self.device)
+        self.fa = FA(h_dimension, hidden_dim, self.device)
 
         if network is not None:
             self.load_weights(network)
@@ -121,7 +119,7 @@ class GNN(Network):
 
         h = self.message_round(h, d_mats, d_mask, adj_mats, ones, self.rounds)
 
-        h = self.fa(torch.cat([h_0, h], dim=-1))
+        h = self.fa(h)
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * masks - 9e15 * (1 - masks)
         mat_size = y_h.shape
