@@ -1,22 +1,14 @@
-import numpy as np
-from scipy import special
 import torch
 
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
-from Net.Nets.gnn import DGN
 import torch.optim as optim
 from torch import nn
 
 
 from torch.utils.data import DataLoader
 
-from Net.Nets.representation_test.rep_4 import DGN_
 from Net.Nets.representation_test.rep_5 import DGN_5
-from Net.Nets.representation_test.representation_net import DGN_test
-from Net.Nets.representation_test.representation_net_2 import DGN_test_2
 import matplotlib.pyplot as plt
-
-from Net.Nets.representation_test.representation_net_3 import DGN_test_3
 
 
 def plot_grad_flow(named_parameters):
@@ -92,7 +84,6 @@ for epoch in range(1_000_000):
             # plot_grad_flow(dgn.named_parameters())
 
 import numpy as np
-from itertools import combinations
 # A = data_.adj_mats[1].cpu().numpy()
 # T = np.copy(A).astype(int)
 # idx = np.where(A[0, :] == 1)
