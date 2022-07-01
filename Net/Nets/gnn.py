@@ -80,7 +80,7 @@ class FA(nn.Module):
         return q
 
 
-class GNN_2(Network):
+class GNN(Network):
     def __init__(self, num_inputs, h_dimension, hidden_dim, num_messages=3, network=None):
         super().__init__()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

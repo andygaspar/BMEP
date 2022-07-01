@@ -1,5 +1,7 @@
 import copy
 import string
+import warnings
+
 import scipy
 import networkx as nx
 from matplotlib import pyplot as plt
@@ -7,6 +9,8 @@ import numpy as np
 
 from Pardi.graph import GraphAndData
 from Pardi.leaf import Leaf
+
+warnings.simplefilter("ignore")
 
 
 class Pardi:
