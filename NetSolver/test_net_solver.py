@@ -13,7 +13,7 @@ batch_size = 128
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7, network="Net/Nets/net3.68.pt")
+dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7, network="Net/Nets/net3.66.pt")
 for i in range(30):
     d = data_.d_mats[i*3]
     net_solver = NetSolver(d, dgn)
@@ -24,6 +24,6 @@ for i in range(30):
     # print(instance.adj_mat_solution)
     # print(d[:6, :6])
 
-    print("correct", np.array_equal(net_solver.solution, instance.adj_mat_solution))
+    print("correct", np.array_equal(net_solver.solution, instance.adj_mat_solution), instance.problem.status)
 
 
