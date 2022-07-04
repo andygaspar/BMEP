@@ -1,18 +1,20 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
+import os
 
 
 class BMEP_Dataset(Dataset):
 
-    def __init__(self):
+    def __init__(self, data_dir):
+
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        self.d_mats = torch.load("Data_/Dataset/d_mats.pt").to(torch.float).to(device)
+        self.d_mats = torch.load(os.path.join(data_dir, "Data_/Dataset/d_mats.pt")).to(torch.float).to(device)
         self.d_mats /= torch.max(self.d_mats).item()
-        self.initial_masks = torch.load("Data_/Dataset/initial_masks.pt").to(torch.float).to(device)
-        self.adj_mats = torch.load("Data_/Dataset/adj_mats.pt").to(torch.float).to(device)
-        self.masks = torch.load("Data_/Dataset/masks.pt").to(torch.float).to(device)
-        self.y = torch.load("Data_/Dataset/y.pt").to(torch.float).to(device)
+        self.initial_masks = torch.load(os.path.join(data_dir,"Data_/Dataset/initial_masks.pt")).to(torch.float).to(device)
+        self.adj_mats = torch.load(os.path.join(data_dir,"Data_/Dataset/adj_mats.pt")).to(torch.float).to(device)
+        self.masks = torch.load(os.path.join(data_dir,"Data_/Dataset/masks.pt")).to(torch.float).to(device)
+        self.y = torch.load(os.path.join(data_dir,"Data_/Dataset/y.pt")).to(torch.float).to(device)
         self.size = self.d_mats.shape[0]
 
     def __getitem__(self, index):

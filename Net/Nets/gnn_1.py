@@ -123,7 +123,7 @@ class GNN(Network):
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * masks - 9e15 * (1 - masks)
         mat_size = y_h.shape
-        y_hat = F.softmax(y_h.view(mat_size[0], -1), dim=-1)
+        y_hat = y_h.view(mat_size[0], -1)
 
         # y_hat = (y_h.view(y_h.shape[0], -1) / torch.sum(y_h, dim=(-2, -1)).unsqueeze(1)).view(mat_size)
 
