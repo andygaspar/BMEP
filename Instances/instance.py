@@ -18,6 +18,7 @@ class Instance:
             self.adj_mats = self.pardi.adj_mats[:-1]
             self.masks = [np.triu(mat) for mat in self.adj_mats]
             self.results = self.set_results(self.pardi.adj_mats)
+            self.adj_mat_solution = self.pardi.adj_mats[-1]
 
     @staticmethod
     def sort_d(d):

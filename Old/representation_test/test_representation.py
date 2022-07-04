@@ -7,7 +7,7 @@ from torch import nn
 
 from torch.utils.data import DataLoader
 
-from Net.Nets.representation_test.rep_5 import DGN_5
+from Old.representation_test.rep_5 import DGN_5
 import matplotlib.pyplot as plt
 
 

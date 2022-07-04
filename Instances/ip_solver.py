@@ -115,7 +115,7 @@ def solve(D, max_time):
             )
 
     bmep.optimize()
-    print("status", bmep.status)
+    # print("status", bmep.status)
     out_time = bmep.status == 9
 
     if out_time:
