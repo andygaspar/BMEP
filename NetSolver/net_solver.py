@@ -27,7 +27,7 @@ class NetSolver:
                 y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
                 y = y.squeeze(0).view(self.d.shape)
                 a_max = torch.argmax(y)
-                idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
+                idxs = torch.tensor([torch.div(a_max, self.m), a_max % self.m]).to(self.device)
                 adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
                 adj_mat[idxs[0], self.n + i - 2] = adj_mat[self.n + i - 2, idxs[0]] = 1  # reattach selected to new
                 adj_mat[idxs[1], self.n + i - 2] = adj_mat[self.n + i - 2, idxs[1]] = 1  # reattach selected to new

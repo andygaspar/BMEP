@@ -5,12 +5,13 @@ from torch.utils.data import DataLoader
 from Net.Nets.gnn import GNN
 from NetSolver.net_solver import NetSolver
 
-data_ = BMEP_Dataset()
+data_ = BMEP_Dataset("/m100/home/userexternal/fcamero1/bmep/BMEP")
 batch_size = 128
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7, network="Net/Nets/net3.68.pt")
+#dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7, network="Net/Nets/net3.68.pt")
+dgn = GNN(num_inputs=2, h_dimension=64, hidden_dim=64, num_messages=7, network=f"/m100/home/userexternal/fcamero1/bmep/BMEP/Net/Nets/dumps/net_epoch09950_loss1.22031.pt")
 
 d = data_.d_mats[0]
 net_solver = NetSolver(d, dgn)

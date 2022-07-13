@@ -1,5 +1,6 @@
 import copy
 import time
+import pickle
 
 import numpy as np
 import torch
@@ -33,12 +34,12 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(dgn.parameters(), lr=1e-5, weight_decay=1e-3)
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
 k, yy = None, None
-best_loss = 1e+4
-best_net = copy.deepcopy(dgn)
+best_loss = 1e+10
+best_net = 0
 
 losses = []
 t = time.time()
-for epoch in range(20):
+for epoch in range(10000):
     for data in dataloader:
         adj_mats, d_mats, initial_masks, masks, y = data
         optimizer.zero_grad()
@@ -52,7 +53,7 @@ for epoch in range(20):
         optimizer.step()
 
     loss = 0
-    if epoch % 5 == 0:
+    if epoch % 50 == 0:
         with torch.no_grad():
             for data in dataloader:
                 adj_mats, d_mats, initial_masks, masks, y = data
@@ -62,8 +63,11 @@ for epoch in range(20):
             loss = np.mean(loss)
             losses.append(loss)
             if loss < best_loss:
-                best_loss = loss
-                    best_net = copy.deepcopy(dgn)
+                best_net = epoch
 
-            dgn.save_weights(f"/m100/home/userexternal/fcamero1/bmep/BMEP/Net/Nets/net_epoch{epoch}_loss{(loss*100) / 100}")
+            dgn.save_weights(f"/m100/home/userexternal/fcamero1/bmep/BMEP/Net/Nets/dumps/net_epoch{epoch:05d}_loss{(loss*100) / 100:.5f}")
 print(time.time() - t)
+print(f"Best net at epoch {best_net}")
+
+with open(f"/m100/home/userexternal/fcamero1/bmep/BMEP/Net/Nets/dumps/losses.pkl", 'wb') as f:
+    pickle.dump(losses, f)
