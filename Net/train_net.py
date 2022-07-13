@@ -12,32 +12,30 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from Net.Nets.gnn import GNN
-from Net.Nets.gnn_1 import GNN_1
-
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-data_ = BMEP_Dataset()
-batch_size = 64
+data_ = BMEP_Dataset(end=500)
+batch_size = 128
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
 # dgn = DGN_(8, 128, 128, 6)
 # dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7)
-dgn = GNN_1(num_inputs=2, h_dimension=64, hidden_dim=64, num_messages=7)
+dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7)
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
 #                     masks[0].unsqueeze(0))
 
 criterion = nn.CrossEntropyLoss()
 # criterion = nn.MSELoss()
 
-optimizer = optim.Adam(dgn.parameters(), lr=1e-5, weight_decay=1e-3)
+optimizer = optim.Adam(dgn.parameters(), lr=1e-5, weight_decay=1e-5)
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
 k, yy = None, None
 best_loss = 1e+4
 best_net = copy.deepcopy(dgn)
 losses = []
 t = time.time()
-for epoch in range(20):
+for epoch in range(30_000):
     loss = None
     for data in dataloader:
         adj_mats, d_mats, initial_masks, masks, y = data
@@ -75,5 +73,5 @@ for epoch in range(20):
                 print(j)
                 print(o, y.nonzero()[0], "\n")
 print(time.time() - t)
-# best_net.save_weights("Net/Nets/net" + str(int(best_loss * 100)/100))
+best_net.save_weights("Net/Nets/net" + str(int(best_loss * 1000)/1000))
 

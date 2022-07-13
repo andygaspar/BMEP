@@ -5,8 +5,7 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
-from Net.Nets.gnn import GNN
-from NetSolver.net_solver import NetSolver
+from Old.gnn_base import GNN
 
 data_ = BMEP_Dataset()
 batch_size = 128

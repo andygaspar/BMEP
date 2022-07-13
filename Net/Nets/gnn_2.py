@@ -21,12 +21,20 @@ class Message(nn.Module):
     def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(Message, self).__init__()
-        self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-        self.v = nn.Linear(hidden_dim, 1).to(self.device)
+        # self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
+        # self.v = nn.Linear(hidden_dim, 1).to(self.device)
+        self.f_alpha = nn.Sequential(
+            nn.Linear(h_dimension * 2, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        ).to(self.device)
+
 
     def forward(self, hi, hj, mat, mat_mask):
-        a = self.f_alpha(torch.cat([hi, hj], dim=-1))
-        a = self.v(a).view(mat.shape)
+        a = self.f_alpha(torch.cat([hi, hj], dim=-1)).view(mat.shape)
+        # a = self.v(a).view(mat.shape)
         alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
         return alpha
 
@@ -35,8 +43,19 @@ class FD(nn.Module):
     def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(FD, self).__init__()
-        self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
-        self.fd = nn.Linear(1, hidden_dim).to(self.device)
+        # self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
+        self.fd = nn.Sequential(
+            nn.Linear(1, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        ).to(self.device)
+        self.fe = nn.Sequential(
+            nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        ).to(self.device)
 
     def forward(self, hi, hj, d):
         dd = d.view(d.shape[0], d.shape[1]**2, 1)
@@ -80,7 +99,7 @@ class FA(nn.Module):
         return q
 
 
-class GNN(Network):
+class GNN_2(Network):
     def __init__(self, num_inputs, h_dimension, hidden_dim, num_messages=3, network=None):
         super().__init__()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
