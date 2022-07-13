@@ -1,5 +1,7 @@
 import copy
+import os
 import time
+import json
 
 import numpy as np
 import torch
@@ -8,34 +10,47 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 import torch.optim as optim
 from torch import nn
 
-
 from torch.utils.data import DataLoader
 
-from Net.Nets.gnn import GNN
+from Net.Nets.GNN.gnn import GNN
+
+path = 'Net/Nets/GNN/'
+net_name = "GNN"
+
+with open(path + 'params.json', 'r') as json_file:
+    params = json.load(json_file)
+    print(params)
+
+train_params, net_params = params["train"], params["net"]
+
+dgn = GNN(net_params)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-data_ = BMEP_Dataset(end=1000)
-batch_size = 128
-dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
+data_ = BMEP_Dataset(start=train_params["start"], end=train_params["end"])
+batch_size = train_params["batch_size"]
+dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 # dgn = DGN_(8, 128, 128, 6)
 # dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7)
-dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7)
+
+
+
+
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
 #                     masks[0].unsqueeze(0))
 
 criterion = nn.CrossEntropyLoss()
 # criterion = nn.MSELoss()
 
-optimizer = optim.Adam(dgn.parameters(), lr=1e-5, weight_decay=1e-4)
+optimizer = optim.Adam(dgn.parameters(), lr=train_params["lr"], weight_decay=train_params["weight_decay"])
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
 k, yy = None, None
 best_loss = 1e+4
 best_net = copy.deepcopy(dgn)
 losses = []
 t = time.time()
-for epoch in range(10_000):
+for epoch in range(train_params["epochs"]):
     loss = None
     for data in dataloader:
         adj_mats, d_mats, initial_masks, masks, y = data
@@ -64,7 +79,6 @@ for epoch in range(10_000):
 
         if epoch % 500 == 0:
             with torch.no_grad():
-
                 o = (torch.matmul(h[0], h[0].permute(1, 0)) * masks[0])
                 j = list(masks[0].nonzero())
                 o = o[[x[0] for x in j], [x[1] for x in j]]
@@ -73,5 +87,13 @@ for epoch in range(10_000):
                 print(j)
                 print(o, y.nonzero()[0], "\n")
 print(time.time() - t)
-best_net.save_weights("Net/Nets/net" + str(int(best_loss * 1000)/1000))
+
+
+best_net.save_net(path,  best_loss, net_name, net_params)
+
+
+
+
+
+
 

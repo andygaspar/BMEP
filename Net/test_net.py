@@ -1,3 +1,5 @@
+import json
+
 import numpy as np
 import torch
 
@@ -5,14 +7,22 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
-from Old.gnn_base import GNN
+from Net.Nets.GNN.gnn import GNN
+
+path = 'Net/Nets/GNN/'
+
+with open(path + 'params.json', 'r') as json_file:
+    params = json.load(json_file)
+    print(params)
+train_params, net_params = params["train"], params["net"]
 
 data_ = BMEP_Dataset()
-batch_size = 128
+batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7, network="Net/Nets/net3.66.pt")
+dgn = GNN(net_params=net_params, network=path + "weights.pt")
+
 
 # d = data_.d_mats[0]
 # net_solver = NetSolver(d, dgn)

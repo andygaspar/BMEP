@@ -7,7 +7,7 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 from torch.utils.data import DataLoader
 
 from Instances.instance import Instance
-from Net.Nets.gnn import GNN
+from Net.Nets.GNN.gnn import GNN
 from NetSolver.net_solver import NetSolver
 
 data_ = BMEP_Dataset()

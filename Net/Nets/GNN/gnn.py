@@ -39,7 +39,7 @@ class FD(nn.Module):
         self.fd = nn.Linear(1, hidden_dim).to(self.device)
 
     def forward(self, hi, hj, d):
-        dd = d.view(d.shape[0], d.shape[1]**2, 1)
+        dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
         d_ij = self.fd(dd)
         out = F.leaky_relu(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
         return out
@@ -81,8 +81,10 @@ class FA(nn.Module):
 
 
 class GNN(Network):
-    def __init__(self, num_inputs, h_dimension, hidden_dim, num_messages=3, network=None):
+    def __init__(self, net_params, network=None):
         super().__init__()
+        num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
+                                                            net_params["hidden_dim"], net_params["num_messages"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.mask = torch.ones((10, 10)).to(self.device)
 

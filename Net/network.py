@@ -1,5 +1,7 @@
 import abc
 import copy
+import json
+import os
 
 from torch import nn
 import torch
@@ -27,3 +29,12 @@ class Network(nn.Module):
     def save_model(self, filename: str):
         model = self.vgg16(pretrained=True)
         torch.save(model.state_dict(), filename + '.pt')
+
+    def save_net(self, path: str, best_loss: float, net_name: str, params: dict):
+        new_folder = path + str(int(best_loss * 1000) / 1000)
+        os.mkdir(new_folder)
+        params["name"] = net_name
+        params["best_loss"] = best_loss
+        with open(new_folder + 'params.json', 'w') as outfile:
+            json.dump(params, outfile)
+        torch.save(self.state_dict(), new_folder + "/" + 'weights.pt')
