@@ -2,10 +2,10 @@
     "train":
         {
           "batch_size": 128,
-          "epochs": 10,
+          "epochs": 10000,
           "start": 0,
           "end": 1000,
-          "lr": 1e-5,
+          "l_r": 1e-5,
           "weight_decay": 1e-4
         },
     "net": {

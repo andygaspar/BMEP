@@ -35,6 +35,6 @@ class Network(nn.Module):
         os.mkdir(new_folder)
         params["name"] = net_name
         params["best_loss"] = best_loss
-        with open(new_folder + 'params.json', 'w') as outfile:
+        with open(new_folder + '/params.json', 'w') as outfile:
             json.dump(params, outfile)
-        torch.save(self.state_dict(), new_folder + "/" + 'weights.pt')
+        torch.save(self.state_dict(), new_folder + '/weights.pt')

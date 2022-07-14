@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from Net.Nets.GNN.gnn import GNN
 
-path = 'Net/Nets/GNN/'
+path = 'Net/Nets/GNN/_3.66/'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)

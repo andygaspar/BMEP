@@ -1,3 +1,4 @@
+import json
 import time
 
 import numpy as np
@@ -10,13 +11,21 @@ from Instances.instance import Instance
 from Net.Nets.GNN.gnn import GNN
 from NetSolver.net_solver import NetSolver
 
+path = 'Net/Nets/GNN/_3.66/'
+
+with open(path + 'params.json', 'r') as json_file:
+    params = json.load(json_file)
+    print(params)
+
+train_params, net_params = params["train"], params["net"]
 data_ = BMEP_Dataset()
-batch_size = 128
+batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=4, network="Net/Nets/net3.68.pt")
+dgn = GNN(net_params=net_params, network=path + "weights.pt")
 res_list = []
+
 for i in range(200):
     d = data_.d_mats[i*3]
     t1 = time.time()
