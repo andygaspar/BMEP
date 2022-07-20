@@ -35,8 +35,6 @@ class Generator:
             while time.time() - t < self.total_time and out_time:
                 idx = random.sample(range(self.d_mat_initial.shape[0]), k=self.dim)
                 print("start")
-                if i == 51:
-                    print("here")
                 instance = Instance(self.d_mat_initial[idx, :][:, idx], max_time=self.max_time)
                 out_time = instance.out_time
                 print("end", out_time)
@@ -54,9 +52,7 @@ class Generator:
                     self.d_masks[i] = d_mask
                     self.adj_mats[i] = instance.adj_mats[j]
                     a = np.sum(self.adj_mats[i], axis=-1)
-                    self.ad_masks[:, :, 0] = a
-                    self.ad_masks[self.ad_masks > 0] = 1
-                    self.ad_masks[:, :, 1] = np.abs(self.ad_masks[:, :, 0] - 1)
+                    self.ad_masks[i, :, 0] = a
                     self.masks[i] = instance.masks[j]
                     self.y[i] = instance.results[j]
                     i += 1
@@ -65,6 +61,8 @@ class Generator:
 
         if i == self.num_instances - 1:
             self.completed = True
+        self.ad_masks[self.ad_masks > 0] = 1
+        self.ad_masks[:, :, 1] = np.abs(self.ad_masks[:, :, 0] - 1)
 
         self.d_mats = torch.tensor(self.d_mats)
         self.d_masks = torch.tensor(self.d_masks)
