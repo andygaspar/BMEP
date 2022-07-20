@@ -25,8 +25,8 @@ class Message(nn.Module):
         self.v = nn.Linear(hidden_dim, 1).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
-        a = self.f_alpha(torch.cat([hi, hj], dim=-1))
-        a = self.v(a).view(mat.shape)
+        a = F.leaky_relu(self.f_alpha(torch.cat([hi, hj], dim=-1)))
+        a = F.leaky_relu(self.v(a).view(mat.shape))
         alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
         return alpha
 
@@ -40,7 +40,7 @@ class FD(nn.Module):
 
     def forward(self, hi, hj, d):
         dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
-        d_ij = self.fd(dd)
+        d_ij = F.leaky_relu(self.fd(dd))
         out = F.leaky_relu(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
         return out
 
@@ -110,20 +110,20 @@ class GNN(Network):
         if network is not None:
             self.load_weights(network)
 
-    def forward(self, adj_mats, d_mats, initial_masks, masks):
-        d_mats = d_mats * 10
-        d_mask = d_mats.clone()
-        d_mask[d_mask > 0] = 1
-        ad_masks = torch.zeros_like(initial_masks)
-        a = torch.sum(adj_mats, dim=-1)
-        ad_masks[:, :, 0] = a
-        ad_masks[ad_masks > 0] = 1
-        ad_masks[:, :, 1] = torch.abs(ad_masks[:, :, 0] - 1)
+    def forward(self, adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks):
+        d_mats = d_mats # * 10
+        # d_mask = d_mats.clone()
+        # d_mask[d_mask > 0] = 1
+        # ad_masks = torch.zeros_like(initial_masks)
+        # a = torch.sum(adj_mats, dim=-1)
+        # ad_masks[:, :, 0] = a
+        # ad_masks[ad_masks > 0] = 1
+        # ad_masks[:, :, 1] = torch.abs(ad_masks[:, :, 0] - 1)
 
-        ones = torch.ones_like(adj_mats)  # to change when different input size
+        # size_masks = torch.ones_like(adj_mats)  # to change when different input size
         h = self.encoder(initial_masks)
 
-        h = self.message_round(h, d_mats, d_mask, adj_mats, ones, initial_masks, ad_masks, self.rounds)
+        h = self.message_round(h, d_mats, d_masks, adj_mats, size_masks, initial_masks, ad_masks, self.rounds)
 
         h = self.fa(h)
 
@@ -133,7 +133,7 @@ class GNN(Network):
 
         return y_hat, h
 
-    def message_round(self, h, d, d_mask, adj_mats, ones, initial_mask, ad_masks, rounds):
+    def message_round(self, h, d, d_mask, adj_mats, size_masks, initial_mask, ad_masks, rounds):
 
         for i in range(rounds):
             hi, hj = self.i_j(h)
@@ -153,7 +153,7 @@ class GNN(Network):
             h = self.fm2(h, m_2) * h_adj + h * h_not_adj
 
             hi, hj = self.i_j(h)
-            alpha_all = self.alpha_all[i](hi, hj, ones, ones).unsqueeze(-1)
+            alpha_all = self.alpha_all[i](hi, hj, size_masks, size_masks).unsqueeze(-1)
             e_all = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
             m_3 = (alpha_all * e_all).sum(dim=-2)
 

@@ -27,7 +27,7 @@ dgn = GNN(net_params)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(start=train_params["start"], end=train_params["end"])
+data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"])
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
@@ -53,9 +53,9 @@ t = time.time()
 for epoch in range(train_params["epochs"]):
     loss = None
     for data in dataloader:
-        adj_mats, d_mats, initial_masks, masks, y = data
+        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
         optimizer.zero_grad()
-        output, h = dgn(adj_mats, d_mats, initial_masks, masks)
+        output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
         # out, yy = output[masks > 0], y[masks > 0]
         # loss = criterion(out, yy)
         loss = criterion(output, y.view(y.shape[0], -1))
@@ -89,7 +89,7 @@ for epoch in range(train_params["epochs"]):
 print(time.time() - t)
 
 
-best_net.save_net(path,  best_loss, net_name, net_params)
+# best_net.save_net(path,  best_loss, net_name, net_params)
 
 
 

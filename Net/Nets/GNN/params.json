@@ -2,13 +2,14 @@
     "train":
         {
           "batch_size": 128,
-          "epochs": 10000,
+          "epochs": 100,
           "start": 0,
           "end": 1000,
           "lr": 1e-5,
           "weight_decay": 1e-4
         },
     "net": {
+      "scale_d": 10,
       "name": "GNN",
       "num_inputs": 2,
       "h_dimension": 512,
