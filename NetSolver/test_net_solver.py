@@ -11,15 +11,15 @@ from Instances.instance import Instance
 from Net.Nets.GNN.gnn import GNN
 from NetSolver.net_solver import NetSolver
 
-path = 'Net/Nets/GNN/_3.66/'
+path = 'Net/Nets/GNN1/_3.645/'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
     print(params)
 
-train_params, net_params = params["train"], params["net"]
+net_params = params
 data_ = BMEP_Dataset()
-batch_size = train_params["batch_size"]
+batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 

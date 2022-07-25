@@ -38,3 +38,4 @@ class Network(nn.Module):
         with open(new_folder + '/params.json', 'w') as outfile:
             json.dump(params, outfile)
         torch.save(self.state_dict(), new_folder + '/weights.pt')
+        return new_folder

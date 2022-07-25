@@ -1,5 +1,5 @@
 import copy
-import os
+import shutil
 import time
 import json
 
@@ -13,8 +13,9 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from Net.Nets.GNN.gnn import GNN
+from Net.Nets.GNN1.gnn_1 import GNN_1
 
-path = 'Net/Nets/GNN/'
+path = 'Net/Nets/GNN1/'
 net_name = "GNN"
 
 with open(path + 'params.json', 'r') as json_file:
@@ -23,7 +24,7 @@ with open(path + 'params.json', 'r') as json_file:
 
 train_params, net_params = params["train"], params["net"]
 
-dgn = GNN(net_params)
+dgn = GNN_1(net_params)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -33,8 +34,6 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 # dgn = DGN_(8, 128, 128, 6)
 # dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7)
-
-
 
 
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
@@ -50,6 +49,7 @@ best_loss = 1e+4
 best_net = copy.deepcopy(dgn)
 losses = []
 t = time.time()
+directory = None
 for epoch in range(train_params["epochs"]):
     loss = None
     for data in dataloader:
@@ -63,10 +63,14 @@ for epoch in range(train_params["epochs"]):
         losses.append(loss.item())
         if loss.item() < best_loss:
             best_loss = loss.item()
-            best_net = copy.deepcopy(dgn)
+            #best_net = copy.deepcopy(dgn)
+            if epoch > 100:
+                if directory is not None:
+                    shutil.rmtree(directory)
+                directory = dgn.save_net(path, best_loss, net_name, net_params)
         # torch.nn.utils.clip_grad_norm_(dgn.parameters(), max_norm=0.001, norm_type=float('inf'))
         optimizer.step()
-    if epoch % 20 == 0:
+    if epoch % 5 == 0:
         with torch.no_grad():
 
             idx = torch.max(output, dim=-1)[1]
@@ -74,10 +78,12 @@ for epoch in range(train_params["epochs"]):
             id = torch.tensor(range(idx.shape[0])).to(device)
             prediction[id, idx] = 1
             err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1)))
-            print(epoch, np.mean(losses), "error", err.item() / 2, "over", y.shape[0], "  best", best_loss)
+            print(epoch, np.mean(losses), 'last_loss', loss, "error", err.item() / 2, "over", y.shape[0], "  best",
+                  best_loss)
             losses = []
 
-        if epoch % 500 == 0:
+
+        if epoch % 40 == 0:
             with torch.no_grad():
                 o = (torch.matmul(h[0], h[0].permute(1, 0)) * masks[0])
                 j = list(masks[0].nonzero())
@@ -87,13 +93,5 @@ for epoch in range(train_params["epochs"]):
                 print(j)
                 print(o, y.nonzero()[0], "\n")
 print(time.time() - t)
-
-
-# best_net.save_net(path,  best_loss, net_name, net_params)
-
-
-
-
-
 
 

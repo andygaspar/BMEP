@@ -13,7 +13,7 @@ class NodeEncoder(nn.Module):
         self.fc = nn.Linear(din, h_dimension).to(self.device)
 
     def forward(self, x):
-        embedding = F.leaky_relu(self.fc(x))
+        embedding = torch.tanh(self.fc(x))
         return embedding
 
 
@@ -25,8 +25,8 @@ class Message(nn.Module):
         self.v = nn.Linear(hidden_dim, 1).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
-        a = F.leaky_relu(self.f_alpha(torch.cat([hi, hj], dim=-1))) #messo lrelu
-        a = F.leaky_relu(self.v(a).view(mat.shape)) #messo lrelu
+        a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1))) #messo lrelu
+        a = torch.tanh(self.v(a).view(mat.shape)) #messo lrelu
         alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
         return alpha
 
@@ -40,8 +40,8 @@ class FD(nn.Module):
 
     def forward(self, hi, hj, d):
         dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
-        d_ij = F.leaky_relu(self.fd(dd)) #messo lrelu
-        out = F.leaky_relu(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
+        d_ij = torch.tanh(self.fd(dd)) #messo lrelu
+        out = torch.tanh(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
         return out
 
 
@@ -52,7 +52,7 @@ class F_ALL(nn.Module):
         self.f = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
 
     def forward(self, hi, hj):
-        out = F.leaky_relu(self.f(torch.cat([hi, hj], dim=-1)))
+        out = torch.tanh(self.f(torch.cat([hi, hj], dim=-1)))
         return out
 
 
@@ -63,7 +63,7 @@ class MessageNode(nn.Module):
         self.fmn = nn.Linear(h_dimension + hidden_dim, h_dimension).to(self.device)
 
     def forward(self, h, m1):
-        return F.leaky_relu(self.fmn(torch.cat([h, m1], dim=-1)))
+        return torch.tanh(self.fmn(torch.cat([h, m1], dim=-1)))
 
 
 class FA(nn.Module):
@@ -75,12 +75,12 @@ class FA(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = F.leaky_relu(x)
+        x = torch.tanh(x)
         q = self.fc2(x)
         return q
 
 
-class GNN(Network):
+class GNN_1(Network):
     def __init__(self, net_params, network=None):
         super().__init__()
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \

@@ -8,20 +8,21 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 from torch.utils.data import DataLoader
 
 from Net.Nets.GNN.gnn import GNN
+from Net.Nets.GNN1.gnn_1 import GNN_1
 
-path = 'Net/Nets/GNN/_3.66/'
+path = 'Net/Nets/GNN1/_3.645/'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
     print(params)
-train_params, net_params = params["train"], params["net"]
+net_params = params
 
 data_ = BMEP_Dataset()
-batch_size = train_params["batch_size"]
+batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN(net_params=net_params, network=path + "weights.pt")
+dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
 
 
 # d = data_.d_mats[0]
@@ -34,8 +35,8 @@ lenghts = []
 for epoch in range(10):
     for data in dataloader:
         with torch.no_grad():
-            adj_mats, d_mats, initial_masks, masks, y = data
-            output, h = dgn(adj_mats, d_mats, initial_masks, masks)
+            adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
+            output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
             idx = torch.max(output, dim=-1)[1]
             prediction = torch.zeros_like(output)
             id = torch.tensor(range(idx.shape[0])).to("cuda:0")

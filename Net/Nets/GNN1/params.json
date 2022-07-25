@@ -2,7 +2,7 @@
     "train":
         {
           "batch_size": 128,
-          "epochs": 2000,
+          "epochs": 10000,
           "start": 0,
           "end": 4096,
           "lr": 1e-5,
