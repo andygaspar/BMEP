@@ -38,13 +38,6 @@ data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"],
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
-# dgn = DGN_(8, 128, 128, 6)
-# dgn = GNN(num_inputs=2, h_dimension=512, hidden_dim=512, num_messages=7)
-
-
-# y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
-#                     masks[0].unsqueeze(0))
-
 criterion = nn.CrossEntropyLoss()
 # criterion = nn.MSELoss()
 
@@ -64,14 +57,11 @@ for epoch in range(train_params["epochs"]):
         output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
         # out, yy = output[masks > 0], y[masks > 0]
         # loss = criterion(out, yy)
-        # aa = torch.nonzero(y.view(y.shape[0], -1))[:, 1]
         loss = criterion(output, y)
-        # loss = criterion(output, y.view(y.shape[0], -1).to(torch.long))
         loss.backward()
         losses.append(loss.item())
         if loss.item() < best_loss:
             best_loss = loss.item()
-            #best_net = copy.deepcopy(dgn)
             if epoch > 100:
                 if directory is not None and save:
                     shutil.rmtree(directory)
