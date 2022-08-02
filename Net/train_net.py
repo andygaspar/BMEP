@@ -16,6 +16,9 @@ from torch.utils.data import DataLoader
 
 #from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
+from importlib.metadata import version
+
+a100 = True if version('torch') == '1.9.0+cu111' else False
 
 path = 'Net/Nets/GNN1/'
 net_name = "GNN_1"
@@ -31,7 +34,7 @@ dgn = GNN_1(net_params)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"])
+data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100)
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
@@ -61,8 +64,8 @@ for epoch in range(train_params["epochs"]):
         output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
         # out, yy = output[masks > 0], y[masks > 0]
         # loss = criterion(out, yy)
-        aa = torch.nonzero(y.view(y.shape[0], -1))[:, 1]
-        loss = criterion(output, aa)
+        # aa = torch.nonzero(y.view(y.shape[0], -1))[:, 1]
+        loss = criterion(output, y)
         # loss = criterion(output, y.view(y.shape[0], -1).to(torch.long))
         loss.backward()
         losses.append(loss.item())

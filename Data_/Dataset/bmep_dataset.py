@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 
 class BMEP_Dataset(Dataset):
 
-    def __init__(self, scale_d=1, start=0, end=None):
+    def __init__(self, scale_d=1, start=0, end=None, a100=False):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.d_mats = torch.load("Data_/Dataset/d_mats.pt").to(torch.float).to(device)[start: end]
@@ -15,6 +15,10 @@ class BMEP_Dataset(Dataset):
         self.ad_masks = torch.load("Data_/Dataset/ad_masks.pt").to(torch.float).to(device)[start: end]
         self.masks = torch.load("Data_/Dataset/masks.pt").to(torch.float).to(device)[start: end]
         self.y = torch.load("Data_/Dataset/y.pt").to(torch.float).to(device)[start: end]
+        if a100:
+            self.y = torch.nonzero(self.y.view(self.y.shape[0], -1))[:, 1]
+        else:
+            self.y = self.y.view(self.y.shape[0], -1)
         self.size_masks = torch.ones_like(self.adj_mats)
         self.size = self.d_mats.shape[0]
 
