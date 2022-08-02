@@ -40,8 +40,8 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
 #                     masks[0].unsqueeze(0))
 
-criterion = nn.CrossEntropyLoss()
-# criterion = nn.MSELoss()
+# criterion = nn.CrossEntropyLoss()
+criterion = nn.MSELoss()
 
 optimizer = optim.Adam(dgn.parameters(), lr=train_params["lr"], weight_decay=train_params["weight_decay"])
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
