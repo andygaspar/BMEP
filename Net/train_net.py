@@ -17,6 +17,7 @@ from Net.Nets.GNN1.gnn_1 import GNN_1
 
 path = 'Net/Nets/GNN1/'
 net_name = "GNN"
+save = False
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
@@ -65,7 +66,7 @@ for epoch in range(train_params["epochs"]):
             best_loss = loss.item()
             #best_net = copy.deepcopy(dgn)
             if epoch > 100:
-                if directory is not None:
+                if directory is not None and save:
                     shutil.rmtree(directory)
                 directory = dgn.save_net(path, best_loss, net_name, net_params)
         # torch.nn.utils.clip_grad_norm_(dgn.parameters(), max_norm=0.001, norm_type=float('inf'))
