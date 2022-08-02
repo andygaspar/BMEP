@@ -5,6 +5,8 @@ import json
 
 import numpy as np
 import torch
+import os
+print(os.getcwd())
 
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
 import torch.optim as optim
@@ -12,12 +14,12 @@ from torch import nn
 
 from torch.utils.data import DataLoader
 
-from Net.Nets.GNN.gnn import GNN
+#from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 
 path = 'Net/Nets/GNN1/'
-net_name = "GNN"
-save = False
+net_name = "GNN_1"
+save = True
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
@@ -40,8 +42,8 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 # y_hat = dgn.forward(adj_mats[0].unsqueeze(0), d_mats[0].unsqueeze(0), initial_masks[0].unsqueeze(0),
 #                     masks[0].unsqueeze(0))
 
-# criterion = nn.CrossEntropyLoss()
-criterion = nn.MSELoss()
+criterion = nn.CrossEntropyLoss()
+# criterion = nn.MSELoss()
 
 optimizer = optim.Adam(dgn.parameters(), lr=train_params["lr"], weight_decay=train_params["weight_decay"])
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
@@ -59,7 +61,9 @@ for epoch in range(train_params["epochs"]):
         output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
         # out, yy = output[masks > 0], y[masks > 0]
         # loss = criterion(out, yy)
-        loss = criterion(output, y.view(y.shape[0], -1))
+        aa = torch.nonzero(y.view(y.shape[0], -1))[:, 1]
+        loss = criterion(output, aa)
+        # loss = criterion(output, y.view(y.shape[0], -1).to(torch.long))
         loss.backward()
         losses.append(loss.item())
         if loss.item() < best_loss:
@@ -71,7 +75,7 @@ for epoch in range(train_params["epochs"]):
                 directory = dgn.save_net(path, best_loss, net_name, net_params)
         # torch.nn.utils.clip_grad_norm_(dgn.parameters(), max_norm=0.001, norm_type=float('inf'))
         optimizer.step()
-    if epoch % 5 == 0:
+    if epoch % 25 == 0:
         with torch.no_grad():
 
             idx = torch.max(output, dim=-1)[1]
@@ -79,12 +83,12 @@ for epoch in range(train_params["epochs"]):
             id = torch.tensor(range(idx.shape[0])).to(device)
             prediction[id, idx] = 1
             err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1)))
-            print(epoch, np.mean(losses), 'last_loss', loss, "error", err.item() / 2, "over", y.shape[0], "  best",
-                  best_loss)
+            print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err.item() / 2, "over", y.shape[0],
+                  "  best", best_loss)
             losses = []
 
 
-        if epoch % 40 == 0:
+        if epoch % 100 == 0:
             with torch.no_grad():
                 o = (torch.matmul(h[0], h[0].permute(1, 0)) * masks[0])
                 j = list(masks[0].nonzero())
