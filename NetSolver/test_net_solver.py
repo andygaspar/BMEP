@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 from Instances.instance import Instance
 from Net.Nets.GNN.gnn import GNN
+from Net.Nets.GNN1.gnn_1 import GNN_1
 from NetSolver.net_solver import NetSolver
 
 path = 'Net/Nets/GNN1/_3.645/'
@@ -23,7 +24,7 @@ batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN(net_params=net_params, network=path + "weights.pt")
+dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
 res_list = []
 
 for i in range(200):
@@ -45,4 +46,6 @@ for i in range(200):
     print(i, "correct", res, instance.problem.status, t1, t2)
 
 print("accuracy", np.mean(res_list))
+
+
 
