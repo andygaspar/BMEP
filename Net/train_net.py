@@ -70,12 +70,14 @@ for epoch in range(train_params["epochs"]):
         optimizer.step()
     if epoch % 25 == 0:
         with torch.no_grad():
-
             idx = torch.max(output, dim=-1)[1]
-            prediction = torch.zeros_like(output)
-            id = torch.tensor(range(idx.shape[0])).to(device)
-            prediction[id, idx] = 1
-            err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1)))
+            if a100:
+                err = torch.nonzero(idx - y).shape[0]
+            else:
+                prediction = torch.zeros_like(output)
+                id = torch.tensor(range(idx.shape[0])).to(device)
+                prediction[id, idx] = 1
+                err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1)))
             print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err.item() / 2, "over", y.shape[0],
                   "  best", best_loss)
             losses = []
@@ -91,5 +93,7 @@ for epoch in range(train_params["epochs"]):
                 print(j)
                 print(o, y.nonzero()[0], "\n")
 print(time.time() - t)
+
+
 
 
