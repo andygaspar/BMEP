@@ -13,7 +13,7 @@ class GraphAndData:
         self.graph = nx.Graph()
         self.graph.add_nodes_from([(leaf.label, {"color": "red"}) for leaf in leaves])
         self.graph.add_nodes_from([(k, {"color": "green"}) for k in range(1, n - 1)])
-        self.graph.add_edges_from([("A", 1), ("B", 1), ("C", 1)])
+        self.graph.add_edges_from([(leaves[0].label, 1), (leaves[1].label, 1), (leaves[2].label, 1)])
         adj_mats = [nx.adjacency_matrix(self.graph).toarray()]
 
         for k, leaf in enumerate(leaves[3:]):
