@@ -20,7 +20,6 @@ class Pardi:
         self.n = self.T.shape[0]
         self.leaves = self.make_leaves(letter_labels)
         self.compute_pardi()
-        self.get_pardi_assignment(True)
         self.graph_and_data_maker = GraphAndData()
         self.graph, self.adj_mats = self.graph_and_data_maker.get_graph(self.leaves, self.n)
 
