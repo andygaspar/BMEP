@@ -6,6 +6,9 @@ import json
 import numpy as np
 import torch
 import os
+
+from Net.Nets.GNN_edge.gnn_edge import GNN_edge
+
 print(os.getcwd())
 
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
@@ -20,7 +23,7 @@ from importlib.metadata import version
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
 
-path = 'Net/Nets/GNN1/'
+path = 'Net/Nets/GNN_edge/'
 net_name = "GNN_1"
 save = True
 
@@ -30,7 +33,9 @@ with open(path + 'params.json', 'r') as json_file:
 
 train_params, net_params = params["train"], params["net"]
 
-dgn = GNN_1(net_params)
+# dgn = GNN_1(net_params)
+dgn = GNN_edge(net_params)
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -77,21 +82,25 @@ for epoch in range(train_params["epochs"]):
                 prediction = torch.zeros_like(output)
                 id = torch.tensor(range(idx.shape[0])).to(device)
                 prediction[id, idx] = 1
-                err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1)))
-            print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err.item() / 2, "over", y.shape[0],
+                err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1))) / 2
+            print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err, "over", y.shape[0],
                   "  best", best_loss)
             losses = []
 
 
         if epoch % 100 == 0:
             with torch.no_grad():
-                o = (torch.matmul(h[0], h[0].permute(1, 0)) * masks[0])
-                j = list(masks[0].nonzero())
-                o = o[[x[0] for x in j], [x[1] for x in j]]
-                print(torch.mean(h[0], dim=-2))
-                print(torch.std(h[0], dim=-2))
-                print(j)
-                print(o, y.nonzero()[0], "\n")
+                if not a100:
+                    o = (torch.matmul(h[0], h[0].permute(1, 0)) * masks[0])
+                    j = list(masks[0].nonzero())
+                    o = o[[x[0] for x in j], [x[1] for x in j]]
+                    print(torch.mean(h[0], dim=-2))
+                    print(torch.std(h[0], dim=-2))
+                    print(j)
+                    print(o, y.nonzero()[0], "\n")
+                else:
+                    print(h[0] * masks[0])
+                    print("pred", torch.argmax((h[0] * masks[0]).flatten()).item(), "  y", y[0].item(), "\n")
 print(time.time() - t)
 
 
