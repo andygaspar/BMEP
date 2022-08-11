@@ -12,7 +12,7 @@ from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from NetSolver.net_solver import NetSolver
 
-path = 'Net/Nets/GNN1/_3.645/'
+path = 'Net/Nets/GNN1/_3.668/'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)

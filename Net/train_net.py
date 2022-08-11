@@ -22,8 +22,9 @@ from Net.Nets.GNN1.gnn_1 import GNN_1
 from importlib.metadata import version
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
+edge = False
 
-path = 'Net/Nets/GNN_edge/'
+path = 'Net/Nets/GNN1/'
 net_name = "GNN_1"
 save = True
 
@@ -33,8 +34,8 @@ with open(path + 'params.json', 'r') as json_file:
 
 train_params, net_params = params["train"], params["net"]
 
-# dgn = GNN_1(net_params)
-dgn = GNN_edge(net_params)
+dgn = GNN_1(net_params)
+# dgn = GNN_edge(net_params)
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -99,9 +100,13 @@ for epoch in range(train_params["epochs"]):
                     print(j)
                     print(o, y.nonzero()[0], "\n")
                 else:
-                    print(h[0] * masks[0])
-                    print("pred", torch.argmax((h[0] * masks[0]).flatten()).item(), "  y", y[0].item(), "\n")
+                    if edge:
+                        print(h[0] * masks[0])
+                        print("pred", torch.argmax((h[0] * masks[0]).flatten()).item(), "  y", y[0].item(), "\n")
+
 print(time.time() - t)
+
+
 
 
 
