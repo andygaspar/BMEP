@@ -10,12 +10,10 @@ from torch.utils.data import DataLoader
 from Instances.instance import Instance
 from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
+from NetSolver.heuristic_search import HeuristicSearch
 from NetSolver.net_solver import NetSolver
 
 path = 'Net/Nets/GNN1/1661348420.9005842_0.627/'
-
-m = np.loadtxt('mat_ok', dtype='int')
-print(m)
 
 
 with open(path + 'params.json', 'r') as json_file:
@@ -33,10 +31,15 @@ res_list = []
 
 for i in range(1):
     d = data_.d_mats[i*3]
+
+    heuristic = HeuristicSearch(d, dgn, 2)
+    heuristic.solve()
     t1 = time.time()
     net_solver = NetSolver(d, dgn)
     net_solver.solve()
     t1 = time.time() - t1
+
+
     # print(net_solver.solution)
 
     t2 = time.time()
