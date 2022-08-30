@@ -20,6 +20,8 @@ from torch.utils.data import DataLoader
 #from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from importlib.metadata import version
+import datetime
+
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False

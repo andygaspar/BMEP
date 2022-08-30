@@ -2,7 +2,7 @@
     "train":
         {
           "batch_size": 128,
-          "epochs": 2000,
+          "epochs": 1000,
           "start": 0,
           "end": 4096,
           "lr": 1e-5,
@@ -12,8 +12,8 @@
       "scale_d": 1,
       "name": "GNN",
       "num_inputs": 2,
-      "h_dimension": 1024,
-      "hidden_dim": 1024,
+      "h_dimension": 512,
+      "hidden_dim": 512,
       "num_messages": 5,
       "best_loss": ""
 

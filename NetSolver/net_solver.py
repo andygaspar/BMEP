@@ -1,5 +1,6 @@
 import copy
 
+import numpy as np
 import torch.nn.init
 
 
@@ -17,6 +18,24 @@ class NetSolver:
         self.solution = None
 
     def solve(self):
+        adj_mat, size_mask, initial_mask, mask, d_mask = self.initial_mats()
+        with torch.no_grad():
+            for i in range(3, self.n):
+                ad_mask = self.get_ad_mask(adj_mat)
+                y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0),
+                                size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
+                # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
+                y = y.squeeze(0).view(self.d.shape)
+                a_max = torch.argmax(y)
+                idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
+                adj_mat = self.add_node(adj_mat, idxs, step=i)
+                mask = torch.triu(adj_mat)
+                self.adj_mats.append(adj_mat.to("cpu").numpy())
+
+        self.solution = self.adj_mats[-1].astype(int)
+        print(self.solution)
+
+    def initial_mats(self):
         adj_mat = torch.zeros_like(self.d).to(self.device)
         size_mask = torch.ones_like(self.d)
         adj_mat[0, self.n] = adj_mat[self.n, 0] = 1
@@ -26,26 +45,25 @@ class NetSolver:
         initial_mask[:, 0] = torch.tensor([1 if i < self.n else 0 for i in range(self.m)]).to(self.device)
         initial_mask[:, 1] = torch.tensor([1 if i >= self.n else 0 for i in range(self.m)]).to(self.device)
         mask = torch.triu(adj_mat)
-        with torch.no_grad():
-            for i in range(3, self.n):
-                ad_mask = torch.zeros((self.d.shape[0], 2)).to(self.device)
-                a = torch.sum(adj_mat, dim=-1)
-                ad_mask[:, 0] = a
-                ad_mask[ad_mask > 0] = 1
-                ad_mask[:, 1] = torch.abs(ad_mask[:, 0] - 1)
-                d_mask = copy.deepcopy(self.d)
-                d_mask[d_mask > 0] = 1
-                y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0),  self.d.unsqueeze(0), d_mask.unsqueeze(0),
-                                size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
-                # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
-                y = y.squeeze(0).view(self.d.shape)
-                a_max = torch.argmax(y)
-                idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
-                adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
-                adj_mat[idxs[0], self.n + i - 2] = adj_mat[self.n + i - 2, idxs[0]] = 1  # reattach selected to new
-                adj_mat[idxs[1], self.n + i - 2] = adj_mat[self.n + i - 2, idxs[1]] = 1  # reattach selected to new
-                adj_mat[i, self.n + i - 2] = adj_mat[self.n + i - 2, i] = 1  # attach new
-                mask = torch.triu(adj_mat)
-                self.adj_mats.append(adj_mat.to("cpu").numpy())
+        d_mask = copy.deepcopy(self.d)
+        d_mask[d_mask > 0] = 1
 
-        self.solution = self.adj_mats[-1].astype(int)
+        return adj_mat, size_mask, initial_mask, mask, d_mask
+
+    def get_ad_mask(self, adj_mat):
+        ad_mask = torch.zeros((self.d.shape[0], 2)).to(self.device)
+        a = torch.sum(adj_mat, dim=-1)
+        ad_mask[:, 0] = a
+        ad_mask[ad_mask > 0] = 1
+        ad_mask[:, 1] = torch.abs(ad_mask[:, 0] - 1)
+        return ad_mask
+
+    def add_node(self, adj_mat, idxs, new_node_idx):
+        adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
+        adj_mat[idxs[0], self.n + new_node_idx - 2] = adj_mat[self.n + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
+        adj_mat[idxs[1], self.n + new_node_idx - 2] = adj_mat[self.n + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
+        adj_mat[new_node_idx, self.n + new_node_idx - 2] = adj_mat[self.n + new_node_idx - 2, new_node_idx] = 1  # attach new
+
+        return adj_mat
+
+

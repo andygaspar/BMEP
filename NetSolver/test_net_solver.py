@@ -12,7 +12,11 @@ from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from NetSolver.net_solver import NetSolver
 
-path = 'Net/Nets/GNN1/_3.668/'
+path = 'Net/Nets/GNN1/1661348420.9005842_0.627/'
+
+m = np.loadtxt('mat_ok', dtype='int')
+print(m)
+
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
@@ -27,7 +31,7 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
 res_list = []
 
-for i in range(200):
+for i in range(1):
     d = data_.d_mats[i*3]
     t1 = time.time()
     net_solver = NetSolver(d, dgn)
