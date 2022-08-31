@@ -20,7 +20,6 @@ class Solution:
         Tau = nx.floyd_warshall_numpy(g)[:n, :n]
         d = d.to("cpu").numpy()
         self.obj_val = np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
-        print(self.obj_val)
 
 
 class HeuristicSearch(NetSolver):

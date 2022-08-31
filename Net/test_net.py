@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 
-path = 'Net/Nets/GNN1/_3.691/'
+path = 'Net/Nets/GNN1/_3.697/'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
