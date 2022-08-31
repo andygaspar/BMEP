@@ -44,7 +44,7 @@ res_1_list = []
 for i in range(20):
     d = data_.d_mats[i*3]
     t = time.time()
-    heuristic = HeuristicSearch(d, dgn, 3)
+    heuristic = HeuristicSearch(d, dgn, 2)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)
@@ -57,7 +57,7 @@ for i in range(20):
     # print(data_.y[i * 3 + 2])
 
     # print(net_solver.solution)
-    pre_final_adj_mat = data_.adj_mats[i*3 +2].to("cpu").numpy()
+    pre_final_adj_mat = data_.adj_mats[i*3 + 2].to("cpu").numpy()
     last_move = np.nonzero(data_.y[i*3 + 2].view(10, 10).to("cpu").numpy())
     sol = add_node(pre_final_adj_mat, last_move, 5)
 
@@ -67,8 +67,8 @@ for i in range(20):
     # print(instance.adj_mat_solution)
     # print(d[:6, :6])
 
-    res_1 = np.array_equal(heuristic.solution, sol)
     res = np.array_equal(net_solver.solution, sol)
+    res_1 = np.array_equal(heuristic.solution, sol)
     res_list.append(res)
     res_1_list.append(res_1)
 
