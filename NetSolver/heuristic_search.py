@@ -39,12 +39,12 @@ class HeuristicSearch(NetSolver):
             probs = probs.squeeze(0)
             idxs = [torch.tensor([torch.div(a, self.m, rounding_mode='trunc'), a % self.m]).to(self.device)
                     for a in a_max.squeeze(0)]
-            for s, sol in enumerate(self.solutions):
+            for s, sol in enumerate(self.solutions[:3]):
                 sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3)
                 sol.prob = probs[s]
 
             for i in range(4, self.n):
-                for sol in self.solutions:
+                for sol in self.solutions[:min([i, self.w])]:
                     adj_mat = sol.adj_mat
                     ad_mask, mask = self.get_masks(adj_mat)
                     sol.y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
