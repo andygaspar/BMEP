@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 
-path = 'Net/Nets/GNN1/_3.691/'
+path = 'Net/Nets/GNN1/_3.684/'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
@@ -37,6 +37,7 @@ for epoch in range(10):
         with torch.no_grad():
             adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
             output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
+            print(output[0])
             idx = torch.max(output, dim=-1)[1]
             prediction = torch.zeros_like(output)
             id = torch.tensor(range(idx.shape[0])).to("cuda:0")
@@ -44,7 +45,7 @@ for epoch in range(10):
             err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1)))
             errors.append(err.item()/2)
             lenghts.append(y.shape[0])
-            print(epoch, "error", err.item() / 2, "over", y.shape[0])
+            print(epoch, "error", err.item() / 2, "over", y.shape[0], sum(output[output < 0.9]))
 
 print("mean num errors", np.mean(errors))
 print("error rate ", np.sum(errors)/np.sum(lenghts))

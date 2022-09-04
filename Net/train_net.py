@@ -17,11 +17,10 @@ from torch import nn
 
 from torch.utils.data import DataLoader
 
-#from Net.Nets.GNN.gnn import GNN
+# from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from importlib.metadata import version
 import datetime
-
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
@@ -39,17 +38,20 @@ train_params, net_params = params["train"], params["net"]
 dgn = GNN_1(net_params)
 # dgn = GNN_edge(net_params)
 
-
+cross_entropy = False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100)
+data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100,
+                     cross_entropy=cross_entropy)
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
-criterion = nn.CrossEntropyLoss()
-# criterion = nn.MSELoss()
+# criterion = nn.CrossEntropyLoss()
+criterion = nn.MSELoss()
+# criterion = nn.KLDivLoss()
 
-optimizer = optim.Adam(dgn.parameters(), lr=train_params["lr"], weight_decay=train_params["weight_decay"])
+
+optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
 k, yy = None, None
 best_loss = 1e+4
@@ -63,9 +65,10 @@ for epoch in range(train_params["epochs"]):
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
         optimizer.zero_grad()
         output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
-        # out, yy = output[masks > 0], y[masks > 0]
-        # loss = criterion(out, yy)
-        loss = criterion(output, y)
+        out, yy = output.view(output.shape[0], 10, 10)[masks > 0].flatten(), y.view(y.shape[0], 10, 10)[masks > 0].flatten()
+        loss = criterion(out, yy)
+        print(sum(output[output > 0.9]))
+        # loss = criterion(output, y.float())
         loss.backward()
         losses.append(loss.item())
         if loss.item() < best_loss:
@@ -79,7 +82,7 @@ for epoch in range(train_params["epochs"]):
     if epoch % 25 == 0:
         with torch.no_grad():
             idx = torch.max(output, dim=-1)[1]
-            if a100:
+            if a100 and cross_entropy:
                 err = torch.nonzero(idx - y).shape[0]
             else:
                 prediction = torch.zeros_like(output)
@@ -87,9 +90,8 @@ for epoch in range(train_params["epochs"]):
                 prediction[id, idx] = 1
                 err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1))) / 2
             print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err, "over", y.shape[0],
-                  "  best", best_loss)
+                  "  best", best_loss, 'non one', sum(prediction[prediction < 0.9]))
             losses = []
-
 
         if epoch % 100 == 0:
             with torch.no_grad():
@@ -107,9 +109,3 @@ for epoch in range(train_params["epochs"]):
                         print("pred", torch.argmax((h[0] * masks[0]).flatten()).item(), "  y", y[0].item(), "\n")
 
 print(time.time() - t)
-
-
-
-
-
-
