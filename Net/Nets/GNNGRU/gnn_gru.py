@@ -145,6 +145,44 @@ class GNN_1(Network):
 
         return y_hat, h
 
+    # def message_round(self, h, d, d_mask, adj_mats, size_masks, initial_mask, ad_masks, rounds):
+    #
+    #     for i in range(rounds):
+    #         hi, hj = self.i_j(h)
+    #         alpha_d = self.alpha_d[i](hi, hj, d, d_mask).unsqueeze(-1)
+    #         e_d = self.fd[i](hi, hj, d).view(d.shape[0], d.shape[1], d.shape[2], -1)
+    #         m_1 = (alpha_d * e_d).sum(dim=-2)
+    #         hd = initial_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
+    #         h_not_d = initial_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
+    #         out_s = h.shape
+    #         h_, _ = self.gru(h.view(-1, 1, out_s[-1]), m_1.view(1, -1, out_s[-1]))
+    #         # h = self.fm1(h, m_1) * hd + h * h_not_d
+    #         h = h_.view(out_s) * hd + h * h_not_d
+    #
+    #         hi, hj = self.i_j(h)
+    #         alpha_t = self.alpha_t[i](hi, hj, adj_mats, adj_mats).unsqueeze(-1)
+    #         e_t = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
+    #         m_2 = (alpha_t * e_t).sum(dim=-2)
+    #         h_adj = ad_masks[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
+    #         h_not_adj = ad_masks[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
+    #         out_s = h.shape
+    #         h_, _ = self.gru(h.view(-1, 1, out_s[-1]), m_2.view(1, -1, out_s[-1]))
+    #         h = h_.view(out_s) * h_adj + h * h_not_adj
+    #         # h = self.fm2(h, m_2) * h_adj + h * h_not_adj
+    #
+    #         hi, hj = self.i_j(h)
+    #         alpha_all = self.alpha_all[i](hi, hj, size_masks, size_masks).unsqueeze(-1)
+    #         e_all = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
+    #         m_3 = (alpha_all * e_all).sum(dim=-2)
+    #
+    #         # h = h.view(out_shape)
+    #         out_s = h.shape
+    #         h_, _ = self.gru(h.view(-1, 1, out_s[-1]), m_3.view(1, -1, out_s[-1]))
+    #         h = h_.view(out_s)
+    #         # h = self.fm3(h, m_3)
+    #
+    #     return h
+
     def message_round(self, h, d, d_mask, adj_mats, size_masks, initial_mask, ad_masks, rounds):
 
         for i in range(rounds):
@@ -169,6 +207,8 @@ class GNN_1(Network):
             e_all = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
             m_3 = (alpha_all * e_all).sum(dim=-2)
 
+            # h, _ = self.gru(h.view(in_shape), m.view(m_shape))
+            # h = h.view(out_shape)
             h = self.fm3(h, m_3)
 
         return h
