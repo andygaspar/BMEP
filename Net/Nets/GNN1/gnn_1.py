@@ -112,7 +112,7 @@ class GNN_1(Network):
         self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
         self.alpha_all = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
-        self.gru = torch.nn.GRU(hidden_dim, hidden_dim, num_layers=1, batch_first=True).to(self.device)
+        # self.gru = torch.nn.GRU(hidden_dim, hidden_dim, num_layers=1, batch_first=True).to(self.device)
 
         self.fm1 = MessageNode(h_dimension, hidden_dim, self.device)
         self.fm2 = MessageNode(h_dimension, hidden_dim, self.device)
@@ -142,6 +142,7 @@ class GNN_1(Network):
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * masks - 9e15 * (1 - masks)
         mat_size = y_h.shape
         y_hat = F.softmax(y_h.view(mat_size[0], -1), dim=-1)
+
         return y_hat, h
 
     # def message_round(self, h, d, d_mask, adj_mats, size_masks, initial_mask, ad_masks, rounds):
@@ -180,7 +181,6 @@ class GNN_1(Network):
     #         h = h_.view(out_s)
     #         # h = self.fm3(h, m_3)
     #
-    #
     #     return h
 
     def message_round(self, h, d, d_mask, adj_mats, size_masks, initial_mask, ad_masks, rounds):
@@ -212,8 +212,6 @@ class GNN_1(Network):
             h = self.fm3(h, m_3)
 
         return h
-
-
 
     @staticmethod
     def i_j(h):

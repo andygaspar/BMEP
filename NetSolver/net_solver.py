@@ -18,22 +18,20 @@ class NetSolver:
         self.solution = None
 
     def solve(self):
-        adj_mat, size_mask, initial_mask, mask, d_mask = self.initial_mats()
+        adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
         with torch.no_grad():
             for i in range(3, self.n):
-                ad_mask = self.get_ad_mask(adj_mat)
+                ad_mask, mask = self.get_masks(adj_mat)
                 y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0),
                                 size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
                 # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
-                y = y.squeeze(0).view(self.d.shape)
-                a_max = torch.argmax(y)
+                a_max = torch.argmax(y.squeeze(0))
                 idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
-                adj_mat = self.add_node(adj_mat, idxs, step=i)
-                mask = torch.triu(adj_mat)
+                adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i)
                 self.adj_mats.append(adj_mat.to("cpu").numpy())
 
         self.solution = self.adj_mats[-1].astype(int)
-        print(self.solution)
+
 
     def initial_mats(self):
         adj_mat = torch.zeros_like(self.d).to(self.device)
@@ -44,19 +42,19 @@ class NetSolver:
         initial_mask = torch.zeros((self.m, 2)).to(self.device)
         initial_mask[:, 0] = torch.tensor([1 if i < self.n else 0 for i in range(self.m)]).to(self.device)
         initial_mask[:, 1] = torch.tensor([1 if i >= self.n else 0 for i in range(self.m)]).to(self.device)
-        mask = torch.triu(adj_mat)
         d_mask = copy.deepcopy(self.d)
         d_mask[d_mask > 0] = 1
 
-        return adj_mat, size_mask, initial_mask, mask, d_mask
+        return adj_mat, size_mask, initial_mask, d_mask
 
-    def get_ad_mask(self, adj_mat):
+    def get_masks(self, adj_mat):
         ad_mask = torch.zeros((self.d.shape[0], 2)).to(self.device)
         a = torch.sum(adj_mat, dim=-1)
         ad_mask[:, 0] = a
         ad_mask[ad_mask > 0] = 1
         ad_mask[:, 1] = torch.abs(ad_mask[:, 0] - 1)
-        return ad_mask
+        mask = torch.triu(adj_mat)
+        return ad_mask, mask
 
     def add_node(self, adj_mat, idxs, new_node_idx):
         adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
