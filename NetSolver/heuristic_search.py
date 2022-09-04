@@ -26,6 +26,7 @@ class HeuristicSearch(NetSolver):
 
     def __init__(self, d, net, width=2):
         super().__init__(d, net)
+        self.solution_object = None
         self.w = width
         self.solutions = [Solution() for _ in range(self.w)]
 
@@ -39,12 +40,18 @@ class HeuristicSearch(NetSolver):
             probs = probs.squeeze(0)
             idxs = [torch.tensor([torch.div(a, self.m, rounding_mode='trunc'), a % self.m]).to(self.device)
                     for a in a_max.squeeze(0)]
+            idxs = self.check_idxs(idxs, 3)
             for s, sol in enumerate(self.solutions[:3]):
                 sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3)
                 sol.prob = probs[s]
 
+            if self.w > 3:
+                for i in range(3, self.w):
+                    self.solutions[i].adj_mat = copy.deepcopy(self.solutions[0].adj_mat)
+                    self.solutions[i].prob = copy.deepcopy(self.solutions[0].prob)
+
             for i in range(4, self.n):
-                for sol in self.solutions[:min([i, self.w])]:
+                for sol in self.solutions:
                     adj_mat = sol.adj_mat
                     ad_mask, mask = self.get_masks(adj_mat)
                     sol.y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
@@ -52,15 +59,17 @@ class HeuristicSearch(NetSolver):
                                         mask.unsqueeze(0))
                     sol.y *= sol.prob
                 p = torch.cat([sol.y for sol in self.solutions])
-                probs, a_max = torch.topk(p.flatten(), min([i, self.w]))
+                # print(p)
+                probs, a_max = torch.topk(p.flatten(), self.w)
                 # probs = probs.squeeze(0)
                 idxs = [torch.tensor([torch.div(a, self.m ** 2, rounding_mode='trunc'),
                                       torch.div(a % self.m ** 2, self.m, rounding_mode='trunc'),
                                       a % self.m]).to(self.device)
                         for a in a_max]
-
-                new_adj_mats = [self.add_node(copy.deepcopy(self.solutions[idxs[j][0].item()].adj_mat), idxs[j][1:], i)
+                idxss = self.check_idxs([idx[1:] for idx in idxs], i)
+                new_adj_mats = [self.add_node(copy.deepcopy(self.solutions[idxs[j][0].item()].adj_mat), idxss[j], i)
                                 for j in range(self.w)]
+
                 for j, sol in enumerate(self.solutions):
                     sol.prob = probs[j]
                     sol.adj_mat = new_adj_mats[j]
@@ -71,5 +80,14 @@ class HeuristicSearch(NetSolver):
         for sol in self.solutions:
             sol.compute_obj_val(self.d, self.n)
 
-        solution_idx = np.argmax([sol.obj_val for sol in self.solutions])
+        solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
+        self.solution_object = self.solutions[solution_idx]
         self.solution = self.solutions[solution_idx].adj_mat.to("cpu").numpy()
+
+    def check_idxs(self, idxs, step):
+        for idx in idxs:
+            if idx[0] >= step or idx[1] < self.n:
+                idx[0] = np.random.choice(step)
+                idx[1] = np.random.choice(range(self.n, self.n + step-1))
+
+        return idxs

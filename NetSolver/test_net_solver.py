@@ -1,6 +1,7 @@
 import json
 import time
 
+import networkx as nx
 import numpy as np
 
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
@@ -13,6 +14,7 @@ from Net.Nets.GNN1.gnn_1 import GNN_1
 from NetSolver.heuristic_search import HeuristicSearch
 from NetSolver.net_solver import NetSolver
 from NetSolver.old_solver import OldNetSolver
+from PardiSolver.pardi_solver import PardiSolver
 
 
 def add_node(adj_mat, idxs, new_node_idx):
@@ -22,6 +24,12 @@ def add_node(adj_mat, idxs, new_node_idx):
     adj_mat[new_node_idx, 6 + new_node_idx - 2] = adj_mat[6 + new_node_idx - 2, new_node_idx] = 1  # attach new
 
     return adj_mat
+
+def compute_obj_val(d, adj_mat, n):
+    g = nx.from_numpy_matrix(adj_mat)
+    Tau = nx.floyd_warshall_numpy(g)[:n, :n]
+    d = d.to("cpu").numpy()
+    return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
 
 
 path = 'Net/Nets/GNN1/_3.645/'
@@ -41,10 +49,10 @@ dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
 res_list = []
 res_1_list = []
 
-for i in range(20):
+for i in range(100):
     d = data_.d_mats[i*3]
     t = time.time()
-    heuristic = HeuristicSearch(d, dgn, 2)
+    heuristic = HeuristicSearch(d, dgn, 10)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)
@@ -61,6 +69,9 @@ for i in range(20):
     last_move = np.nonzero(data_.y[i*3 + 2].view(10, 10).to("cpu").numpy())
     sol = add_node(pre_final_adj_mat, last_move, 5)
 
+    # pardi = PardiSolver(d.to("cpu").numpy()[:6, :6])
+    # pardi.solve()
+
     # t2 = time.time()
     # instance = Instance(d.to("cpu").numpy()[:6, :6])
     # t2 = time.time() - t2
@@ -72,8 +83,9 @@ for i in range(20):
     res_list.append(res)
     res_1_list.append(res_1)
 
-    print(i, "correct", res, res_1, t,  t1, "    same sol ", np.array_equal(net_solver.solution, heuristic.solution))
 
+    print(i, "correct", res, res_1, t,  t1, "    same sol ", np.array_equal(net_solver.solution, heuristic.solution))
+    # print(compute_obj_val(d, net_solver.solution, 6), heuristic.solution_object.obj_val, compute_obj_val(d, sol, 6), pardi.best_val)
 print("accuracy", np.mean(res_list))
 print("accuracy", np.mean(res_1_list))
 
