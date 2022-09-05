@@ -1,0 +1,1 @@
+{"scale_d": 1, "name": "GNN_1", "num_inputs": 2, "h_dimension": 512, "hidden_dim": 512, "num_messages": 5, "best_loss": 0.01913781836628914}

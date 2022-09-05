@@ -1,8 +1,10 @@
 import copy
+import string
 
 import networkx as nx
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 from NetSolver.net_solver import NetSolver
 
@@ -29,6 +31,7 @@ class HeuristicSearch(NetSolver):
         self.solution_object = None
         self.w = width
         self.solutions = [Solution() for _ in range(self.w)]
+        self.prob = 0
 
     def solve(self):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
@@ -44,6 +47,7 @@ class HeuristicSearch(NetSolver):
             for s, sol in enumerate(self.solutions[:3]):
                 sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3)
                 sol.prob = probs[s]
+                # self.prin_graph(sol.adj_mat)
 
             if self.w > 3:
                 for i in range(3, self.w):
@@ -57,10 +61,14 @@ class HeuristicSearch(NetSolver):
                     sol.y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
                                         d_mask.unsqueeze(0), size_mask.unsqueeze(0), initial_mask.unsqueeze(0),
                                         mask.unsqueeze(0))
+                    # print(sol.y)
+                    # print(sol.prob)
                     sol.y *= sol.prob
+                    # print(sol.y)
                 p = torch.cat([sol.y for sol in self.solutions])
                 # print(p)
                 probs, a_max = torch.topk(p.flatten(), self.w)
+                # print(probs, print(a_max),'\n')
                 # probs = probs.squeeze(0)
                 idxs = [torch.tensor([torch.div(a, self.m ** 2, rounding_mode='trunc'),
                                       torch.div(a % self.m ** 2, self.m, rounding_mode='trunc'),
@@ -73,6 +81,9 @@ class HeuristicSearch(NetSolver):
                 for j, sol in enumerate(self.solutions):
                     sol.prob = probs[j]
                     sol.adj_mat = new_adj_mats[j]
+                    # self.prin_graph(sol.adj_mat)
+
+
 
             # idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
             # adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i)
@@ -83,7 +94,7 @@ class HeuristicSearch(NetSolver):
         solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
         self.solution_object = self.solutions[solution_idx]
         self.solution = self.solutions[solution_idx].adj_mat.to("cpu").numpy()
-
+        self.prob = self.solutions[solution_idx].prob
     def check_idxs(self, idxs, step):
         for idx in idxs:
             if idx[0] >= step or idx[1] < self.n:
@@ -91,3 +102,12 @@ class HeuristicSearch(NetSolver):
                 idx[1] = np.random.choice(range(self.n, self.n + step-1))
 
         return idxs
+
+    def prin_graph(self, adj_mat):
+        g = nx.from_numpy_matrix(adj_mat.to('cpu').numpy())
+        labels = [s for s in string.ascii_uppercase[:self.n]] + [i for i in range(self.m - self.m)]
+        mapping = dict(zip(g, labels))
+        g = nx.relabel_nodes(g, mapping)
+        nx.draw(g, node_color=["g" for _ in range(self.n)] + ["r" for _ in range(self.m - self.n)],
+                    with_labels=True, font_weight='bold')
+        plt.show()

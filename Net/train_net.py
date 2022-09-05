@@ -8,6 +8,7 @@ import torch
 import os
 
 from Net.Nets.GNN_edge.gnn_edge import GNN_edge
+from Net.network_manager import NetworkManager
 
 print(os.getcwd())
 
@@ -19,23 +20,18 @@ from torch.utils.data import DataLoader
 
 # from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
+from Net.Nets.GNNGRU.gnn_gru import GNN_GRU
 from importlib.metadata import version
 import datetime
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-path = 'Net/Nets/GNN1/'
-net_name = "GNN_1"
+folder = 'GNNGRU'
 save = True
 
-with open(path + 'params.json', 'r') as json_file:
-    params = json.load(json_file)
-    print(params)
-
-train_params, net_params = params["train"], params["net"]
-
-dgn = GNN_1(net_params)
+net_manager = NetworkManager()
+dgn, train_params, net_params, net_name = net_manager.make_network(folder)
 # dgn = GNN_edge(net_params)
 
 cross_entropy = False
@@ -50,6 +46,13 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 criterion = nn.MSELoss()
 # criterion = nn.KLDivLoss()
 
+def custom_loss(output, target):
+    loss = output - target
+    loss[loss < 0] = - loss[loss < 0]**2 - 2 * loss[loss < 0]
+    loss = torch.mean(loss)
+    return loss
+
+criterion = custom_loss
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
@@ -67,7 +70,7 @@ for epoch in range(train_params["epochs"]):
         output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
         out, yy = output.view(output.shape[0], 10, 10)[masks > 0].flatten(), y.view(y.shape[0], 10, 10)[masks > 0].flatten()
         loss = criterion(out, yy)
-        print(sum(output[output > 0.9]))
+        # print(sum(output[output > 0.9]))
         # loss = criterion(output, y.float())
         loss.backward()
         losses.append(loss.item())
@@ -90,7 +93,7 @@ for epoch in range(train_params["epochs"]):
                 prediction[id, idx] = 1
                 err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1))) / 2
             print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err, "over", y.shape[0],
-                  "  best", best_loss, 'non one', sum(prediction[prediction < 0.9]))
+                  "  best", best_loss, 'non one', sum(output[output < 0.9]))
             losses = []
 
         if epoch % 100 == 0:

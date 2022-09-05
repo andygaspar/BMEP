@@ -92,7 +92,7 @@ class FA(nn.Module):
         return q
 
 
-class GNN_1(Network):
+class GNN_GRU(Network):
     def __init__(self, net_params, network=None):
         super().__init__()
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
@@ -112,7 +112,7 @@ class GNN_1(Network):
         self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
         self.alpha_all = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
-        # self.gru = torch.nn.GRU(hidden_dim, hidden_dim, num_layers=1, batch_first=True).to(self.device)
+        self.gru = torch.nn.GRU(hidden_dim, hidden_dim, num_layers=1, batch_first=True).to(self.device)
 
         self.fm1 = MessageNode(h_dimension, hidden_dim, self.device)
         self.fm2 = MessageNode(h_dimension, hidden_dim, self.device)

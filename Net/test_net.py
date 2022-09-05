@@ -7,22 +7,22 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
-from Net.Nets.GNN.gnn import GNN
-from Net.Nets.GNN1.gnn_1 import GNN_1
+from Net.network_manager import NetworkManager
 
-path = 'Net/Nets/GNN1/_3.645/'
 
-with open(path + 'params.json', 'r') as json_file:
-    params = json.load(json_file)
-    print(params)
-net_params = params
+net_manager = NetworkManager()
+
+folder = 'GNNGRU'
+file = '_0.228'
+
+dgn = net_manager.get_network(folder, file)
 
 data_ = BMEP_Dataset()
 batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
-dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
+
 
 
 # d = data_.d_mats[0]
