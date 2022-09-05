@@ -24,7 +24,8 @@ folder = 'GNNGRU'
 save = True
 
 net_manager = NetworkManager()
-dgn, train_params, net_params, net_name = net_manager.make_network(folder)
+dgn, params = net_manager.make_network(folder)
+train_params, net_params = params["train"], params["net"]
 
 criterion = train_params["criterion"]
 cross_entropy = True if criterion == "cross" else False
@@ -59,7 +60,7 @@ for epoch in range(train_params["epochs"]):
             if epoch > 100:
                 if directory is not None and save:
                     shutil.rmtree(directory)
-                directory = dgn.save_net(folder, best_loss, net_name, net_params)
+                directory = dgn.save_net(folder, best_loss, params)
         # torch.nn.utils.clip_grad_norm_(dgn.parameters(), max_norm=0.001, norm_type=float('inf'))
         optimizer.step()
     if epoch % 25 == 0:

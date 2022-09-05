@@ -10,6 +10,7 @@ from Net.Nets.GNN2.gnn_2 import GNN_2
 from Net.Nets.GNN_edge.gnn_edge import GNN_edge
 from Net.Nets.GNNGRU.gnn_gru import GNN_GRU
 
+
 def mse(output, data):
     adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
     out, yy = output.view(output.shape[0], 10, 10)[masks > 0].flatten(), \
@@ -78,7 +79,7 @@ class NetworkManager:
 
         dgn = nets_dict[folder](net_params=net_params)
 
-        return dgn, train_params, net_params, folder
+        return dgn, params
 
     @staticmethod
     def get_network(folder, file):
@@ -87,7 +88,8 @@ class NetworkManager:
         with open(path + 'params.json', 'r') as json_file:
             params = json.load(json_file)
             print(params)
-        net_params = params
+
+        net_params = params["net"] if 'net' in params.keys() else params  # to include old versions
         comment = params['comment'] if 'comment' in params.keys() else ''
 
         dgn = nets_dict[folder](net_params=net_params, network=path + "weights.pt")
@@ -95,7 +97,6 @@ class NetworkManager:
 
     @staticmethod
     def compute_loss(criterion, output, data):
-
         # print(sum(output[output > 0.9]))
         # loss = criterion(output, y.float())
         return criterion_dict[criterion](output, data)
