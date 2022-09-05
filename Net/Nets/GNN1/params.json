@@ -5,8 +5,9 @@
           "epochs": 1000,
           "start": 0,
           "end": 4096,
-          "lr": -5.100090706017297,
-          "weight_decay": -5.192216250231648
+          "lr": -4,
+          "weight_decay": -4,
+          "loss": "mse"
         },
     "net": {
       "scale_d": 1,
@@ -17,6 +18,6 @@
       "num_messages": 5,
       "best_loss": ""
 
-    }
-
+    },
+  "comment": "provato a trainare la rete con la custom loss e mettendo penalizzione ad errori iniziali"
 }

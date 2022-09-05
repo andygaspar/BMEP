@@ -40,7 +40,9 @@ file = '_0.228'
 
 net_manager = NetworkManager()
 
-dgn = net_manager.get_network(folder, file)
+dgn, comment = net_manager.get_network(folder, file)
+print(comment)
+
 data_ = BMEP_Dataset()
 batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
