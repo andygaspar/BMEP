@@ -8,29 +8,14 @@ from Data_.Dataset.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
-from Instances.instance import Instance
-from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
-from NetSolver.heuristic_search import HeuristicSearch
-from NetSolver.net_solver import NetSolver
-from NetSolver.old_solver import OldNetSolver
-from PardiSolver.pardi_solver import PardiSolver
+from Solvers.NetSolver.heuristic_search import HeuristicSearch
+from Solvers.NetSolver.net_solver import NetSolver
+from Solvers.solver import Solver
 
-
-def add_node(adj_mat, idxs, new_node_idx):
-    adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
-    adj_mat[idxs[0], 6 + new_node_idx - 2] = adj_mat[6 + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
-    adj_mat[idxs[1], 6 + new_node_idx - 2] = adj_mat[6 + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
-    adj_mat[new_node_idx, 6 + new_node_idx - 2] = adj_mat[6 + new_node_idx - 2, new_node_idx] = 1  # attach new
-
-    return adj_mat
-
-def compute_obj_val(d, adj_mat, n):
-    g = nx.from_numpy_matrix(adj_mat)
-    Tau = nx.floyd_warshall_numpy(g)[:n, :n]
-    d = d.to("cpu").numpy()
-    return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
-
+funs = Solver()
+add_node = funs.add_node
+compute_obj_val = funs.compute_obj_val_from_adj_mat
 
 path = 'Net/Nets/GNN1/_3.645/'
 
@@ -67,7 +52,7 @@ for i in range(100):
     # print(net_solver.solution)
     pre_final_adj_mat = data_.adj_mats[i*3 + 2].to("cpu").numpy()
     last_move = np.nonzero(data_.y[i*3 + 2].view(10, 10).to("cpu").numpy())
-    sol = add_node(pre_final_adj_mat, last_move, 5)
+    sol = add_node(pre_final_adj_mat, last_move, 5, 6)
 
     # pardi = PardiSolver(d.to("cpu").numpy()[:6, :6])
     # pardi.solve()

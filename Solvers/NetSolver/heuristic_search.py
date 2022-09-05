@@ -4,7 +4,8 @@ import networkx as nx
 import numpy as np
 import torch
 
-from NetSolver.net_solver import NetSolver
+from Solvers.NetSolver.net_solver import NetSolver
+from Solvers.solver import Solver
 
 
 class Solution:
@@ -14,12 +15,6 @@ class Solution:
         self.prob = 1
         self.obj_val = None
         self.y = None
-
-    def compute_obj_val(self, d, n):
-        g = nx.from_numpy_matrix(self.adj_mat.to("cpu").numpy())
-        Tau = nx.floyd_warshall_numpy(g)[:n, :n]
-        d = d.to("cpu").numpy()
-        self.obj_val = np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
 
 
 class HeuristicSearch(NetSolver):
@@ -42,7 +37,7 @@ class HeuristicSearch(NetSolver):
                     for a in a_max.squeeze(0)]
             idxs = self.check_idxs(idxs, 3)
             for s, sol in enumerate(self.solutions[:3]):
-                sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3)
+                sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3, self.n)
                 sol.prob = probs[s]
 
             if self.w > 3:
@@ -67,7 +62,8 @@ class HeuristicSearch(NetSolver):
                                       a % self.m]).to(self.device)
                         for a in a_max]
                 idxss = self.check_idxs([idx[1:] for idx in idxs], i)
-                new_adj_mats = [self.add_node(copy.deepcopy(self.solutions[idxs[j][0].item()].adj_mat), idxss[j], i)
+                new_adj_mats = [self.add_node(copy.deepcopy(self.solutions[idxs[j][0].item()].adj_mat),
+                                              idxss[j], i, self.n)
                                 for j in range(self.w)]
 
                 for j, sol in enumerate(self.solutions):
@@ -78,7 +74,7 @@ class HeuristicSearch(NetSolver):
             # adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i)
             # self.adj_mats.append(adj_mat.to("cpu").numpy())
         for sol in self.solutions:
-            sol.compute_obj_val(self.d, self.n)
+            sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n)
 
         solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
         self.solution_object = self.solutions[solution_idx]
@@ -89,5 +85,8 @@ class HeuristicSearch(NetSolver):
             if idx[0] >= step or idx[1] < self.n:
                 idx[0] = np.random.choice(step)
                 idx[1] = np.random.choice(range(self.n, self.n + step-1))
-
         return idxs
+
+    def compute_obj_val(self, adj_mat, d, n):
+        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n)
+
