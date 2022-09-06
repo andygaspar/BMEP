@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from Solvers.NetSolver.heuristic_search import HeuristicSearch
 from Solvers.NetSolver.net_solver import NetSolver
+from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver
 
 funs = Solver()
@@ -31,11 +32,16 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
 dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
+r_swa_list = []
 res_list = []
 res_1_list = []
 
-for i in range(100):
+for i in range(20):
     d = data_.d_mats[i*3]
+
+    swa = SwaSolver(d.to('cpu').numpy())
+    swa.solve()
+
     t = time.time()
     heuristic = HeuristicSearch(d, dgn, 10)
     heuristic.solve()
@@ -63,14 +69,16 @@ for i in range(100):
     # print(instance.adj_mat_solution)
     # print(d[:6, :6])
 
+    r_swa = np.array_equal(swa.solution, sol)
     res = np.array_equal(net_solver.solution, sol)
     res_1 = np.array_equal(heuristic.solution, sol)
+    r_swa_list.append(r_swa)
     res_list.append(res)
     res_1_list.append(res_1)
 
-
-    print(i, "correct", res, res_1, t,  t1, "    same sol ", np.array_equal(net_solver.solution, heuristic.solution))
-    # print(compute_obj_val(d, net_solver.solution, 6), heuristic.solution_object.obj_val, compute_obj_val(d, sol, 6), pardi.best_val)
+    print(i, "correct", r_swa, res, res_1, t,  t1, "    same sol ", np.array_equal(net_solver.solution, heuristic.solution))
+    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), 6))
+print("accuracy", np.mean(r_swa_list))
 print("accuracy", np.mean(res_list))
 print("accuracy", np.mean(res_1_list))
 

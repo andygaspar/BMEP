@@ -78,6 +78,7 @@ class HeuristicSearch(NetSolver):
 
         solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
         self.solution_object = self.solutions[solution_idx]
+        self.obj_val = self.solution_object.obj_val
         self.solution = self.solutions[solution_idx].adj_mat.to("cpu").numpy()
 
     def check_idxs(self, idxs, step):

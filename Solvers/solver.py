@@ -11,6 +11,7 @@ class Solver:
         self.n = (self.m + 2) // 2 if d is not None else None
 
         self.solution = None
+        self.obj_val = None
 
     def initial_mat(self, device=None):
         adj_mat = np.zeros_like(self.d) if device is None else torch.zeros_like(self.d).to(device)

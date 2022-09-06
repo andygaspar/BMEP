@@ -30,6 +30,7 @@ class NetSolver(Solver):
                 self.adj_mats.append(adj_mat.to("cpu").numpy())
 
         self.solution = self.adj_mats[-1].astype(int)
+        self.obj_val = self.compute_obj_val_from_adj_mat(self.solution, self.d.to('cpu').numpy(), self.n)
 
     def initial_mats(self):
         adj_mat = self.initial_mat(self.device)
