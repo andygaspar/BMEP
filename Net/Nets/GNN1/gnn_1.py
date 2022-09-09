@@ -43,12 +43,6 @@ class FD(nn.Module):
         super(FD, self).__init__()
         self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
         self.fd = nn.Linear(1, hidden_dim).to(self.device)
-        # self.fd = nn.Sequential(
-        #     nn.Linear(1, hidden_dim),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim)).to(self.device)
 
     def forward(self, hi, hj, d):
         dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
@@ -166,7 +160,7 @@ class GNN_1(Network):
 
             hi, hj = self.i_j(h)
             alpha_all = self.alpha_all[i](hi, hj, size_masks, size_masks).unsqueeze(-1)
-            e_all = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
+            e_all = self.f_all[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
             m_3 = (alpha_all * e_all).sum(dim=-2)
 
             h = self.fm3(h, m_3)
