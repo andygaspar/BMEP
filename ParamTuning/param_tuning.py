@@ -12,8 +12,8 @@ net = GNN_1
 trainer = NetTrainer(net, configs, 'params.json')
 
 bounds = [
-    {'name': 'var_1', 'type': 'continuous', 'domain': (-6, -2)},
-    {'name': 'var_2', 'type': 'continuous', 'domain': (-6, -2)},
+    {'name': 'var_1', 'type': 'continuous', 'domain': (-6, -3)},
+    {'name': 'var_2', 'type': 'continuous', 'domain': (-6, -3)},
 ]
 
 bopt = GPyOpt.methods.BayesianOptimization(trainer, domain=bounds, model_type='GP', acquisition_type='EI',

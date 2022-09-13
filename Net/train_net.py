@@ -6,8 +6,7 @@ import json
 import numpy as np
 import torch
 import os
-
-from Net.Nets.GNN_edge.gnn_edge import GNN_edge
+from Net.network_manager import NetworkManager
 
 print(os.getcwd())
 
@@ -16,40 +15,29 @@ import torch.optim as optim
 from torch import nn
 
 from torch.utils.data import DataLoader
-
-#from Net.Nets.GNN.gnn import GNN
-from Net.Nets.GNN1.gnn_1 import GNN_1
 from importlib.metadata import version
-import datetime
-
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-path = 'Net/Nets/GNN1/'
-net_name = "GNN_1"
+folder = 'GNNGRU'
 save = True
 
-with open(path + 'params.json', 'r') as json_file:
-    params = json.load(json_file)
-    print(params)
-
+net_manager = NetworkManager()
+dgn, params = net_manager.make_network(folder)
 train_params, net_params = params["train"], params["net"]
 
-dgn = GNN_1(net_params)
-# dgn = GNN_edge(net_params)
-
-
+criterion = train_params["criterion"]
+cross_entropy = True if criterion == "cross" else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100)
+data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100,
+                     cross_entropy=cross_entropy)
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
-criterion = nn.CrossEntropyLoss()
-# criterion = nn.MSELoss()
 
-optimizer = optim.Adam(dgn.parameters(), lr=train_params["lr"], weight_decay=train_params["weight_decay"])
+optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 # optimizer = optim.SGD(dgn.parameters(), lr=1e-4, momentum=0.9)
 k, yy = None, None
 best_loss = 1e+4
@@ -63,9 +51,8 @@ for epoch in range(train_params["epochs"]):
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
         optimizer.zero_grad()
         output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
-        # out, yy = output[masks > 0], y[masks > 0]
-        # loss = criterion(out, yy)
-        loss = criterion(output, y)
+        loss = net_manager.compute_loss(criterion, output, data)
+
         loss.backward()
         losses.append(loss.item())
         if loss.item() < best_loss:
@@ -73,13 +60,13 @@ for epoch in range(train_params["epochs"]):
             if epoch > 100:
                 if directory is not None and save:
                     shutil.rmtree(directory)
-                directory = dgn.save_net(path, best_loss, net_name, net_params)
+                directory = dgn.save_net(folder, best_loss, params)
         # torch.nn.utils.clip_grad_norm_(dgn.parameters(), max_norm=0.001, norm_type=float('inf'))
         optimizer.step()
     if epoch % 25 == 0:
         with torch.no_grad():
             idx = torch.max(output, dim=-1)[1]
-            if a100:
+            if a100 and cross_entropy:
                 err = torch.nonzero(idx - y).shape[0]
             else:
                 prediction = torch.zeros_like(output)
@@ -87,9 +74,8 @@ for epoch in range(train_params["epochs"]):
                 prediction[id, idx] = 1
                 err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1))) / 2
             print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err, "over", y.shape[0],
-                  "  best", best_loss)
+                  "  best", best_loss, 'non one', sum(output[output < 0.9]))
             losses = []
-
 
         if epoch % 100 == 0:
             with torch.no_grad():
@@ -107,9 +93,3 @@ for epoch in range(train_params["epochs"]):
                         print("pred", torch.argmax((h[0] * masks[0]).flatten()).item(), "  y", y[0].item(), "\n")
 
 print(time.time() - t)
-
-
-
-
-
-

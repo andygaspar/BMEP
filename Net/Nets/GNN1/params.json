@@ -5,18 +5,19 @@
           "epochs": 1000,
           "start": 0,
           "end": 4096,
-          "lr": 1e-5,
-          "weight_decay": 1e-4
+          "lr": -4,
+          "weight_decay": -4,
+          "loss": "mse"
         },
     "net": {
       "scale_d": 1,
-      "name": "GNN",
+      "name": "GNN_1",
       "num_inputs": 2,
       "h_dimension": 512,
       "hidden_dim": 512,
       "num_messages": 5,
       "best_loss": ""
 
-    }
-
+    },
+  "comment": "provato a trainare la rete con la custom loss e mettendo penalizzione ad errori iniziali"
 }
