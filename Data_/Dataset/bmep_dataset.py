@@ -17,7 +17,7 @@ class BMEP_Dataset(Dataset):
         self.ad_masks = torch.load("Data_/Dataset/ad_masks.pt").to(torch.float).to(device)[start: end]
         self.masks = torch.load("Data_/Dataset/masks.pt").to(torch.float).to(device)[start: end]
         self.y = torch.load("Data_/Dataset/y.pt").to(torch.float).to(device)[start: end]
-        self.tau = None if not tau else self.compute_taus()
+        self.tau = torch.load("Data_/Dataset/taus.pt").to(torch.float).to(device)[start: end]
         if a100:
             self.y = torch.nonzero(self.y.view(self.y.shape[0], -1))[:, 1]
         else:
@@ -32,15 +32,5 @@ class BMEP_Dataset(Dataset):
     def __len__(self):
         return self.size
 
-    def compute_taus(self):
-        taus = []
-        for adj in self.adj_mats:
-            g = nx.from_numpy_matrix(adj.to("cpu").numpy())
-            Tau = nx.floyd_warshall_numpy(g)
-            Tau[np.isinf(Tau)] = 0
-            taus.append(Tau)
 
-        self.tau = torch.tensor(taus)
-
-        torch.save(self.tau, "Data_/Dataset/taus.pt")
 

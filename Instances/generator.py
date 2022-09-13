@@ -1,6 +1,7 @@
 import copy
 import time
 
+import networkx as nx
 import torch
 import numpy as np
 from Instances.instance import Instance
@@ -10,6 +11,7 @@ import random
 class Generator:
 
     def __init__(self, num_instances, d_mat_initial, dim, max_time, total_time=3_600):
+        self.tau = None
         self.total_time = total_time
         self.max_time = max_time
         self.dim = dim
@@ -70,6 +72,7 @@ class Generator:
         self.adj_mats = torch.tensor(self.adj_mats)
         self.ad_masks = torch.tensor(self.ad_masks)
         self.masks = torch.tensor(self.masks)
+        self.tau = self.compute_taus()
         self.y = torch.tensor(self.y)
         torch.save(self.d_mats, "Data_/Dataset/d_mats.pt")
         torch.save(self.d_masks, "Data_/Dataset/d_masks.pt")
@@ -78,6 +81,19 @@ class Generator:
         torch.save(self.ad_masks, "Data_/Dataset/ad_masks.pt")
         torch.save(self.masks, "Data_/Dataset/masks.pt")
         torch.save(self.y, "Data_/Dataset/y.pt")
+        torch.save(self.tau, "Data_/Dataset/taus.pt")
+
+
+    def compute_taus(self):
+        taus = []
+        for adj in self.adj_mats:
+            g = nx.from_numpy_matrix(adj.to("cpu").numpy())
+            Tau = nx.floyd_warshall_numpy(g)
+            Tau[np.isinf(Tau)] = 0
+            taus.append(Tau)
+
+        return torch.tensor(taus)
+
 
 
 
