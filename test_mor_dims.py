@@ -37,7 +37,7 @@ file = '_4.045'
 net_manager = NetworkManager()
 dgn = net_manager.get_network(folder, file)
 
-dim = 6
+dim = 8
 better = []
 
 for _ in range(100):
@@ -48,14 +48,12 @@ for _ in range(100):
 
     nj = NjSolver(d)
     nj.solve()
-    print(nj.obj_val)
 
     swa = SwaSolver(d)
     swa.solve()
-    print(swa.obj_val)
 
     t1 = time.time()
-    heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, 4)
+    heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, 20)
     heuristic.solve()
     t1 = time.time() - t1
 
@@ -65,6 +63,7 @@ for _ in range(100):
     # print(heuristic.obj_val)
     # print('')
     # t = time.time() - t
+    print(nj.obj_val, swa.obj_val, heuristic.obj_val, swa.obj_val >= heuristic.obj_val )
 
     better.append(swa.obj_val >= heuristic.obj_val)
 
