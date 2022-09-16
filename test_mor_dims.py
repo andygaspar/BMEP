@@ -11,9 +11,12 @@ import torch
 from Instances.generator import Generator
 from Instances.instance import Instance
 from Net.Nets.GNN1.gnn_1 import GNN_1
+from Net.Nets.GNN_TAU.gnn_tau import GNN_TAU
+from Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver
 from Solvers.NetSolver.heuristic_search import HeuristicSearch
+from Solvers.NetSolver.heuristic_search_2 import HeuristicSearch2
 from Solvers.SWA.swa_solver import SwaSolver
 
 warnings.simplefilter("ignore")
@@ -28,17 +31,13 @@ for file in filenames:
 
 m = mats[0]
 # random.seed(0)
-path = 'Net/Nets/GNN1/_3.645/'
+folder = 'GNN_TAU'
+file = '_4.045'
 
-with open(path + 'params.json', 'r') as json_file:
-    params = json.load(json_file)
-    print(params)
+net_manager = NetworkManager()
+dgn = net_manager.get_network(folder, file)
 
-net_params = params
-
-dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
-
-dim = 9
+dim = 6
 better = []
 
 for _ in range(100):
@@ -55,12 +54,17 @@ for _ in range(100):
     swa.solve()
     print(swa.obj_val)
 
-    t = time.time()
-    heuristic = HeuristicSearch(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, 4)
+    t1 = time.time()
+    heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, 4)
     heuristic.solve()
-    print(heuristic.obj_val)
-    print('')
-    t = time.time() - t
+    t1 = time.time() - t1
+
+    # t = time.time()
+    # heuristic = HeuristicSearch(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, 4)
+    # heuristic.solve()
+    # print(heuristic.obj_val)
+    # print('')
+    # t = time.time() - t
 
     better.append(swa.obj_val >= heuristic.obj_val)
 

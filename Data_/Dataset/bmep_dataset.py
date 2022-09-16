@@ -1,3 +1,5 @@
+import copy
+
 import networkx as nx
 import numpy as np
 import torch
@@ -6,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 
 class BMEP_Dataset(Dataset):
 
-    def __init__(self, scale_d=1, start=0, end=None, a100=False, tau=False):
+    def __init__(self, scale_d=1, start=0, end=None, a100=False):
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.d_mats = torch.load("Data_/Dataset/d_mats.pt").to(torch.float).to(device)[start: end]
@@ -18,6 +20,8 @@ class BMEP_Dataset(Dataset):
         self.masks = torch.load("Data_/Dataset/masks.pt").to(torch.float).to(device)[start: end]
         self.y = torch.load("Data_/Dataset/y.pt").to(torch.float).to(device)[start: end]
         self.tau = torch.load("Data_/Dataset/taus.pt").to(torch.float).to(device)[start: end]
+        self.tau_mask = copy.deepcopy(self.tau)
+        self.tau_mask[self.tau_mask > 0] = 1
         if a100:
             self.y = torch.nonzero(self.y.view(self.y.shape[0], -1))[:, 1]
         else:
@@ -27,7 +31,8 @@ class BMEP_Dataset(Dataset):
 
     def __getitem__(self, index):
         return self.adj_mats[index], self.ad_masks[index], self.d_mats[index], self.d_masks[index],\
-               self.size_masks[index], self.initial_masks[index],  self.masks[index], self.y[index]
+               self.size_masks[index], self.initial_masks[index],  self.masks[index], self.tau[index], \
+               self.tau_mask[index], self.y[index]
 
     def __len__(self):
         return self.size

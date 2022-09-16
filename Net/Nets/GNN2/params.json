@@ -1,21 +1,23 @@
 {
     "train":
         {
-          "batch_size": 128,
-          "epochs": 10000,
+          "batch_size": 256,
+          "epochs": 2000,
           "start": 0,
-          "end": 1000,
-          "l_r": 1e-5,
-          "weight_decay": 1e-4
+          "end": 8192,
+          "lr": -5.052431839115203,
+          "weight_decay": -3.911501889863063,
+          "criterion": "cross"
         },
     "net": {
-      "name": "GNN",
+      "scale_d": 1,
+      "name": "GNN_2",
       "num_inputs": 2,
-      "h_dimension": 512,
-      "hidden_dim": 512,
-      "num_messages": 7,
+      "h_dimension": 516,
+      "hidden_dim": 516,
+      "num_messages": 5,
       "best_loss": ""
 
-    }
-
+    },
+  "comment": "test con batch 64"
 }

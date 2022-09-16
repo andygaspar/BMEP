@@ -51,42 +51,36 @@ class FD(nn.Module):
         return out
 
 
-class F_ALL(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
-        self.device = device
-        super(F_ALL, self).__init__()
-        self.f = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-
-    def forward(self, hi, hj):
-        out = torch.tanh(self.f(torch.cat([hi, hj], dim=-1)))
-        return out
-
-
 class MessageNode(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
+    def __init__(self, h_dimension, hidden_dim, drop_out, device):
         self.device = device
         super(MessageNode, self).__init__()
-        self.fmn = nn.Linear(h_dimension + hidden_dim, h_dimension).to(self.device)
+        self.fmn1 = nn.Linear(h_dimension + hidden_dim, h_dimension).to(self.device)
+        self.fmn2 = nn.Linear(h_dimension, hidden_dim).to(self.device)
+        self.drop_out = drop_out
 
     def forward(self, h, m1):
-        return torch.tanh(self.fmn(torch.cat([h, m1], dim=-1)))
+        h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
+        h = nn.functional.dropout(h, p=self.drop_out)
+        return torch.tanh(h)
 
 
 class FA(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
+    def __init__(self, h_dimension, hidden_dim, drop_out, device):
         self.device = device
         super(FA, self).__init__()
         self.fc1 = nn.Linear(h_dimension, hidden_dim).to(self.device)
         self.fc2 = nn.Linear(hidden_dim, h_dimension).to(self.device)
+        self.drop_out = drop_out
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = torch.tanh(x)
+        x = torch.tanh(self.fc1(x))
+        x = nn.functional.dropout(x, p=self.drop_out)
         q = self.fc2(x)
         return q
 
 
-class GNN_1(Network):
+class GNN_TAU(Network):
     def __init__(self, net_params, network=None):
         super().__init__()
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
@@ -99,38 +93,27 @@ class GNN_1(Network):
         self.encoder = NodeEncoder(num_inputs, h_dimension, self.device)
 
         self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.ft = nn.ModuleList([F_ALL(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.f_all = nn.ModuleList([F_ALL(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.ft = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
         self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
         self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.alpha_all = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
-        # self.gru = torch.nn.GRU(hidden_dim, hidden_dim, num_layers=1, batch_first=True).to(self.device)
+        self.drop_out = net_params['drop out']
 
-        self.fm1 = MessageNode(h_dimension, hidden_dim, self.device)
-        self.fm2 = MessageNode(h_dimension, hidden_dim, self.device)
-        self.fm3 = MessageNode(h_dimension, hidden_dim, self.device)
-        self.fa = FA(h_dimension, hidden_dim, self.device)
+        self.fm1 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
+        self.fm2 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
+        self.fa = FA(h_dimension, hidden_dim, self.drop_out, self.device)
+
+
 
         if network is not None:
             self.load_weights(network)
 
-    def forward(self, adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks):
-        d_mats = d_mats  # * 10
-        # d_mask = d_mats.clone()
-        # d_mask[d_mask > 0] = 1
-        # ad_masks = torch.zeros_like(initial_masks)
-        # a = torch.sum(adj_mats, dim=-1)
-        # ad_masks[:, :, 0] = a
-        # ad_masks[ad_masks > 0] = 1
-        # ad_masks[:, :, 1] = torch.abs(ad_masks[:, :, 0] - 1)
-
-        # size_masks = torch.ones_like(adj_mats)  # to change when different input size
+    def forward(self, adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks):
         h = self.encoder(initial_masks)
-
-        h = self.message_round(h, d_mats, d_masks, adj_mats, size_masks, initial_masks, ad_masks, self.rounds)
-
+        taus[taus > 0] = 1 / taus[taus > 0]
+        h = self.context_message(h, d_mats, d_masks, initial_masks, 3)
+        h = self.tau_message(h, taus, tau_masks, ad_masks, 3)
         h = self.fa(h)
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * masks - 9e15 * (1 - masks)
@@ -139,8 +122,7 @@ class GNN_1(Network):
 
         return y_hat, h
 
-    def message_round(self, h, d, d_mask, adj_mats, size_masks, initial_mask, ad_masks, rounds):
-
+    def context_message(self, h, d, d_mask, initial_mask, rounds):
         for i in range(rounds):
             hi, hj = self.i_j(h)
             alpha_d = self.alpha_d[i](hi, hj, d, d_mask).unsqueeze(-1)
@@ -150,21 +132,17 @@ class GNN_1(Network):
             h_not_d = initial_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h = self.fm1(h, m_1) * hd + h * h_not_d
 
+        return h
+
+    def tau_message(self, h, taus, tau_masks, ad_masks, rounds):
+        for i in range(rounds):
             hi, hj = self.i_j(h)
-            alpha_t = self.alpha_t[i](hi, hj, adj_mats, adj_mats).unsqueeze(-1)
-            e_t = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
-            m_2 = (alpha_t * e_t).sum(dim=-2)
+            alpha_t = self.alpha_t[i](hi, hj, taus, tau_masks).unsqueeze(-1)
+            e_d = self.ft[i](hi, hj, taus).view(taus.shape[0], taus.shape[1], taus.shape[2], -1)
+            m_2 = (alpha_t * e_d).sum(dim=-2)
             h_adj = ad_masks[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h_not_adj = ad_masks[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h = self.fm2(h, m_2) * h_adj + h * h_not_adj
-
-            hi, hj = self.i_j(h)
-            alpha_all = self.alpha_all[i](hi, hj, size_masks, size_masks).unsqueeze(-1)
-            e_all = self.f_all[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)
-            m_3 = (alpha_all * e_all).sum(dim=-2)
-
-            h = self.fm3(h, m_3)
-
         return h
 
     @staticmethod

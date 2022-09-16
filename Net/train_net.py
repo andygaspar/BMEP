@@ -20,7 +20,7 @@ from importlib.metadata import version
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-folder = 'GNNGRU'
+folder = 'GNN_TAU'
 save = True
 
 net_manager = NetworkManager()
@@ -31,8 +31,7 @@ criterion = train_params["criterion"]
 cross_entropy = True if criterion == "cross" else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100,
-                     cross_entropy=cross_entropy)
+data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100)
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
@@ -48,9 +47,9 @@ directory = None
 for epoch in range(train_params["epochs"]):
     loss = None
     for data in dataloader:
-        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
+        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
         optimizer.zero_grad()
-        output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
+        output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks)
         loss = net_manager.compute_loss(criterion, output, data)
 
         loss.backward()
@@ -92,4 +91,4 @@ for epoch in range(train_params["epochs"]):
                         print(h[0] * masks[0])
                         print("pred", torch.argmax((h[0] * masks[0]).flatten()).item(), "  y", y[0].item(), "\n")
 
-print(time.time() - t)
+print("training time", (time.time() - t)/60, 'mins')

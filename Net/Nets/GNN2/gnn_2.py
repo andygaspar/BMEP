@@ -35,14 +35,11 @@ class MessageSeparated(nn.Module):
     def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(MessageSeparated, self).__init__()
-        self.f_alpha_leafs = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-        self.f_alpha_internals = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
+        self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
         self.v = nn.Linear(hidden_dim, 1).to(self.device)
 
-    def forward(self, hi, hj, mat, mat_mask, leafs_mask, internal_mask):
-        a_leafs = torch.tanh(self.f_alpha_leafs(torch.cat([hi, hj], dim=-1))) * leafs_mask # messo lrelu
-        a_internals = torch.tanh(self.f_alpha_internals(torch.cat([hi, hj], dim=-1))) * internal_mask # messo lrelu
-        a = a_leafs + a_internals
+    def forward(self, hi, hj, mat, mat_mask):
+        a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1))) # messo lrelu
         a = torch.tanh(self.v(a).view(mat.shape))  # messo lrelu
         alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
         return alpha
@@ -72,14 +69,10 @@ class F_ALL(nn.Module):
     def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(F_ALL, self).__init__()
-        self.f_leafs = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-        self.f_internals = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
+        self.f = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
 
-    def forward(self, hi, hj, leafs_mask, internals_mask):
-        leafs = torch.tanh(self.f_leafs(torch.cat([hi, hj], dim=-1))) * leafs_mask
-        internals = torch.tanh(self.f_internals(torch.cat([hi, hj], dim=-1))) * internals_mask
-        out = leafs + internals
-        return out
+    def forward(self, hi, hj):
+        return torch.tanh(self.f(torch.cat([hi, hj], dim=-1)))
 
 
 class MessageNode(nn.Module):
@@ -183,16 +176,16 @@ class GNN_2(Network):
             h = self.fm1(h, m_1) * leafs_mask + h * internal_mask
 
             hi, hj = self.i_j(h)
-            alpha_adj = self.alpha_adj[i](hi, hj, adj_mats, adj_mats, leafs_mask, internal_mask).unsqueeze(-1)  # da passare init_mask (dpi)
-            e_t = self.ft[i](hi, hj, leafs_mask, internal_mask).view(d.shape[0], d.shape[1], d.shape[2], -1)  # dpi
+            alpha_adj = self.alpha_adj[i](hi, hj, adj_mats, adj_mats).unsqueeze(-1)  # da passare init_mask (dpi)
+            e_t = self.ft[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)  # dpi
             m_2 = (alpha_adj * e_t).sum(dim=-2)
             h_adj = ad_masks[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h_not_adj = ad_masks[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h = self.fm2(h, m_2, leafs_mask, internal_mask) * h_adj + h * h_not_adj  # dpi
 
             hi, hj = self.i_j(h)
-            alpha_all = self.alpha_all[i](hi, hj, size_masks, size_masks, leafs_mask, internal_mask).unsqueeze(-1)  # dpi
-            e_all = self.fall[i](hi, hj, leafs_mask, internal_mask).view(d.shape[0], d.shape[1], d.shape[2], -1)  # dpi
+            alpha_all = self.alpha_all[i](hi, hj, size_masks, size_masks).unsqueeze(-1)  # dpi
+            e_all = self.fall[i](hi, hj).view(d.shape[0], d.shape[1], d.shape[2], -1)  # dpi
             m_3 = (alpha_all * e_all).sum(dim=-2)
 
             h = self.fm3(h, m_3, leafs_mask, internal_mask)  # dpi
