@@ -80,7 +80,7 @@ class FA(nn.Module):
         return q
 
 
-class GNN_TAU(Network):
+class GNN_TAU_MH(Network):
     def __init__(self, net_params, network=None):
         super().__init__()
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
@@ -93,7 +93,12 @@ class GNN_TAU(Network):
         self.encoder = NodeEncoder(num_inputs, h_dimension, self.device)
 
         self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.fd1 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.fd2 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+
         self.ft = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.ft1 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.ft2 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
 
         self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
         self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
@@ -145,6 +150,9 @@ class GNN_TAU(Network):
             h_not_adj = ad_masks[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h = self.fm2(h, m_2) * h_adj + h * h_not_adj
         return h
+
+    def compute_message(self, ):
+        pass
 
     @staticmethod
     def i_j(h):

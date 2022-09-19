@@ -101,6 +101,15 @@ class NetworkManager:
         return dgn
 
     @staticmethod
+    def get_params(folder, file):
+        path = 'Net/Nets/' + folder + '/' + file + '/'
+
+        with open(path + 'params.json', 'r') as json_file:
+            params = json.load(json_file)
+
+        return params
+
+    @staticmethod
     def compute_loss(criterion, output, data):
         # print(sum(output[output > 0.9]))
         # loss = criterion(output, y.float())

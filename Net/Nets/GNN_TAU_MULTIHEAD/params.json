@@ -1,11 +1,11 @@
 {
     "train":
         {
-          "batch_size": 64,
+          "batch_size": 128,
           "epochs": 10000,
           "start": 0,
           "end": 8192,
-          "lr": -4.5,
+          "lr": -5,
           "weight_decay": -3.5,
           "criterion": "cross"
         },
@@ -17,8 +17,8 @@
       "hidden_dim": 516,
       "num_messages": 5,
       "best_loss": "",
-      "drop out": 0.2
+      "drop out": 0.3
 
     },
-  "comment": "test con drop out a 0.2 e batch 128"
+  "comment": "test con drop out a 0.2 e batch 64"
 }

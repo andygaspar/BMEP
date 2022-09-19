@@ -21,8 +21,12 @@ class NetSolver(Solver):
         with torch.no_grad():
             for i in range(3, self.n):
                 ad_mask, mask = self.get_masks(adj_mat)
-                y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0),
-                                size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
+                tau, tau_mask = self.get_tau(adj_mat, self.device)
+                y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0),
+                                size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
+                                tau.unsqueeze(0),
+                                tau_mask.unsqueeze(0), None)
+                                )
                 # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
                 a_max = torch.argmax(y.squeeze(0))
                 idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)

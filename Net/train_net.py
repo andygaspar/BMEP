@@ -49,7 +49,7 @@ for epoch in range(train_params["epochs"]):
     for data in dataloader:
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
         optimizer.zero_grad()
-        output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks)
+        output, h = dgn(data)
         loss = net_manager.compute_loss(criterion, output, data)
 
         loss.backward()

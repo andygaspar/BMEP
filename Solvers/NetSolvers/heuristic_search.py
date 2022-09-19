@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 import torch
 
-from Solvers.NetSolver.net_solver import NetSolver
+from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.solver import Solver
 
 
@@ -29,8 +29,13 @@ class HeuristicSearch(NetSolver):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
         with torch.no_grad():
             ad_mask, mask = self.get_masks(adj_mat)
-            y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0),
-                            size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
+            ad_mask, mask = self.get_masks(adj_mat)
+            tau, tau_mask = self.get_tau(adj_mat, self.device)
+            y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
+                             d_mask.unsqueeze(0),
+                             size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
+                             tau.unsqueeze(0),
+                             tau_mask.unsqueeze(0), None))
             probs, a_max = torch.topk(y, min([3, self.w]))
             probs = probs.squeeze(0)
             idxs = [torch.tensor([torch.div(a, self.m, rounding_mode='trunc'), a % self.m]).to(self.device)

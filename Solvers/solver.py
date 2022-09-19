@@ -1,3 +1,5 @@
+import copy
+
 import networkx as nx
 import numpy as np
 import torch
@@ -34,3 +36,12 @@ class Solver:
         g = nx.from_numpy_matrix(adj_mat)
         Tau = nx.floyd_warshall_numpy(g)[:n, :n]
         return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
+
+    def get_tau(self, adj_mat, device):
+        g = nx.from_numpy_matrix(adj_mat.to('cpu').numpy())
+        tau = nx.floyd_warshall_numpy(g)
+        tau[np.isinf(tau)] = 0
+        tau = torch.tensor(tau).to(torch.float).to(device)
+        tau_mask = copy.deepcopy(tau)
+        tau_mask[tau_mask > 0] = 1
+        return tau, tau_mask

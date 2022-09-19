@@ -110,7 +110,8 @@ class GNN(Network):
         if network is not None:
             self.load_weights(network)
 
-    def forward(self, adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks):
+    def forward(self, data):
+        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
         d_mats = d_mats # * 10
         # d_mask = d_mats.clone()
         # d_mask[d_mask > 0] = 1

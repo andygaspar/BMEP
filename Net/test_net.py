@@ -25,7 +25,7 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 
 # d = data_.d_mats[0]
-# net_solver = NetSolver(d, dgn)
+# net_solver = NetSolvers(d, dgn)
 # net_solver.solve()
 # print(net_solver.solution)
 
@@ -35,7 +35,7 @@ lenghts = []
 for data in dataloader:
     with torch.no_grad():
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, y = data
-        output, h = dgn(adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks)
+        output, h = dgn(data)
         step_num = torch.sum(adj_mats, dim=(1, 2)) / 2
         idx = torch.max(output, dim=-1)[1]
         prediction = torch.zeros_like(output)
