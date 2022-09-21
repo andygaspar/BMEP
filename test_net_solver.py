@@ -21,7 +21,7 @@ add_node = funs.add_node
 compute_obj_val = funs.compute_obj_val_from_adj_mat
 
 folder = 'GNN_TAU'
-file = '_4.045'
+file = '_3.622'
 
 net_manager = NetworkManager()
 dgn = net_manager.get_network(folder, file)
@@ -49,7 +49,7 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=5, distribution_runs=10)
+    heuristic = HeuristicSearch2(d, dgn, width=5, distribution_runs=100)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)

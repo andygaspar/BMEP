@@ -8,6 +8,7 @@ from os import walk
 import numpy as np
 import torch
 
+from Data_.Dataset.bmep_dataset import BMEP_Dataset
 from Instances.generator import Generator
 from Instances.instance import Instance
 from Net.Nets.GNN1.gnn_1 import GNN_1
@@ -32,7 +33,11 @@ for file in filenames:
 m = mats[0]
 # random.seed(0)
 folder = 'GNN_TAU'
-file = '_4.045'
+file = '_3.622'
+
+data_ = BMEP_Dataset()
+normalisation_factor = data_.max_d_mat
+print(normalisation_factor, "pppppppppp")
 
 net_manager = NetworkManager()
 dgn = net_manager.get_network(folder, file)
@@ -51,11 +56,10 @@ for _ in range(100):
 
     swa = SwaSolver(d)
     swa.solve()
-    print(swa.solution)
-    print(swa.compute_obj_val_from_adj_mat(swa.solution[:7, :7], d[:7, :7], 7))
+
 
     t1 = time.time()
-    heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, 50)
+    heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, width=10)
     heuristic.solve()
     t1 = time.time() - t1
 
@@ -72,3 +76,4 @@ for _ in range(100):
 print(np.mean(better))
 # instance = IPSolver(d[:dim, :dim])
 # instance.solve(init_adj_sol=swa.solution, logs=True)
+

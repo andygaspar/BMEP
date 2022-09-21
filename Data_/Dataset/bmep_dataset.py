@@ -13,7 +13,6 @@ class BMEP_Dataset(Dataset):
 
         self.d_mats = torch.load("Data_/Dataset/d_mats.pt").to(torch.float).to(device)[start: end]
         self.max_d_mat = torch.max(self.d_mats).item() * scale_d
-        self.d_mats /= self.max_d_mat
         self.d_masks = torch.load("Data_/Dataset/d_masks.pt").to(torch.float).to(device)[start: end]
         self.initial_masks = torch.load("Data_/Dataset/initial_masks.pt").to(torch.float).to(device)[start: end]
         self.adj_mats = torch.load("Data_/Dataset/adj_mats.pt").to(torch.float).to(device)[start: end]
