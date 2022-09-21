@@ -31,10 +31,6 @@ file = '_3.622'
 
 data_folder = '6_taxa_0'
 
-data_ = BMEP_Dataset(folder_name=data_folder)
-normalisation_factor = data_.max_d_mat
-print(normalisation_factor, "pppppppppp")
-
 net_manager = NetworkManager(folder, file)
 dgn = net_manager.get_network()
 
