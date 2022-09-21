@@ -10,7 +10,8 @@ import random
 
 class Generator:
 
-    def __init__(self, num_instances, d_mat_initial, dim, max_time, total_time=3_600):
+    def __init__(self, name_folder, num_instances, d_mat_initial, dim, max_time, total_time=3_600):
+        self.name_folder = name_folder
         self.tau = None
         self.total_time = total_time
         self.max_time = max_time
@@ -74,14 +75,15 @@ class Generator:
         self.masks = torch.tensor(self.masks)
         self.tau = self.compute_taus()
         self.y = torch.tensor(self.y)
-        torch.save(self.d_mats, "Data_/Dataset/d_mats.pt")
-        torch.save(self.d_masks, "Data_/Dataset/d_masks.pt")
-        torch.save(self.initial_masks, "Data_/Dataset/initial_masks.pt")
-        torch.save(self.adj_mats, "Data_/Dataset/adj_mats.pt")
-        torch.save(self.ad_masks, "Data_/Dataset/ad_masks.pt")
-        torch.save(self.masks, "Data_/Dataset/masks.pt")
-        torch.save(self.y, "Data_/Dataset/y.pt")
-        torch.save(self.tau, "Data_/Dataset/taus.pt")
+        path = 'Data_/Datasets/' + self.name_folder + '/'
+        torch.save(self.d_mats, path + 'd_mats.pt')
+        torch.save(self.d_masks, path + 'd_masks.pt')
+        torch.save(self.initial_masks, path + 'initial_masks.pt')
+        torch.save(self.adj_mats, path + 'adj_mats.pt')
+        torch.save(self.ad_masks, path + 'ad_masks.pt')
+        torch.save(self.masks, path + 'masks.pt')
+        torch.save(self.y, path + 'y.pt')
+        torch.save(self.tau, path + 'taus.pt')
 
 
     def compute_taus(self):

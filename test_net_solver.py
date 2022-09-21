@@ -4,7 +4,7 @@ import time
 import networkx as nx
 import numpy as np
 
-from Data_.Dataset.bmep_dataset import BMEP_Dataset
+from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
@@ -22,11 +22,12 @@ compute_obj_val = funs.compute_obj_val_from_adj_mat
 
 folder = 'GNN_TAU'
 file = '_3.622'
+data_folder = '6_taxa_0'
 
 net_manager = NetworkManager(folder, file)
 dgn = net_manager.get_network()
 
-data_ = BMEP_Dataset()
+data_ = BMEP_Dataset(folder_name=data_folder)
 
 batch_size = 1000
 start_test_set = net_manager.get_params()['train']['end']

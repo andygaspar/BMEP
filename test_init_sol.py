@@ -5,7 +5,7 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from Data_.Dataset.bmep_dataset import BMEP_Dataset
+from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
@@ -23,13 +23,14 @@ compute_obj_val = funs.compute_obj_val_from_adj_mat
 logs = False
 
 path = 'Net/Nets/GNN1/_3.645/'
+data_folder = '6_taxa_0'
 
 with open(path + 'params.json', 'r') as json_file:
     params = json.load(json_file)
     print(params)
 
 net_params = params
-data_ = BMEP_Dataset()
+data_ = BMEP_Dataset(folder_name=data_folder)
 batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 

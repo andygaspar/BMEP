@@ -6,7 +6,7 @@ import warnings
 from os import walk
 import numpy as np
 import torch
-from Data_.Dataset.bmep_dataset import BMEP_Dataset
+from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver
@@ -29,7 +29,9 @@ m = mats[0]
 folder = 'GNN_TAU'
 file = '_3.622'
 
-data_ = BMEP_Dataset()
+data_folder = '6_taxa_0'
+
+data_ = BMEP_Dataset(folder_name=data_folder)
 normalisation_factor = data_.max_d_mat
 print(normalisation_factor, "pppppppppp")
 

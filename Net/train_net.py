@@ -10,7 +10,7 @@ from Net.network_manager import NetworkManager
 
 print(os.getcwd())
 
-from Data_.Dataset.bmep_dataset import BMEP_Dataset
+from Data_.Datasets.bmep_dataset import BMEP_Dataset
 import torch.optim as optim
 from torch import nn
 
@@ -21,6 +21,7 @@ a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
 folder = 'GNN_TAU'
+data_folder = '6_taxa_0'
 save = True
 
 net_manager = NetworkManager(folder)
@@ -31,7 +32,8 @@ criterion = train_params["criterion"]
 cross_entropy = True if criterion == "cross" else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100)
+data_ = BMEP_Dataset(folder_name=data_folder, scale_d=net_params["scale_d"], start=train_params["start"],
+                     end=train_params["end"], a100=a100)
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
