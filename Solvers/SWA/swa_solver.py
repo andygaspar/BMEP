@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
-from Data_.Dataset.bmep_dataset import BMEP_Dataset
+from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from Solvers.solver import Solver
 
 

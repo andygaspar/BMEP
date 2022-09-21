@@ -4,7 +4,7 @@ import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
-from Data_.Dataset.bmep_dataset import BMEP_Dataset
+from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from Solvers.solver import Solver
 
 

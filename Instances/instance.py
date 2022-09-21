@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import string
 from Instances.ip_solver import solve
 from Pardi.pardi import Pardi
+from Solvers.SWA.swa_solver import SwaSolver
 
 
 class Instance:
@@ -11,6 +12,8 @@ class Instance:
     def __init__(self, d, labels=None, max_time=None):
         self.d = self.sort_d(d)
         self.labels = [i for i in string.ascii_uppercase] if labels is None else labels
+        swa = SwaSolver(d.to('cpu').numpy())
+        swa.solve()
         self.out_time, self.problem, self.obj_val, self.T = self.solve(max_time)
         if not self.out_time:
             self.pardi = Pardi(self.T)

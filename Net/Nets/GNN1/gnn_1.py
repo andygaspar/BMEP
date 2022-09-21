@@ -88,7 +88,7 @@ class FA(nn.Module):
 
 class GNN_1(Network):
     def __init__(self, net_params, network=None):
-        super().__init__()
+        super().__init__(net_params['normalisation factor'])
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
                                                             net_params["hidden_dim"], net_params["num_messages"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

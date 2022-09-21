@@ -10,6 +10,7 @@ from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from torch.utils.data import DataLoader
 
 from Net.Nets.GNN1.gnn_1 import GNN_1
+from Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver
 from Solvers.NetSolvers.heuristic_search import HeuristicSearch
@@ -22,19 +23,21 @@ add_node = funs.add_node
 compute_obj_val = funs.compute_obj_val_from_adj_mat
 logs = False
 
-path = 'Net/Nets/GNN1/_3.645/'
 data_folder = '6_taxa_0'
 
-with open(path + 'params.json', 'r') as json_file:
-    params = json.load(json_file)
-    print(params)
+folder = 'GNN_TAU'
+file = '_3.622'
 
-net_params = params
+
+net_manager = NetworkManager(folder, file)
+params = net_manager.get_params()
+train_params, net_params = params["train"], params["net"]
+dgn = net_manager.get_network()
+
 data_ = BMEP_Dataset(folder_name=data_folder)
 batch_size = 1000
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
-dgn = GNN_1(net_params=net_params, network=path + "weights.pt")
 r_swa_list = []
 res_list = []
 res_1_list = []
