@@ -4,15 +4,9 @@ import random
 import time
 import warnings
 from os import walk
-
 import numpy as np
 import torch
-
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
-from Instances.generator import Generator
-from Instances.instance import Instance
-from Net.Nets.GNN1.gnn_1 import GNN_1
-from Net.Nets.GNN_TAU.gnn_tau import GNN_TAU
 from Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver
@@ -39,8 +33,8 @@ data_ = BMEP_Dataset()
 normalisation_factor = data_.max_d_mat
 print(normalisation_factor, "pppppppppp")
 
-net_manager = NetworkManager()
-dgn = net_manager.get_network(folder, file)
+net_manager = NetworkManager(folder, file)
+dgn = net_manager.get_network()
 
 dim = 5
 better = []
@@ -55,7 +49,6 @@ for _ in range(100):
 
     swa = SwaSolver(d)
     swa.solve()
-
 
     t1 = time.time()
     heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, width=10)

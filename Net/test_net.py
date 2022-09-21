@@ -2,21 +2,16 @@ import json
 
 import numpy as np
 import torch
-
 from Data_.Dataset.bmep_dataset import BMEP_Dataset
-
 from torch.utils.data import DataLoader
-
 from Net.network_manager import NetworkManager
 
-
-net_manager = NetworkManager()
 
 folder = 'GNN2'
 file = '_3.64'
 
-dgn, comment = net_manager.get_network(folder, file)
-print(comment)
+net_manager = NetworkManager(folder, file)
+dgn = net_manager.get_network()
 
 data_ = BMEP_Dataset()
 batch_size = 2000

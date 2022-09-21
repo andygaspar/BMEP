@@ -23,8 +23,8 @@ edge = False
 folder = 'GNN_TAU'
 save = True
 
-net_manager = NetworkManager()
-dgn, params = net_manager.make_network(folder)
+net_manager = NetworkManager(folder)
+params = net_manager.get_params()
 train_params, net_params = params["train"], params["net"]
 
 criterion = train_params["criterion"]
@@ -34,6 +34,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 data_ = BMEP_Dataset(scale_d=net_params["scale_d"], start=train_params["start"], end=train_params["end"], a100=a100)
 batch_size = train_params["batch_size"]
 dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
+
+dgn = net_manager.make_network(normalisation_factor=data_.max_d_mat)
+
+
+
 
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])

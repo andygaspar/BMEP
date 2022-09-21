@@ -9,7 +9,7 @@ from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from Net.Nets.GNN2.gnn_2 import GNN_2
 from Net.Nets.GNN_edge.gnn_edge import GNN_edge
-from Net.Nets.GNNGRU.gnn_gru import GNN_GRU
+from Net.Nets.GNN_GRU.gnn_gru import GNN_GRU
 
 
 def mse(output, data):
@@ -76,38 +76,35 @@ criterion_dict = {
 
 class NetworkManager:
 
-    def make_network(self, folder):
-        path = 'Net/Nets/' + folder + '/'
-        with open(path + 'params.json', 'r') as json_file:
-            params = json.load(json_file)
+    def __init__(self, folder, file=None):
+        self.folder = folder
+        self.file = file
+        self.path = 'Net/Nets/' + folder + '/'
+        if self.file is not None:
+            self.path += self.file + '/'
 
-        self.print_info(params)
+        with open(self.path + 'params.json', 'r') as json_file:
+            self.params = json.load(json_file)
 
-        train_params, net_params = params["train"], params["net"]
-        dgn = nets_dict[folder](net_params=net_params)
+        self.train_params, self.net_params = self.params["train"], self.params["net"]
 
-        return dgn, params
+    def make_network(self, normalisation_factor):
+        self.print_info()
+        self.net_params["normalisation factor"] = normalisation_factor
+        dgn = nets_dict[self.folder](net_params=self.net_params)
 
-    def get_network(self, folder, file):
-        path = 'Net/Nets/' + folder + '/' + file + '/'
-
-        with open(path + 'params.json', 'r') as json_file:
-            params = json.load(json_file)
-            self.print_info(params)
-
-        net_params = params["net"] if 'net' in params.keys() else params  # to include old versions
-
-        dgn = nets_dict[folder](net_params=net_params, network=path + "weights.pt")
         return dgn
 
-    @staticmethod
-    def get_params(folder, file):
-        path = 'Net/Nets/' + folder + '/' + file + '/'
+    def get_network(self):
+        if self.file is not None:
+            self.print_info()
+            dgn = nets_dict[self.folder](net_params=self.net_params, network=self.path + "weights.pt")
+            return dgn
+        else:
+            return None
 
-        with open(path + 'params.json', 'r') as json_file:
-            params = json.load(json_file)
-
-        return params
+    def get_params(self):
+        return self.params
 
     @staticmethod
     def compute_loss(criterion, output, data):
@@ -115,13 +112,12 @@ class NetworkManager:
         # loss = criterion(output, y.float())
         return criterion_dict[criterion](output, data)
 
-    def print_info(self, params):
-        train_params, net_params = params["train"], params["net"]
+    def print_info(self):
         print("Training")
-        for key in train_params:
-            print(key, train_params[key])
+        for key in self.train_params:
+            print(key, self.train_params[key])
         print("Network")
-        for key in net_params:
-            print(key, net_params[key])
-        if 'comment' in list(params.keys()):
-            print('comment:', params['comment'])
+        for key in self.net_params:
+            print(key, self.net_params[key])
+        if 'comment' in list(self.params.keys()):
+            print('comment:', self.params['comment'])

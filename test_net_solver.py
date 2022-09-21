@@ -23,22 +23,15 @@ compute_obj_val = funs.compute_obj_val_from_adj_mat
 folder = 'GNN_TAU'
 file = '_3.622'
 
-net_manager = NetworkManager()
-dgn = net_manager.get_network(folder, file)
+net_manager = NetworkManager(folder, file)
+dgn = net_manager.get_network()
 
 data_ = BMEP_Dataset()
 
 batch_size = 1000
-start_test_set = net_manager.get_params(folder, file)['train']['end']
+start_test_set = net_manager.get_params()['train']['end']
 n_test_problems = (data_.size - start_test_set) // 3
 start_test_set = start_test_set + 3 - start_test_set % 3
-
-print(data_.max_d_mat)
-print(dgn.normalisation_factor)
-print(data_.max_d_mat == dgn.normalisation_factor)
-
-
-# dataloader = DataLoader(dataset=data_[start_test_set:], batch_size=batch_size, shuffle=True)
 
 
 r_swa_list = []
