@@ -29,7 +29,6 @@ class HeuristicSearch(NetSolver):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
         with torch.no_grad():
             ad_mask, mask = self.get_masks(adj_mat)
-            ad_mask, mask = self.get_masks(adj_mat)
             tau, tau_mask = self.get_tau(adj_mat, self.device)
             y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
                              d_mask.unsqueeze(0),
