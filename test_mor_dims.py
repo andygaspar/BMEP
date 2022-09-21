@@ -42,14 +42,13 @@ print(normalisation_factor, "pppppppppp")
 net_manager = NetworkManager()
 dgn = net_manager.get_network(folder, file)
 
-dim = 7
+dim = 5
 better = []
 
 for _ in range(100):
     idx = random.sample(range(12), k=dim)
     d = np.zeros((dim*2-2, dim*2-2))
     d[:dim, :dim] = m[idx, :][:, idx]
-
 
     nj = NjSolver(d)
     nj.solve()

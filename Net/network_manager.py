@@ -62,7 +62,7 @@ nets_dict = {
     'GNN1': GNN_1,
     'GNN2': GNN_2,
     'GNN_edge': GNN_edge,
-    'GNNGRU': GNN_GRU,
+    'GNN_GRU': GNN_GRU,
     'GNN_TAU': GNN_TAU,
 }
 
@@ -124,4 +124,4 @@ class NetworkManager:
         for key in net_params:
             print(key, net_params[key])
         if 'comment' in list(params.keys()):
-            print(params['comment'])
+            print('comment:', params['comment'])

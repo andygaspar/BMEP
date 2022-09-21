@@ -33,6 +33,10 @@ start_test_set = net_manager.get_params(folder, file)['train']['end']
 n_test_problems = (data_.size - start_test_set) // 3
 start_test_set = start_test_set + 3 - start_test_set % 3
 
+print(data_.max_d_mat)
+print(dgn.normalisation_factor)
+print(data_.max_d_mat == dgn.normalisation_factor)
+
 
 # dataloader = DataLoader(dataset=data_[start_test_set:], batch_size=batch_size, shuffle=True)
 
@@ -49,7 +53,7 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=5, distribution_runs=100)
+    heuristic = HeuristicSearch2(d, dgn, width=15, distribution_runs=10)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)

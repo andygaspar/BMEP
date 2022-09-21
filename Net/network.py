@@ -35,6 +35,7 @@ class Network(nn.Module):
         new_folder = 'Net/Nets/' + folder + '/' + prefix + "_" + str(int(best_loss * 1000) / 1000)
         os.mkdir(new_folder)
         params["net"]["best_loss"] = best_loss
+        params["net"]["normalisation factor"] = self.normalisation_factor
         with open(new_folder + '/params.json', 'w') as outfile:
             json.dump(params, outfile)
         torch.save(self.state_dict(), new_folder + '/weights.pt')

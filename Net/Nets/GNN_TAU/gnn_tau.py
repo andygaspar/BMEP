@@ -111,10 +111,10 @@ class GNN_TAU(Network):
 
     def forward(self, data):
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
-        d_mats /= self.normalisation_factor
+        d_mats_ = d_mats / self.normalisation_factor
         h = self.encoder(initial_masks)
         taus[taus > 0] = 1 / taus[taus > 0]
-        h = self.context_message(h, d_mats, d_masks, initial_masks, 3)
+        h = self.context_message(h, d_mats_, d_masks, initial_masks, 3)
         h = self.tau_message(h, taus, tau_masks, ad_masks, 3)
         h = self.fa(h)
 
