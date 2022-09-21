@@ -32,7 +32,9 @@ class Network(nn.Module):
         torch.save(model.state_dict(), filename + '.pt')
 
     def save_net(self, folder: str, best_loss: float, params: dict, prefix=""):
-        new_folder = 'Net/Nets/' + folder + '/' + prefix + "_" + str(int(best_loss * 1000) / 1000)
+        new_folder = 'Net/Nets/' + folder + '/' + prefix + "_" + str(int(best_loss * 1000) / 1000) + "_0"
+        while not os.path.isfile(new_folder):
+            new_folder += "i"
         os.mkdir(new_folder)
         params["net"]["best_loss"] = best_loss
         params["net"]["normalisation factor"] = self.normalisation_factor

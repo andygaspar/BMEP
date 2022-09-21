@@ -62,7 +62,8 @@ class MessageNode(nn.Module):
     def forward(self, h, m1):
         h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
         h = nn.functional.dropout(h, p=self.drop_out)
-        return torch.tanh(h)
+        # h = torch.tanh(self.fmn2(h))
+        return h
 
 
 class FA(nn.Module):
