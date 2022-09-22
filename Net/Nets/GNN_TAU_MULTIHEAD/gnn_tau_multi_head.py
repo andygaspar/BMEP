@@ -18,11 +18,13 @@ class NodeEncoder(nn.Module):
 
 
 class Message(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
+    def __init__(self, h_dimension, hidden_dim, num_heads, device):
         self.device = device
         super(Message, self).__init__()
-        self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-        self.v = nn.Linear(hidden_dim, 1).to(self.device)
+        self.num_heads = num_heads
+        self.f_alpha = nn.ModuleList([nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
+                                      for _ in range(self.num_heads)])
+        self.v = nn.ModuleList([nn.Linear(hidden_dim, 1).to(self.device) for _ in range(self.num_heads)])
         # self.v = nn.Sequential(
         #     nn.Linear(hidden_dim, hidden_dim),
         #     nn.LeakyReLU(),
@@ -31,24 +33,30 @@ class Message(nn.Module):
         #     nn.Linear(hidden_dim, 1)).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
-        a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))  # messo lrelu
-        a = torch.tanh(self.v(a).view(mat.shape))  # messo lrelu
-        alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
-        return alpha
+        heads = []
+        for j in range(self.num_heads):
+            a = torch.tanh(self.f_alpha[j](torch.cat([hi, hj], dim=-1)))  # messo lrelu
+            a = torch.tanh(self.v[j](a).view(mat.shape))  # messo lrelu
+            heads.append(F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1))
+        return sum(heads)/self.num_heads
 
 
 class FD(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
+    def __init__(self, h_dimension, hidden_dim, num_heads, device):
         self.device = device
         super(FD, self).__init__()
-        self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
-        self.fd = nn.Linear(1, hidden_dim).to(self.device)
+        self.num_heads = num_heads
+        self.fe = nn.ModuleList([nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
+                                 for _ in range(self.num_heads)])
+        self.fd = nn.ModuleList([nn.Linear(1, hidden_dim).to(self.device) for _ in range(self.num_heads)])
 
     def forward(self, hi, hj, d):
-        dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
-        d_ij = torch.tanh(self.fd(dd))  # messo lrelu
-        out = torch.tanh(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
-        return out
+        heads = []
+        for j in range(self.num_heads):
+            dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
+            d_ij = torch.tanh(self.fd[j](dd))  # messo lrelu
+            heads.append(torch.tanh(self.fe[j](torch.cat([hi, hj, d_ij], dim=-1))))
+        return sum(heads)/self.num_heads
 
 
 class MessageNode(nn.Module):
@@ -82,34 +90,28 @@ class FA(nn.Module):
 
 class GNN_TAU_MH(Network):
     def __init__(self, net_params, network=None):
-        super().__init__()
-        num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
-                                                            net_params["hidden_dim"], net_params["num_messages"]
+        super().__init__(net_params["normalisation factor"])
+        num_inputs, h_dimension, hidden_dim = net_params["num_inputs"], \
+                                              net_params["h_dimension"], net_params["hidden_dim"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.mask = torch.ones((10, 10)).to(self.device)
 
-        self.rounds = num_messages
+        self.rounds = net_params["num_messages"]
+        self.num_heads = net_params['num heads']
 
         self.encoder = NodeEncoder(num_inputs, h_dimension, self.device)
 
-        self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.fd1 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.fd2 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
+        self.ft = nn.ModuleList([FD(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
 
-        self.ft = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.ft1 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.ft2 = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-
-        self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
+        self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
 
         self.drop_out = net_params['drop out']
 
         self.fm1 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
         self.fm2 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
         self.fa = FA(h_dimension, hidden_dim, self.drop_out, self.device)
-
-
 
         if network is not None:
             self.load_weights(network)

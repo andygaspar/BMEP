@@ -10,7 +10,7 @@ from Solvers.solver import Solver
 
 class IPSolver(Solver):
 
-    def __init__(self, d):
+    def __init__(self, d, relaxation=False):
         super(IPSolver, self).__init__(d)
 
         self.bmep = gb.Model()
@@ -22,9 +22,10 @@ class IPSolver(Solver):
         self.V = range(self.n, 2 * self.n - 2)
         self.L = range(self.n - 1)
 
-        self.x = self.bmep.addMVar((2 * self.n - 2, 2 * self.n - 2, self.n - 1), vtype=gb.GRB.BINARY)
-        self.y = self.bmep.addMVar((2 * self.n - 2, 2 * self.n - 2, 2 * self.n - 2, 2 * self.n - 2),
-                                   vtype=gb.GRB.BINARY)
+        var_type = gb.GRB.BINARY if not relaxation else gb.GRB.CONTINUOUS
+
+        self.x = self.bmep.addMVar((2 * self.n - 2, 2 * self.n - 2, self.n - 1), vtype=var_type)
+        self.y = self.bmep.addMVar((2 * self.n - 2, 2 * self.n - 2, 2 * self.n - 2, 2 * self.n - 2), vtype=var_type)
         self.sol_time = None
 
     def set_objective(self):
@@ -71,7 +72,13 @@ class IPSolver(Solver):
                         if self.x.x[i, j, k] > 0.5:
                             sol[i, j] = k + 1
 
-        self.obj_val = self.bmep.objVal
+            self.obj_val = self.bmep.objVal
+            return out_time, self.bmep, self.obj_val, sol
+
+    def get_lp(self):
+        self.set_objective()
+        self.set_constraints()
+        return self.bmep.relax()
 
     def set_constraints(self):
 

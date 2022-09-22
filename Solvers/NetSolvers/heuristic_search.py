@@ -53,9 +53,12 @@ class HeuristicSearch(NetSolver):
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
                     ad_mask, mask = self.get_masks(adj_mat)
-                    sol.y, _ = self.net(adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
-                                        d_mask.unsqueeze(0), size_mask.unsqueeze(0), initial_mask.unsqueeze(0),
-                                        mask.unsqueeze(0))
+                    tau, tau_mask = self.get_tau(adj_mat, self.device)
+                    sol.y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
+                                     d_mask.unsqueeze(0),
+                                     size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
+                                     tau.unsqueeze(0),
+                                     tau_mask.unsqueeze(0), None))
                     sol.y *= sol.prob
                 p = torch.cat([sol.y for sol in self.solutions])
                 # print(p)
