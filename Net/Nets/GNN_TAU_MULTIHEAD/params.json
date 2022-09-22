@@ -17,7 +17,8 @@
       "hidden_dim": 516,
       "num_messages": 5,
       "best_loss": "",
-      "drop out": 0.3
+      "drop out": 0.3,
+      "num heads": 3
 
     },
   "comment": "test con drop out a 0.2 e batch 64"

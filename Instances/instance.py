@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import string
 from Instances.ip_solver import solve
 from Pardi.pardi import Pardi
+from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.SWA.swa_solver import SwaSolver
 
 
@@ -12,9 +13,14 @@ class Instance:
     def __init__(self, d, labels=None, max_time=None):
         self.d = self.sort_d(d)
         self.labels = [i for i in string.ascii_uppercase] if labels is None else labels
-        swa = SwaSolver(d.to('cpu').numpy())
+        n = self.d.shape[0]
+        d_zeros = np.zeros((2*n - 2, 2*n - 2))
+        d_zeros[:n, :n] = self.d
+        swa = SwaSolver(d_zeros)
         swa.solve()
-        self.out_time, self.problem, self.obj_val, self.T = self.solve(max_time)
+        instance = IPSolver(self.d)
+        self.out_time, self.problem, self.obj_val, self.T = instance.solve(init_adj_sol=swa.solution, max_time=max_time)
+        # self.out_time, self.problem, self.obj_val, self.T = self.solve(max_time)
         if not self.out_time:
             self.pardi = Pardi(self.T)
             self.graph = self.pardi.get_graph()
