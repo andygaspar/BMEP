@@ -20,5 +20,5 @@
       "drop out": 0.2
 
     },
-  "comment": "test con drop out a 0.2 e batch 64, un layer per il drop out"
+  "comment": "test con drop out a 0.2 e batch 64, due layer per il drop out, ricordarsi di decommentare in caso"
 }
