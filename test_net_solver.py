@@ -95,7 +95,7 @@ for _ in range(n_test_problems):
 
     print(n, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
           np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
-    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), 6))
+    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
 print("accuracy", np.mean(r_swa_list))
 print("accuracy", np.mean(res_list))
 print("accuracy", np.mean(res_1_list))
