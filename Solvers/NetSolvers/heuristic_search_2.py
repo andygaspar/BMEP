@@ -72,7 +72,7 @@ class HeuristicSearch2(NetSolver):
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
                     ad_mask, mask = self.get_masks(adj_mat)
-                    tau, tau_mask = self.get_tau(adj_mat, self.device)
+                    tau, tau_mask = self.get_tau_tensor(adj_mat, self.device)
                     for _ in range(self.distribution_runs):
                         y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
                                         d_mask.unsqueeze(0),

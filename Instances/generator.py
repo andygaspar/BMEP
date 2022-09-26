@@ -1,4 +1,5 @@
 import copy
+import os
 import time
 
 import networkx as nx
@@ -10,15 +11,18 @@ import random
 
 class Generator:
 
-    def __init__(self, name_folder, num_instances, d_mat_initial, dim_min, dim_max, max_time, total_time=3_600):
+    def __init__(self, name_folder, num_instances, d_mat_initial, dim_min, dim_max, max_time,
+                 total_time=3_600, pardi_solver=False):
         self.name_folder = name_folder
         self.tau = None
         self.total_time = total_time
         self.max_time = max_time
+        self.dim_min, self.dim_max = dim_min, dim_max
         self.dim_range = range(dim_min, dim_max + 1)
         self.m = dim_max*2 - 2
         self.d_mat_initial = d_mat_initial
         self.num_instances = num_instances
+        self.pardi_solver = pardi_solver
         self.d_mats = np.zeros((self.num_instances, self.m, self.m))
         self.d_masks = np.zeros((self.num_instances, self.m, self.m))
         self.initial_masks = np.zeros((self.num_instances, self.m, 2))
@@ -41,7 +45,8 @@ class Generator:
             while time.time() - t < self.total_time and out_time:
                 idx = random.sample(range(self.d_mat_initial.shape[0]), k=dim)
                 print("start", dim)
-                instance = Instance(self.d_mat_initial[idx, :][:, idx], max_time=self.max_time)
+                instance = Instance(self.d_mat_initial[idx, :][:, idx], max_time=self.max_time,
+                                    pardi_solver=self.pardi_solver)
                 out_time = instance.out_time
                 print("end", out_time)
             if instance is not None:
@@ -82,7 +87,8 @@ class Generator:
         self.tau = self.compute_taus()
         self.y = torch.tensor(self.y)
         self.problem = torch.tensor(self.problem)
-        path = 'Data_/Datasets/' + self.name_folder + '/'
+        path = 'Data_/Datasets/' + self.name_folder + '_' + str(self.dim_min) + '_' + str(self.dim_max) + '/'
+        os.mkdir(path)
         torch.save(self.d_mats, path + 'd_mats.pt')
         torch.save(self.d_masks, path + 'd_masks.pt')
         torch.save(self.initial_masks, path + 'initial_masks.pt')
@@ -102,5 +108,4 @@ class Generator:
             taus.append(Tau)
 
         return torch.tensor(taus)
-
 

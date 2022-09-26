@@ -25,12 +25,12 @@ instance = 2 # m17
 num_instances = 20_000
 d_mat_initial = mats[instance]
 dim_min = 5
-dim_max = 8
+dim_max = 9
 max_time = 20
 total_time_h = 12
 total_time = total_time_h * 60 * 60
-name_folder = filenames[instance]
+name_folder = filenames[instance][:-4]
 gen = Generator(name_folder=name_folder, num_instances=num_instances, d_mat_initial=d_mat_initial, dim_min=dim_min,
-                dim_max=dim_max, max_time=max_time, total_time=total_time)
+                dim_max=dim_max, max_time=max_time, total_time=total_time, pardi_solver=True)
 
 

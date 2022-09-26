@@ -6,13 +6,11 @@ import numpy as np
 from Solvers.solver import Solver
 
 
-class PardiSolver(Solver):
+class BB_Solver(Solver):
 
     def __init__(self, d):
         super().__init__(d)
-        self.n = d.shape[0]
-        self.m = self.n + self.n-2
-        self.steps = 0
+        self.nodes = 0
         self.best_val = 10**5
         self.solution = None
 
@@ -22,7 +20,7 @@ class PardiSolver(Solver):
         return np.sum([self.d[i, j] / 2 ** (Tau[i, j]) for i in range(self.n) for j in range(self.n)])
 
     def recursion(self, mat, step=3):
-        self.steps += 1
+        self.nodes += 1
         selection = np.array(np.nonzero(np.triu(mat))).T
         recursion_step = selection.shape[0]
         if recursion_step == self.n + self.n-3:
@@ -36,13 +34,11 @@ class PardiSolver(Solver):
                 self.recursion(copy.deepcopy(new_mat), step + 1)
 
     def solve(self):
-        mat = np.zeros((self.m, self.m))
+        mat = np.zeros((self.n + self.n-2, self.n + self.n-2))
         for i in range(3):
             mat[i, self.n] = mat[self.n, i] = 1
         self.recursion(copy.deepcopy(mat))
-        self.T = self.get_tau(self.solution)
         self.obj_val = self.best_val
-        return False, self.obj_val, self.T
 
     def add_node(self, adj_mat, idxs, new_node_idx):
         adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected

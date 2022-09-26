@@ -14,6 +14,7 @@ class Solver:
 
         self.solution = None
         self.obj_val = None
+        self.T = None
 
     def initial_mat(self, device=None):
         adj_mat = np.zeros_like(self.d) if device is None else torch.zeros_like(self.d).to(device)
@@ -37,7 +38,8 @@ class Solver:
         Tau = nx.floyd_warshall_numpy(g)[:n, :n]
         return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
 
-    def get_tau(self, adj_mat, device):
+    @staticmethod
+    def get_tau_tensor(adj_mat, device):
         g = nx.from_numpy_matrix(adj_mat.to('cpu').numpy())
         tau = nx.floyd_warshall_numpy(g)
         tau[np.isinf(tau)] = 0
@@ -45,3 +47,10 @@ class Solver:
         tau_mask = copy.deepcopy(tau)
         tau_mask[tau_mask > 0] = 1
         return tau, tau_mask
+
+    @staticmethod
+    def get_tau(adj_mat):
+        g = nx.from_numpy_matrix(adj_mat)
+        tau = nx.floyd_warshall_numpy(g)
+        tau[np.isinf(tau)] = 0
+        return tau
