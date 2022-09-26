@@ -1,3 +1,5 @@
+import time
+
 import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
@@ -5,21 +7,28 @@ import string
 from Instances.ip_solver import solve
 from Pardi.pardi import Pardi
 from Solvers.IpSolver.ip_solver import IPSolver
+from Solvers.PardiSolver.pardi_solver import PardiSolver
+from Solvers.PardiSolver.pardi_solver_parallel import PardiSolverParallel
 from Solvers.SWA.swa_solver import SwaSolver
 
 
 class Instance:
 
-    def __init__(self, d, labels=None, max_time=None):
+    def __init__(self, d, labels=None, max_time=None, pardi_solver=False):
         self.d = self.sort_d(d)
         self.labels = [i for i in string.ascii_uppercase] if labels is None else labels
         n = self.d.shape[0]
         d_zeros = np.zeros((2*n - 2, 2*n - 2))
         d_zeros[:n, :n] = self.d
-        swa = SwaSolver(d_zeros)
-        swa.solve()
-        instance = IPSolver(self.d)
-        self.out_time, self.problem, self.obj_val, self.T = instance.solve(init_adj_sol=swa.solution, max_time=max_time)
+        if pardi_solver:
+            instance = PardiSolver(self.d) if n < 7 else PardiSolverParallel(self.d)
+            self.out_time, self.obj_val, self.T = instance.solve()
+            self.T = self.T[:n, :n]
+        else:
+            swa = SwaSolver(d_zeros)
+            swa.solve()
+            instance = IPSolver(self.d)
+            self.out_time, self.obj_val, self.T = instance.solve(init_adj_sol=swa.solution, max_time=max_time)
         # self.out_time, self.problem, self.obj_val, self.T = self.solve(max_time)
         if not self.out_time:
             self.pardi = Pardi(self.T)
@@ -38,10 +47,6 @@ class Instance:
             for j in order:
                 sorted_d[i, j] = d[order[i], order[j]]
         return sorted_d
-
-    def solve(self, max_time):
-        out_time, problem, T, obj_val = solve(self.d, max_time)
-        return out_time, problem, obj_val, T
 
     def print_graph(self):
         nx.draw(self.graph, node_color=[self.graph.nodes[node]["color"] for node in self.graph.nodes],

@@ -64,16 +64,16 @@ class IPSolver(Solver):
         if out_time:
             return out_time, None, None, None
         else:
-            sol = np.zeros((self.n, self.n), dtype=int)
+            T_sol = np.zeros((self.n, self.n), dtype=int)
 
             for i in self.T:
                 for j in self.T:
                     for k in self.L:
                         if self.x.x[i, j, k] > 0.5:
-                            sol[i, j] = k + 1
+                            T_sol[i, j] = k + 1
 
             self.obj_val = self.bmep.objVal
-            return out_time, self.bmep, self.obj_val, sol
+            return out_time, self.obj_val, T_sol
 
     def get_lp(self):
         self.set_objective()
@@ -187,4 +187,5 @@ class IPSolver(Solver):
                         for t in self.TuV:
                             self.y[i, j, q, t].Start = 1 if Tau[i, t] + Tau[j, q] >= Tau[i, q] + Tau[
                                 j, t] and i != j != q != t else 0
+
 
