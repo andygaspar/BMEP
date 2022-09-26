@@ -1,8 +1,10 @@
 import json
+import random
 import time
 
 import networkx as nx
 import numpy as np
+import torch
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
@@ -21,33 +23,41 @@ add_node = funs.add_node
 compute_obj_val = funs.compute_obj_val_from_adj_mat
 
 folder = 'GNN_TAU'
-file = '_3.622'
-data_folder = '6_taxa_0'
+file = '_4.614_0'
+data_folder = '03-M18_5_9' #'6_taxa_0'
+n_test_problems = 100
 
 net_manager = NetworkManager(folder, file)
 dgn = net_manager.get_network()
 
-data_ = BMEP_Dataset(folder_name=data_folder)
+# problems = torch.tensor([i for i in range(10000//3 + 1) for j in range(3)][:-2])
+# torch.save(problems, 'Data_/Datasets/6_taxa_0/problems.pt')
+
+start_test_set = net_manager.get_params()['train']['end']
+data_ = BMEP_Dataset(folder_name=data_folder, start=500)
 
 batch_size = 1000
 start_test_set = net_manager.get_params()['train']['end']
-n_test_problems = (data_.size - start_test_set) // 3
-start_test_set = start_test_set + 3 - start_test_set % 3
-
+problems = np.unique(data_.problems.numpy())[1:-1]
 
 r_swa_list = []
 res_list = []
 res_1_list = []
 or_sol = []
 
-for i in range(start_test_set, start_test_set + n_test_problems, 3):
-    d = data_.d_mats[i]
+for _ in range(n_test_problems):
+    pb = random.choice(problems)
+    pb_idxs = (data_.problems == pb).nonzero().flatten()
+    d = data_.d_mats[pb_idxs[0]]
+    n = 3 + pb_idxs.shape[0]
+    m = n * 2 - 2
+    d = d[: m, : m]
 
     swa = SwaSolver(d.to('cpu').numpy())
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=15, distribution_runs=10)
+    heuristic = HeuristicSearch2(d, dgn, width=15, distribution_runs=50)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)
@@ -60,9 +70,10 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     # print(data_.y[i * 3 + 2])
 
     # print(net_solver.solution)
-    pre_final_adj_mat = data_.adj_mats[i + 2].to("cpu").numpy()
-    last_move = np.nonzero(data_.y[i + 2].view(10, 10).to("cpu").numpy())
-    sol = add_node(pre_final_adj_mat, last_move, 5, 6)
+    pre_final_adj_mat = data_.adj_mats[pb_idxs[-1]].to("cpu").numpy()
+    size = int(data_.y[pb_idxs[-1]].shape[0]**(1/2))
+    last_move = np.nonzero(data_.y[pb_idxs[-1]].view(size, size)[: m, : m].to("cpu").numpy())
+    sol = add_node(pre_final_adj_mat, last_move, n-1, n)[:m, :m]
 
     # pardi = PardiSolver(d.to("cpu").numpy()[:6, :6])
     # pardi.solve()
@@ -82,7 +93,7 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
 
     or_sol.append(r_swa or res_1)
 
-    print(i, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
+    print(n, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
           np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
     print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), 6))
 print("accuracy", np.mean(r_swa_list))

@@ -26,6 +26,7 @@ class BMEP_Dataset(Dataset):
             self.y = torch.nonzero(self.y.view(self.y.shape[0], -1))[:, 1]
         else:
             self.y = self.y.view(self.y.shape[0], -1)
+        self.problems = torch.load(path + "problems.pt").to(torch.int)[start: end]
         self.size_masks = torch.ones_like(self.adj_mats)
         self.size = self.d_mats.shape[0]
 
