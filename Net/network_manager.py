@@ -4,6 +4,7 @@ import torch
 from torch import nn
 
 from Net.Nets.GNN_TAU.gnn_tau import GNN_TAU
+from Net.Nets.GNN_TAU_MH.gnn_tau_multi_head import GNN_TAU_MH
 from Net.network import Network
 from Net.Nets.GNN.gnn import GNN
 from Net.Nets.GNN1.gnn_1 import GNN_1
@@ -64,6 +65,7 @@ nets_dict = {
     'GNN_edge': GNN_edge,
     'GNN_GRU': GNN_GRU,
     'GNN_TAU': GNN_TAU,
+    'GNN_TAU_MH': GNN_TAU_MH
 }
 
 criterion_dict = {
@@ -115,9 +117,9 @@ class NetworkManager:
     def print_info(self):
         print("Training")
         for key in self.train_params:
-            print(key, self.train_params[key])
+            print(key + ':', self.train_params[key])
         print("Network")
         for key in self.net_params:
-            print(key, self.net_params[key])
+            print(key + ':', self.net_params[key])
         if 'comment' in list(self.params.keys()):
             print('comment:', self.params['comment'])

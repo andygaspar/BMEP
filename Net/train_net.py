@@ -21,12 +21,13 @@ a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
 folder = 'GNN_TAU'
-data_folder = '6_taxa_0'
+data_folder = '03-M18_5_9'
 save = True
 
 net_manager = NetworkManager(folder)
 params = net_manager.get_params()
 train_params, net_params = params["train"], params["net"]
+train_params["train data"] = data_folder
 
 criterion = train_params["criterion"]
 cross_entropy = True if criterion == "cross" else False

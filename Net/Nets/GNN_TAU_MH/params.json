@@ -1,23 +1,23 @@
 {
     "train":
         {
-          "batch_size": 128,
+          "batch_size": 64,
           "epochs": 10000,
           "start": 0,
           "end": 8192,
-          "lr": -5,
+          "lr": -4.5,
           "weight_decay": -3.5,
           "criterion": "cross"
         },
     "net": {
       "scale_d": 1,
-      "name": "GNN_TAU",
+      "name": "GNN_TAU_MH",
       "num_inputs": 2,
       "h_dimension": 516,
       "hidden_dim": 516,
-      "num_messages": 5,
+      "num_messages": 3,
       "best_loss": "",
-      "drop out": 0.3,
+      "drop out": 0.2,
       "num heads": 3
 
     },

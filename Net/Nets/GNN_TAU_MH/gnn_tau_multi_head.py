@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
-import torch.nn.functional as F
 
 from Net.network import Network
+
 
 
 class NodeEncoder(nn.Module):
@@ -18,13 +18,11 @@ class NodeEncoder(nn.Module):
 
 
 class Message(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, num_heads, device):
+    def __init__(self, h_dimension, hidden_dim, device):
         self.device = device
         super(Message, self).__init__()
-        self.num_heads = num_heads
-        self.f_alpha = nn.ModuleList([nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-                                      for _ in range(self.num_heads)])
-        self.v = nn.ModuleList([nn.Linear(hidden_dim, 1).to(self.device) for _ in range(self.num_heads)])
+        self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
+        self.v = nn.Linear(hidden_dim, 1).to(self.device)
         # self.v = nn.Sequential(
         #     nn.Linear(hidden_dim, hidden_dim),
         #     nn.LeakyReLU(),
@@ -33,30 +31,61 @@ class Message(nn.Module):
         #     nn.Linear(hidden_dim, 1)).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
-        heads = []
-        for j in range(self.num_heads):
-            a = torch.tanh(self.f_alpha[j](torch.cat([hi, hj], dim=-1)))  # messo lrelu
-            a = torch.tanh(self.v[j](a).view(mat.shape))  # messo lrelu
-            heads.append(F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1))
-        return sum(heads)/self.num_heads
+
+        a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))  # messo lrelu
+        a = torch.tanh(self.v(a).view(mat.shape))  # messo lrelu
+        out = nn.functional.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
+        return out
 
 
-class FD(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, num_heads, device):
+class FE(nn.Module):
+    def __init__(self, h_dimension, hidden_dim, device):
+        super(FE, self).__init__()
         self.device = device
-        super(FD, self).__init__()
-        self.num_heads = num_heads
-        self.fe = nn.ModuleList([nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
-                                 for _ in range(self.num_heads)])
-        self.fd = nn.ModuleList([nn.Linear(1, hidden_dim).to(self.device) for _ in range(self.num_heads)])
+        self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
+        self.fd = nn.Linear(1, hidden_dim).to(self.device)
 
     def forward(self, hi, hj, d):
+        dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
+        d_ij = torch.tanh(self.fd(dd))
+        out = torch.tanh(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
+        return out
+
+
+class MultiHeadAttention(nn.Module):
+
+    def __init__(self, h_dimension, hidden_dim, num_heads, device):
+        self.device = device
+        super(MultiHeadAttention, self).__init__()
+        self.num_heads = num_heads
+        self.device = device
+        self.alpha = nn.ModuleList([Message(h_dimension, hidden_dim//self.num_heads, self.device)
+                                    for _ in range(self.num_heads)])
+        self.e = nn.ModuleList([FE(h_dimension, hidden_dim//self.num_heads, self.device)
+                                for _ in range(self.num_heads)])
+
+    def forward(self, h, mat, mat_mask):
         heads = []
-        for j in range(self.num_heads):
-            dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
-            d_ij = torch.tanh(self.fd[j](dd))  # messo lrelu
-            heads.append(torch.tanh(self.fe[j](torch.cat([hi, hj, d_ij], dim=-1))))
-        return sum(heads)/self.num_heads
+        for i in range(self.num_heads):
+            hi, hj = self.i_j(h)
+            alpha = self.alpha[i](hi, hj, mat, mat_mask).unsqueeze(-1)
+            e = self.e[i](hi, hj, mat).view(mat.shape[0], mat.shape[1], mat.shape[2], -1)
+            heads.append((alpha * e).sum(dim=-2))
+
+        m = torch.cat(heads, dim=-1)
+        return m
+
+    @staticmethod
+    def i_j(h):
+        idx = torch.tensor(range(h.shape[1]))
+        idxs = torch.cartesian_prod(idx, idx)
+        idxs = idxs[[i for i in range(idxs.shape[0])]]
+        # hi = h[:, idxs[:, 0]].view((h.shape[0], e_shape[1], e_shape[2], -1))
+        # hj = h[:, idxs[:, 1]].view((h.shape[0], e_shape[1], e_shape[2], -1))
+        hi = h[:, idxs[:, 0]]
+        hj = h[:, idxs[:, 1]]
+
+        return hi, hj
 
 
 class MessageNode(nn.Module):
@@ -70,7 +99,7 @@ class MessageNode(nn.Module):
     def forward(self, h, m1):
         h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
         h = nn.functional.dropout(h, p=self.drop_out)
-        return torch.tanh(h)
+        return h
 
 
 class FA(nn.Module):
@@ -101,11 +130,10 @@ class GNN_TAU_MH(Network):
 
         self.encoder = NodeEncoder(num_inputs, h_dimension, self.device)
 
-        self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
-        self.ft = nn.ModuleList([FD(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
-
-        self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
-        self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.num_heads, self.device) for _ in range(self.rounds)])
+        self.fd = nn.ModuleList([MultiHeadAttention(h_dimension, hidden_dim, self.num_heads, self.device)
+                                 for _ in range(self.rounds)])
+        self.ft = nn.ModuleList([MultiHeadAttention(h_dimension, hidden_dim, self.num_heads, self.device)
+                                 for _ in range(self.rounds)])
 
         self.drop_out = net_params['drop out']
 
@@ -120,34 +148,27 @@ class GNN_TAU_MH(Network):
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
         h = self.encoder(initial_masks)
         taus[taus > 0] = 1 / taus[taus > 0]
-        h = self.context_message(h, d_mats, d_masks, initial_masks, 3)
-        h = self.tau_message(h, taus, tau_masks, ad_masks, 3)
+        h = self.context_message(h, d_mats, d_masks, initial_masks)
+        h = self.tau_message(h, taus, tau_masks, ad_masks)
         h = self.fa(h)
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * masks - 9e15 * (1 - masks)
         mat_size = y_h.shape
-        y_hat = F.softmax(y_h.view(mat_size[0], -1), dim=-1)
+        y_hat = nn.functional.softmax(y_h.view(mat_size[0], -1), dim=-1)
 
         return y_hat, h
 
-    def context_message(self, h, d, d_mask, initial_mask, rounds):
-        for i in range(rounds):
-            hi, hj = self.i_j(h)
-            alpha_d = self.alpha_d[i](hi, hj, d, d_mask).unsqueeze(-1)
-            e_d = self.fd[i](hi, hj, d).view(d.shape[0], d.shape[1], d.shape[2], -1)
-            m_1 = (alpha_d * e_d).sum(dim=-2)
+    def context_message(self, h, d, d_mask, initial_mask):
+        for i in range(self.rounds):
+            m_1 = self.fd[i](h, d, d_mask)
             hd = initial_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h_not_d = initial_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h = self.fm1(h, m_1) * hd + h * h_not_d
-
         return h
 
-    def tau_message(self, h, taus, tau_masks, ad_masks, rounds):
-        for i in range(rounds):
-            hi, hj = self.i_j(h)
-            alpha_t = self.alpha_t[i](hi, hj, taus, tau_masks).unsqueeze(-1)
-            e_d = self.ft[i](hi, hj, taus).view(taus.shape[0], taus.shape[1], taus.shape[2], -1)
-            m_2 = (alpha_t * e_d).sum(dim=-2)
+    def tau_message(self, h, taus, tau_masks, ad_masks):
+        for i in range(self.rounds):
+            m_2 = self.fd[i](h, taus, tau_masks)
             h_adj = ad_masks[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h_not_adj = ad_masks[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
             h = self.fm2(h, m_2) * h_adj + h * h_not_adj
