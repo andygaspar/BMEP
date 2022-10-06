@@ -23,8 +23,8 @@ add_node = funs.add_node
 compute_obj_val = funs.compute_obj_val_from_adj_mat
 
 folder = 'GNN_TAU'
-file = '_4.614_0'
-data_folder = '03-M18_5_9' #'6_taxa_0'
+file = '_5.497_0'
+data_folder = '03-M18_9_13' #'6_taxa_0'
 n_test_problems = 100
 
 net_manager = NetworkManager(folder, file)
@@ -34,18 +34,18 @@ dgn = net_manager.get_network()
 # torch.save(problems, 'Data_/Datasets/6_taxa_0/problems.pt')
 
 start_test_set = net_manager.get_params()['train']['end']
-data_ = BMEP_Dataset(folder_name=data_folder, start=500)
-
-batch_size = 1000
-start_test_set = net_manager.get_params()['train']['end']
+data_ = BMEP_Dataset(folder_name=data_folder, start=start_test_set)
 problems = np.unique(data_.problems.numpy())[1:-1]
 
 r_swa_list = []
 res_list = []
 res_1_list = []
 or_sol = []
+better = []
 
 for _ in range(n_test_problems):
+    n = 0
+    # while n != 7 and n != 8:
     pb = random.choice(problems)
     pb_idxs = (data_.problems == pb).nonzero().flatten()
     d = data_.d_mats[pb_idxs[0]]
@@ -57,7 +57,7 @@ for _ in range(n_test_problems):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=15, distribution_runs=50)
+    heuristic = HeuristicSearch2(d, dgn, width=10, distribution_runs=400)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)
@@ -92,14 +92,16 @@ for _ in range(n_test_problems):
     res_1_list.append(res_1)
 
     or_sol.append(r_swa or res_1)
+    better.append(heuristic.obj_val <= swa.obj_val)
 
-    print(n, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
+    print(_, n, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
           np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
     print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
 print("accuracy", np.mean(r_swa_list))
 print("accuracy", np.mean(res_list))
 print("accuracy", np.mean(res_1_list))
 print('or sol', np.mean(or_sol))
+print('better', np.mean(better))
 
 
 

@@ -84,6 +84,9 @@ class NetworkManager:
         self.path = 'Net/Nets/' + folder + '/'
         if self.file is not None:
             self.path += self.file + '/'
+        self.standings = []
+        file = open('.current_run.txt.swp', 'w')
+        file.close()
 
         with open(self.path + 'params.json', 'r') as json_file:
             self.params = json.load(json_file)
@@ -123,3 +126,14 @@ class NetworkManager:
             print(key + ':', self.net_params[key])
         if 'comment' in list(self.params.keys()):
             print('comment:', self.params['comment'])
+
+    def write_standings(self):
+        file = open('.current_run.txt.swp', 'a')
+        for line in self.standings:
+            s = ""
+            for el in line:
+                s += " " + el if type(el) == str else " " + str(el)
+            file.write(s + "\n")
+        file.close()
+        self.standings = []
+

@@ -6,53 +6,9 @@ import torch
 
 from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.solver import Solver
+from Solvers.NetSolvers.heuristic_search_2 import Solution, Distribution, get_idx_tuple
 
-
-def get_idx_tuple(idx_tensor):
-    return idx_tensor[0].item(), idx_tensor[1].item()
-
-
-class Solution:
-
-    def __init__(self, adj_mat, p, s):
-        self.s = s
-        self.adj_mat = adj_mat
-        self.prob = p
-        self.obj_val = None
-        self.y = None
-
-
-class Index:
-
-    def __init__(self, idx_tensor, prob, sol):
-        self.idx = sol.s, *get_idx_tuple(idx_tensor)
-        self.idx_tensor = idx_tensor
-        self.prob = prob
-        self.sol = sol
-
-    def __repr__(self):
-        return self.idx
-
-    def __hash__(self):
-        return self.idx
-
-
-class Distribution:
-
-    def __init__(self, distribution_runs):
-        self.idxs_dict = {}
-        self.distribution_runs = distribution_runs
-
-    def add(self, idx_tensor, sol):
-        idx = sol.s, *get_idx_tuple(idx_tensor)
-
-        if idx in list(self.idxs_dict.keys()):
-            self.idxs_dict[idx].prob += sol.prob / self.distribution_runs
-        else:
-            self.idxs_dict[idx] = Index(idx_tensor, prob=sol.prob / self.distribution_runs, sol=sol)
-
-
-class HeuristicSearch2(NetSolver):
+class HeuristicSearch3(NetSolver):
 
     def __init__(self, d, net, width=2, distribution_runs=50):
         super().__init__(d, net)
@@ -67,7 +23,7 @@ class HeuristicSearch2(NetSolver):
         self.solutions = [Solution(adj_mat, p=1, s=0)]
 
         with torch.no_grad():
-            for i in range(3, self.n):
+            for i in range(3, self.n - 1):
                 distribution = Distribution(self.distribution_runs)
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
@@ -100,13 +56,23 @@ class HeuristicSearch2(NetSolver):
                     adj_mat = self.add_node(copy.deepcopy(idx.sol.adj_mat), idx.idx_tensor, i, self.n)
                     self.solutions.append(Solution(adj_mat, idx.prob, s))
 
+        d = self.d.to("cpu").numpy()
         for sol in self.solutions:
-            sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n)
+            adj_mat = sol.adj_mat.to("cpu").numpy()
+            idxs_list = np.array(np.nonzero(np.triu(adj_mat))).T
+            min_val, min_adj_mat = 10**5, None
+            for idxs in idxs_list:
+                sol_ = self.add_node(copy.deepcopy(adj_mat), idxs, self.n - 1, self.n)
+                obj_val = self.compute_obj_val_from_adj_mat(sol_, d, self.n)
+                if obj_val < min_val:
+                    min_val, min_adj_mat = obj_val, sol
+            sol.adj_mat = min_adj_mat
+            sol.obj_val = min_val
 
         solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
         self.solution_object = self.solutions[solution_idx]
         self.obj_val = self.solution_object.obj_val
-        self.solution = self.solutions[solution_idx].adj_mat.to("cpu").numpy()
+        self.solution = self.solutions[solution_idx]
 
     def check_idxs(self, idxs, step):
         for idx in idxs:

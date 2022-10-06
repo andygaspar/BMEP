@@ -80,11 +80,15 @@ for epoch in range(train_params["epochs"]):
                 id = torch.tensor(range(idx.shape[0])).to(device)
                 prediction[id, idx] = 1
                 err = torch.sum(torch.abs(prediction - y.view(y.shape[0], -1))) / 2
+            net_manager.standings.append([epoch, np.mean(losses), 'last_loss', loss.item(), "error", err, "over",
+                                          y.shape[0], "  best", best_loss, 'non one', sum(output[output < 0.9])])
             print(epoch, np.mean(losses), 'last_loss', loss.item(), "error", err, "over", y.shape[0],
                   "  best", best_loss, 'non one', sum(output[output < 0.9]))
+
             losses = []
 
         if epoch % 100 == 0:
+            net_manager.write_standings()
             with torch.no_grad():
                 if not a100:
                     o = (torch.matmul(h[0], h[0].permute(1, 0)) * masks[0])
