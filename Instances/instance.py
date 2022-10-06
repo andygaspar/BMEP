@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 import string
 from Instances.ip_solver import solve
 from Pardi.pardi import Pardi
+from Solvers.CPP.instance_cpp import InstanceCpp, CppSolver
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.PardiSolver.pardi_solver import PardiSolver
 from Solvers.PardiSolver.pardi_solver_parallel import PardiSolverParallel
@@ -20,15 +21,29 @@ class Instance:
         n = self.d.shape[0]
         d_zeros = np.zeros((2*n - 2, 2*n - 2))
         d_zeros[:n, :n] = self.d
-        if pardi_solver:
-            instance = PardiSolver(self.d) if n < 7 else PardiSolverParallel(self.d)
-            self.out_time, self.obj_val, self.T = instance.solve()
-            self.T = self.T[:n, :n]
-        else:
-            swa = SwaSolver(d_zeros)
-            swa.solve()
-            instance = IPSolver(self.d)
-            self.out_time, self.obj_val, self.T = instance.solve(init_adj_sol=swa.solution, max_time=max_time)
+        # instance = Instance(self.d) if n < 7 else PardiSolverParallel(self.d)
+        # self.out_time, self.obj_val, self.T = instance.solve()
+        # self.T = self.T[:n, :n]
+        instance = CppSolver(self.d)
+        self.out_time = False
+        self.obj_val, self.T = instance.solve()
+        instance = PardiSolver(self.d) if n < 7 else PardiSolverParallel(self.d)
+        out_time, obj_val, T = instance.solve()
+        T = T[:n, :n]
+        equal = np.array_equal(self.T, T)
+        if not equal:
+            print("daniele")
+
+
+        # if pardi_solver:
+        #     instance = PardiSolver(self.d) if n < 7 else PardiSolverParallel(self.d)
+        #     self.out_time, self.obj_val, self.T = instance.solve()
+        #     self.T = self.T[:n, :n]
+        # else:
+        #     swa = SwaSolver(d_zeros)
+        #     swa.solve()
+        #     instance = IPSolver(self.d)
+        #     self.out_time, self.obj_val, self.T = instance.solve(init_adj_sol=swa.solution, max_time=max_time)
         # self.out_time, self.problem, self.obj_val, self.T = self.solve(max_time)
         if not self.out_time:
             self.pardi = Pardi(self.T)
