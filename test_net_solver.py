@@ -10,6 +10,7 @@ from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
+from FastME.fast_me import FastMeSolver
 from Net.Nets.GNN1.gnn_1 import GNN_1
 from Net.network_manager import NetworkManager
 from Solvers.NetSolvers.heuristic_search import HeuristicSearch
@@ -22,9 +23,12 @@ funs = Solver()
 add_node = funs.add_node
 compute_obj_val = funs.compute_obj_val_from_adj_mat
 
+random.seed(0)
+np.random.seed(0)
+
 folder = 'GNN_TAU'
-file = '_5.497_0'
-data_folder = '03-M18_9_13' #'6_taxa_0'
+file = '_4.551_0'
+data_folder = '03-M18_5_9' #'6_taxa_0'
 n_test_problems = 100
 
 net_manager = NetworkManager(folder, file)
@@ -42,6 +46,7 @@ res_list = []
 res_1_list = []
 or_sol = []
 better = []
+res_fast = []
 
 for _ in range(n_test_problems):
     n = 0
@@ -57,7 +62,7 @@ for _ in range(n_test_problems):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=10, distribution_runs=400)
+    heuristic = HeuristicSearch2(d, dgn, width=20, distribution_runs=400)
     heuristic.solve()
     t = time.time() - t
     # print(heuristic.solution)
@@ -75,18 +80,19 @@ for _ in range(n_test_problems):
     last_move = np.nonzero(data_.y[pb_idxs[-1]].view(size, size)[: m, : m].to("cpu").numpy())
     sol = add_node(pre_final_adj_mat, last_move, n-1, n)[:m, :m]
 
-    # pardi = PardiSolver(d.to("cpu").numpy()[:6, :6])
-    # pardi.solve()
+    fast = FastMeSolver(d.to("cpu").numpy()[:n, :n])
+    fast.solve()
 
     # t2 = time.time()
     # instance = Instance(d.to("cpu").numpy()[:6, :6])
     # t2 = time.time() - t2
     # print(instance.adj_mat_solution)
     # print(d[:6, :6])
-
+    r_fast = fast.obj_val > compute_obj_val(sol, d.to('cpu').numpy(), n)
     r_swa = np.array_equal(swa.solution, sol)
     res = np.array_equal(net_solver.solution, sol)
     res_1 = np.array_equal(heuristic.solution, sol)
+    res_fast.append(r_fast)
     r_swa_list.append(r_swa)
     res_list.append(res)
     res_1_list.append(res_1)
@@ -94,12 +100,13 @@ for _ in range(n_test_problems):
     or_sol.append(r_swa or res_1)
     better.append(heuristic.obj_val <= swa.obj_val)
 
-    print(_, n, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
+    print(_, n, "correct", r_swa, res, res_1, r_fast, "    same sol ",
           np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
-    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
-print("accuracy", np.mean(r_swa_list))
-print("accuracy", np.mean(res_list))
-print("accuracy", np.mean(res_1_list))
+    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, "f", fast.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
+print("accuracy swa", np.mean(r_swa_list))
+print("accuracy net", np.mean(res_list))
+print("accuracy heuristics", np.mean(res_1_list))
+print("accuracy fasta", np.mean(res_fast))
 print('or sol', np.mean(or_sol))
 print('better', np.mean(better))
 
