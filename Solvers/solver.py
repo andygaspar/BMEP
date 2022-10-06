@@ -32,6 +32,9 @@ class Solver:
 
         return adj_mat
 
+    def compute_obj(self):
+        return np.sum([self.d[i, j] / 2 ** (self.T[i, j]) for i in range(self.m) for j in range(self.m)])
+
     @staticmethod
     def compute_obj_val_from_adj_mat(adj_mat, d, n):
         g = nx.from_numpy_matrix(adj_mat)

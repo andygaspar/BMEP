@@ -44,11 +44,11 @@ class Generator:
             dim = np.random.choice(self.dim_range)
             while time.time() - t < self.total_time and out_time:
                 idx = random.sample(range(self.d_mat_initial.shape[0]), k=dim)
-                print("start", dim)
+                # print("start", dim)
                 instance = Instance(self.d_mat_initial[idx, :][:, idx], max_time=self.max_time,
                                     pardi_solver=self.pardi_solver)
                 out_time = instance.out_time
-                print("end", out_time)
+                # print("end", out_time)
             if instance is not None:
                 j = 0
                 d_mat = np.zeros((self.m, self.m))
