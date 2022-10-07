@@ -20,7 +20,8 @@ public:
 };
 
 double** InputHandler::set_d(double* d, int n_taxa){
-	dist=new double*[n_taxa+1]; for(register unsigned int i=0; i<=n_taxa;i++) dist[i] = new double[n_taxa+1];
+	dist=new double*[n_taxa+1];
+	for(register unsigned int i=0; i<=n_taxa;i++) dist[i] = new double[n_taxa+1];
 	for (int i=0; i< n_taxa + 1; i++) dist[0][i] = 0;  
 	for (int i=1; i< n_taxa + 1; i++) {
 		dist[i][0] = 0;

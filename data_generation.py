@@ -8,6 +8,9 @@ import numpy as np
 from Instances.generator import Generator
 from Instances.instance import Instance
 
+np.random.seed(0)
+random.seed(0)
+
 warnings.simplefilter("ignore")
 
 path = 'Data_/csv_'
