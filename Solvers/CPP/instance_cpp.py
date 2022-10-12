@@ -23,7 +23,6 @@ class InstanceCpp:
         return self.lib.run(d.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), n, log)
 
 
-cpp = InstanceCpp()
 
 
 class CppSolver(Solver):
@@ -32,8 +31,12 @@ class CppSolver(Solver):
         super().__init__(d)
 
     def solve(self, log):
-        d = np.ascontiguousarray(self.d.flatten(), dtype=np.float)
+        cpp = InstanceCpp()
+        # print(self.d)
+        d = np.ascontiguousarray(self.d.flatten(), dtype=np.double)
+        # print("a")
         adj_mat = cpp.solve(d, self.m, log)
+        # print("b")
         g = nx.from_numpy_matrix(adj_mat)
         self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m]
         return self.compute_obj(), self.T
