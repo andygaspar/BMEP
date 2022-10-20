@@ -13,6 +13,7 @@ from Net.network_manager import NetworkManager
 from Solvers.NetSolvers.heuristic_search import HeuristicSearch
 from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
 from Solvers.NetSolvers.net_solver import NetSolver
+from Solvers.NetSolvers.search_solver import SearchSolver
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver
 
@@ -39,6 +40,7 @@ r_swa_list = []
 res_list = []
 res_1_list = []
 or_sol = []
+r_search_list = []
 
 for i in range(start_test_set, start_test_set + n_test_problems, 3):
     d = data_.d_mats[i]
@@ -59,6 +61,11 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     # print(net_solver.solution)
     # print(data_.y[i * 3 + 2])
 
+    t2 = time.time()
+    search_solver = SearchSolver(20, 100, d, dgn)
+    search_solver.solve()
+    t2 = time.time() - t2
+
     # print(net_solver.solution)
     pre_final_adj_mat = data_.adj_mats[i + 2].to("cpu").numpy()
     last_move = np.nonzero(data_.y[i + 2].view(10, 10).to("cpu").numpy())
@@ -76,9 +83,11 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     r_swa = np.array_equal(swa.solution, sol)
     res = np.array_equal(net_solver.solution, sol)
     res_1 = np.array_equal(heuristic.solution, sol)
+    r_search = np.array_equal(search_solver.solution, sol)
     r_swa_list.append(r_swa)
     res_list.append(res)
     res_1_list.append(res_1)
+    r_search_list.append(r_search)
 
     or_sol.append(r_swa or res_1)
 
@@ -88,6 +97,7 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
 print("accuracy", np.mean(r_swa_list))
 print("accuracy", np.mean(res_list))
 print("accuracy", np.mean(res_1_list))
+print('search accuracy', np.mean(r_search_list))
 print('or sol', np.mean(or_sol))
 
 

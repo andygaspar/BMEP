@@ -9,8 +9,8 @@ from Solvers.NetSolvers.net_solver import NetSolver
 
 class SearchSolver(NetSolver):
 
-    def __int__(self, n_branches, n_evaluations, dropout_nn, d_mat):
-        super(SearchSolver, self).__init__(d_mat, dropout_nn)
+    def __init__(self, n_branches, n_evaluations, dropout_nn, d_mat):
+        super().__init__(d_mat, dropout_nn)
         self._n_branches = n_branches
         self._n_evaluations = n_evaluations
         self.d_mat = d_mat
@@ -27,13 +27,13 @@ class SearchSolver(NetSolver):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
 
         adj_mat = self._open_branches(adj_mat)
-        current_branches = adj_mat.shape[0]
 
         for i in range(5, self.n):
             adj_mat = self._solve_step(i, (adj_mat, size_mask, initial_mask, d_mask))
 
         if self._best_solution is not None:
-            return self._best_solution
+            self.solution = self._best_solution.to('cpu').numpy()
+            self.obj_val = self._best_obj_val
         else:
             raise Exception()
 
