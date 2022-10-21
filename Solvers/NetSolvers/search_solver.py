@@ -129,10 +129,11 @@ class SearchSolver(NetSolver):
     '''
 
     def _update_instances(self, step_n, acts, adj_mat, ad_mask):
-        batch_size_range = torch.range(adj_mat.shape[0])
-        new_node_tensor = (self.n + step_n - 2) * torch.ones(acts.shape[0])
-        new_taxa_tensor = step_n * torch.ones(acts.shape[0])
+        batch_size_range = torch.range(0, adj_mat.shape[0] - 1, dtype=torch.long)
+        new_node_tensor = (self.n + step_n - 2) * torch.ones(acts.shape[0], dtype=torch.long)
+        new_taxa_tensor = step_n * torch.ones(acts.shape[0], dtype=torch.long)
 
+        acts = acts.long()
         #update ad_mask
         ad_mask[:, step_n] = torch.tensor([1, 0]).view((1, 1, -1))
         #update adjacency matrix
