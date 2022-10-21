@@ -129,13 +129,17 @@ class SearchSolver(NetSolver):
     '''
 
     def _update_instances(self, step_n, acts, adj_mat, ad_mask):
+        batch_size_range = torch.range(adj_mat.shape[0])
+        new_node_tensor = (self.n + step_n - 2) * torch.ones(acts.shape[0])
+        new_taxa_tensor = step_n * torch.ones(acts.shape[0])
+
         #update ad_mask
         ad_mask[:, step_n] = torch.tensor([0, 1]).view((1, 1, -1))
         #update adjacency matrix
-        adj_mat[:, acts[:, 0], acts[:, 1]] = adj_mat[:, acts[:, 1], acts[:, 0]] = 0  # detach selected
-        adj_mat[:, acts[:, 0], self.n + step_n - 2] = adj_mat[:, self.n + step_n - 2, acts[:, 0]] = 1  # reattach selected to new
-        adj_mat[:, acts[:, 1], self.n + step_n - 2] = adj_mat[:, self.n + step_n - 2, acts[:, 1]] = 1  # reattach selected to new
-        adj_mat[:, step_n, self.n + step_n - 2] = adj_mat[:, self.n + step_n - 2, step_n] = 1  # attach new
+        adj_mat[[batch_size_range, acts[:, 0], acts[:, 1]]] = adj_mat[[batch_size_range, acts[:, 1], acts[:, 0]]] = 0  # detach selected
+        adj_mat[[batch_size_range, acts[:, 0], new_node_tensor]] = adj_mat[[batch_size_range, new_node_tensor, acts[:, 0]]] = 1  # reattach selected to new
+        adj_mat[[batch_size_range, acts[:, 1], new_node_tensor]] = adj_mat[[batch_size_range, new_node_tensor, acts[:, 1]]] = 1  # reattach selected to new
+        adj_mat[[batch_size_range, new_taxa_tensor, new_node_tensor]] = adj_mat[[batch_size_range, new_node_tensor, new_taxa_tensor]] = 1  # attach new
         #update mask
         mask = torch.triu(adj_mat)
         #update tau and tau_mask
