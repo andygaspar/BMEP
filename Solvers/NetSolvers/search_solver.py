@@ -134,7 +134,7 @@ class SearchSolver(NetSolver):
         new_taxa_tensor = step_n * torch.ones(acts.shape[0])
 
         #update ad_mask
-        ad_mask[:, step_n] = torch.tensor([0, 1]).view((1, 1, -1))
+        ad_mask[:, step_n] = torch.tensor([1, 0]).view((1, 1, -1))
         #update adjacency matrix
         adj_mat[[batch_size_range, acts[:, 0], acts[:, 1]]] = adj_mat[[batch_size_range, acts[:, 1], acts[:, 0]]] = 0  # detach selected
         adj_mat[[batch_size_range, acts[:, 0], new_node_tensor]] = adj_mat[[batch_size_range, new_node_tensor, acts[:, 0]]] = 1  # reattach selected to new
