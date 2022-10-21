@@ -62,7 +62,7 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     # print(data_.y[i * 3 + 2])
 
     t2 = time.time()
-    search_solver = SearchSolver(20, 100, d, dgn)
+    search_solver = SearchSolver(15, 10, dgn, d)
     search_solver.solve()
     t2 = time.time() - t2
 
@@ -92,7 +92,7 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     or_sol.append(r_swa or res_1)
 
     print(i, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
-          np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
+          np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol), np.mean(r_search_list))
     print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), 6))
 print("accuracy", np.mean(r_swa_list))
 print("accuracy", np.mean(res_list))
