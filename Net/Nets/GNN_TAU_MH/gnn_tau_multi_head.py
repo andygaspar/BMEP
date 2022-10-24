@@ -59,10 +59,15 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.device = device
-        self.alpha = nn.ModuleList([Message(h_dimension, hidden_dim//self.num_heads, self.device)
+        self.alpha = nn.ModuleList([Message(h_dimension, hidden_dim , self.device)
                                     for _ in range(self.num_heads)])
-        self.e = nn.ModuleList([FE(h_dimension, hidden_dim//self.num_heads, self.device)
+        self.e = nn.ModuleList([FE(h_dimension, hidden_dim, self.device)
                                 for _ in range(self.num_heads)])
+        self.reduction = nn.Sequential(
+            nn.Linear(hidden_dim * num_heads, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim)
+        ).to(self.device)
 
     def forward(self, h, mat, mat_mask):
         heads = []
@@ -72,8 +77,8 @@ class MultiHeadAttention(nn.Module):
             e = self.e[i](hi, hj, mat).view(mat.shape[0], mat.shape[1], mat.shape[2], -1)
             heads.append((alpha * e).sum(dim=-2))
 
-        m = torch.cat(heads, dim=-1)
-        return m
+        out = self.reduction(torch.cat(heads, dim=-1))
+        return out
 
     @staticmethod
     def i_j(h):

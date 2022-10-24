@@ -20,7 +20,7 @@ from importlib.metadata import version
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-folder = 'GNN_TAU'
+folder = 'GNN_TAU_MH'
 data_folder = '03-M18_5_9'
 save = True
 

@@ -17,7 +17,7 @@
       "hidden_dim": 516,
       "num_messages": 3,
       "best_loss": "",
-      "drop out": 0.2,
+      "drop out": 0.4,
       "num heads": 3
 
     },
