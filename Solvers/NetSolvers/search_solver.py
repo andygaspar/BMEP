@@ -29,8 +29,8 @@ class SearchSolver(NetSolver):
 
             adj_mat = self._open_branches(adj_mat)
 
-            #for i in range(5, self.n):
-            for i in range(4, self.n):
+            for i in range(5, self.n):
+            #for i in range(4, self.n):
                 adj_mat = self._solve_step(i, (adj_mat, size_mask, initial_mask, d_mask))
 
             if self._best_solution is not None:
@@ -49,11 +49,11 @@ class SearchSolver(NetSolver):
         idx_tensors = list(torch.tensor([x, y]) for x, y in zip(*torch.nonzero(mask, as_tuple=True)))
         branch_mats = [self.add_node(copy.deepcopy(adj_mat), idxs, 3, self.n) for idxs in idx_tensors]
 
-        ## open second level branches
-        #masks = [self.get_masks(b_mat)[1] for b_mat in branch_mats]
-        #idx_tensors = [[torch.tensor([x, y]) for x, y in zip(*torch.nonzero(m, as_tuple=True))] for m in masks]
-        #branch_mats = [self.add_node(copy.deepcopy(b_mat), idx, 4, self.n).unsqueeze(0)
-        #               for b_mat, idxs in zip(branch_mats, idx_tensors) for idx in idxs]
+        # open second level branches
+        masks = [self.get_masks(b_mat)[1] for b_mat in branch_mats]
+        idx_tensors = [[torch.tensor([x, y]) for x, y in zip(*torch.nonzero(m, as_tuple=True))] for m in masks]
+        branch_mats = [self.add_node(copy.deepcopy(b_mat), idx, 4, self.n).unsqueeze(0)
+                       for b_mat, idxs in zip(branch_mats, idx_tensors) for idx in idxs]
         branch_mats = [b_mat.unsqueeze(0) for b_mat in branch_mats]
 
         return torch.cat(branch_mats, dim=0)
