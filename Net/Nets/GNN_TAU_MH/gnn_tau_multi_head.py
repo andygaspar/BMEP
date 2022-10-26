@@ -59,7 +59,7 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__()
         self.num_heads = num_heads
         self.device = device
-        self.alpha = nn.ModuleList([Message(h_dimension, hidden_dim , self.device)
+        self.alpha = nn.ModuleList([Message(h_dimension, hidden_dim, self.device)
                                     for _ in range(self.num_heads)])
         self.e = nn.ModuleList([FE(h_dimension, hidden_dim, self.device)
                                 for _ in range(self.num_heads)])
