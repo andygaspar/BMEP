@@ -15,12 +15,12 @@ class InstanceCpp:
 
     def __init__(self):
         self.lib = ctypes.CDLL('Solvers/CPP/bridge.so')
-        self.lib.run.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_int]
+        self.lib.run.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_int, ctypes.c_bool]
         self.lib.run.restype = ctypes.c_void_p
 
-    def solve(self, d, n):
+    def solve(self, d, n, log):
         self.lib.run.restype = ndpointer(dtype=ctypes.c_int32, shape=(n*2 - 2, n*2 - 2))
-        return self.lib.run(d.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), n)
+        return self.lib.run(d.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), n, log)
 
 
 cpp = InstanceCpp()
@@ -31,9 +31,9 @@ class CppSolver(Solver):
     def __init__(self, d):
         super().__init__(d)
 
-    def solve(self):
+    def solve(self, log):
         d = np.ascontiguousarray(self.d.flatten(), dtype=np.float)
-        adj_mat = cpp.solve(d, self.m)
+        adj_mat = cpp.solve(d, self.m, log)
         g = nx.from_numpy_matrix(adj_mat)
         self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m]
         return self.compute_obj(), self.T

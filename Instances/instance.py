@@ -13,10 +13,23 @@ from Solvers.PardiSolver.pardi_solver_parallel import PardiSolverParallel
 from Solvers.SWA.swa_solver import SwaSolver
 
 
+def write_csv(d):
+    n = d.shape[0]
+    with open('test_input.txt', 'w', newline='\n') as csvfile:
+        csvfile.write(str(n))
+        csvfile.write('\n')
+        for row in d:
+            for el in row:
+                csvfile.write(str(el))
+                csvfile.write('\n')
+
 class Instance:
 
-    def __init__(self, d, labels=None, max_time=None, pardi_solver=False):
+    def __init__(self, d, labels=None, max_time=None, pardi_solver=False, log=False):
+
         self.d = self.sort_d(d)
+        if log:
+            write_csv(self.d)
         self.labels = [i for i in string.ascii_uppercase] if labels is None else labels
         n = self.d.shape[0]
         d_zeros = np.zeros((2*n - 2, 2*n - 2))
@@ -26,13 +39,13 @@ class Instance:
         # self.T = self.T[:n, :n]
         instance = CppSolver(self.d)
         self.out_time = False
-        self.obj_val, self.T = instance.solve()
-        instance = PardiSolver(self.d) if n < 7 else PardiSolverParallel(self.d)
-        out_time, obj_val, T = instance.solve()
-        T = T[:n, :n]
-        equal = np.array_equal(self.T, T)
-        if not equal:
-            print("daniele")
+        self.obj_val, self.T = instance.solve(log)
+        # instance = PardiSolver(self.d) if n < 7 else PardiSolverParallel(self.d)
+        # out_time, obj_val, T = instance.solve()
+        # T = T[:n, :n]
+        # equal = np.array_equal(self.T, T)
+        # if not equal:
+        #     print("daniele")
 
 
         # if pardi_solver:

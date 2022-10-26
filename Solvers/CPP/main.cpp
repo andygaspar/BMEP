@@ -123,13 +123,15 @@ void Precompute_Pardi_Beta_Array( unsigned int n){
 
 void GlobalSearch(int n, int core){
 	Solver *CoreSolver=new Solver(core,n);
-	while(true){		
+	while(true){
 		NODE node=CoreSolver->RetrieveNode_and_Delete_from_Queue();
 		if(node.empty==false){
 			StatsArray[core].core_runnnig=true;
 			CoreSolver->SetNode_and_Run(&node);
 			StatsArray[core].core_runnnig=false;
-		}	
+
+		}
+
 		if(Queue.empty()==true && AllIdleCores(OverallCoreNumber)==true) break;
 	}
 	delete CoreSolver;
@@ -137,6 +139,8 @@ void GlobalSearch(int n, int core){
 
 int* make_adj_mat(vector <struct EDGE>tree){
     int n = (int)tree.size();
+    cout<<"n "<<n<<endl;
+    for(int i=0; i< n; i++) cout<<tree[i].i<<' '<<tree[i].j<<endl;
     int n_mat = n + 1;
     int* adj_mat = new int[n_mat * n_mat];
     for(int i = 0; i < n_mat; i++) {for(int j=0; j<n_mat; j++) adj_mat[i*n_mat +j] = 0;}
@@ -157,6 +161,12 @@ int* Initializer_and_Terminator(double* d, int taxa, bool rescaling, int Max_Cor
 		
 		//IH->ReadDistanceMatrix(datafile,namefile,taxa,dist,n,rescaling);
 		dist = IH -> set_d(d, taxa);
+				for (int i=0; i< n+1; i++) {
+			for (int j=0; j < n+1; j++) {
+				cout<<dist[i][j]<<" ";
+			}
+			cout<<endl;
+		}
 		precomputedpow=new double[n+1]; 
 		precomputedpowVH=new double[n+1]; 
 		for( unsigned int i=0; i<=n; i++){precomputedpow[i]=pow(2.0,i); precomputedpowVH[i]=pow(2.0,(double)i/n);} //1.2446
@@ -234,7 +244,6 @@ int* Initializer_and_Terminator(double* d, int taxa, bool rescaling, int Max_Cor
 			GlobalSearch(n,core); //Running parallel Search;
 		}
 	}
-
 	//Let's wait for every core to finish
 
 	#pragma omp barrier
@@ -278,10 +287,14 @@ int* InputPaarser(double* d, int n_taxa){
 
 extern "C" {
 
-    int* run(double* d, int n_taxa) // float (*f)(Vector<float>))
+    int* run(double* d, int n_taxa, bool log) // float (*f)(Vector<float>))
     {
-		cout.setstate(std::ios_base::failbit);
-		XPRB::setMsgLevel(0);
+         cout<<log<<"++++++++++++++++++++++++++++++++++++++++"<<endl;
+
+        if(log==false){
+            cout.setstate(std::ios_base::failbit);
+            XPRB::setMsgLevel(0);
+            }
 		int* adj_mat = InputPaarser(d, n_taxa);
 		cout.clear();
 		return adj_mat;

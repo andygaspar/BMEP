@@ -8,7 +8,6 @@ import numpy as np
 from Instances.instance import Instance
 import random
 
-
 class Generator:
 
     def __init__(self, name_folder, num_instances, d_mat_initial, dim_min, dim_max, max_time,
@@ -19,7 +18,7 @@ class Generator:
         self.max_time = max_time
         self.dim_min, self.dim_max = dim_min, dim_max
         self.dim_range = range(dim_min, dim_max + 1)
-        self.m = dim_max*2 - 2
+        self.m = dim_max * 2 - 2
         self.d_mat_initial = d_mat_initial
         self.num_instances = num_instances
         self.pardi_solver = pardi_solver
@@ -40,13 +39,14 @@ class Generator:
         t = time.time()
         problem = 0
         while i < self.num_instances and time.time() - t < self.total_time:
+            print(i)
             out_time, instance = True, None
             dim = np.random.choice(self.dim_range)
             while time.time() - t < self.total_time and out_time:
                 idx = random.sample(range(self.d_mat_initial.shape[0]), k=dim)
                 # print("start", dim)
                 instance = Instance(self.d_mat_initial[idx, :][:, idx], max_time=self.max_time,
-                                    pardi_solver=self.pardi_solver)
+                                    pardi_solver=self.pardi_solver, log=(i == 151))
                 out_time = instance.out_time
                 # print("end", out_time)
             if instance is not None:
@@ -61,15 +61,15 @@ class Generator:
                     self.initial_masks[i, dim:, 1] = 1
                     self.d_mats[i] = d_mat
                     self.d_masks[i] = d_mask
-                    self.adj_mats[i][:dim*2 - 2, :dim*2 - 2] = instance.adj_mats[j]
+                    self.adj_mats[i][:dim * 2 - 2, :dim * 2 - 2] = instance.adj_mats[j]
                     a = np.sum(self.adj_mats[i], axis=-1)
                     self.ad_masks[i, :, 0] = a
-                    self.masks[i][:dim*2 - 2, :dim*2 - 2] = instance.masks[j]
-                    self.y[i][:dim*2 - 2, :dim*2 - 2] = instance.results[j]
+                    self.masks[i][:dim * 2 - 2, :dim * 2 - 2] = instance.masks[j]
+                    self.y[i][:dim * 2 - 2, :dim * 2 - 2] = instance.results[j]
                     self.problem[i] = problem
                     i += 1
                     j += 1
-                    print(i)
+
 
                 problem += 1
 
@@ -108,4 +108,3 @@ class Generator:
             taus.append(Tau)
 
         return torch.tensor(taus)
-

@@ -116,32 +116,110 @@ void Solver::Restore(int e){
 }
 
 
+//void Solver::ComputeTopologicalMatrix(int taxon, bool flag){
+//	//M[i][1],M[i][2],M[i][3] store the nodes adjacent to the internal node i+n
+//
+//	int tsize=tree.size();
+//	if(flag){
+//		for(register unsigned int i=1; i<=n-2;i++) mem[i]=1;
+//		for(register unsigned int e=0; e<tsize; e++){
+//			int temp1=tree[e].i; int temp2=tree[e].j;
+//			if (temp1 > n) {M[temp1-n][mem[temp1-n]]=temp2; mem[temp1-n]++;}
+//			if (temp2 > n) {M[temp2-n][mem[temp2-n]]=temp1; mem[temp2-n]++;}
+//		}
+//	}
+//
+//	register int CurrentNode,VisitedNode;
+//	len=0;
+//	Tau[0][0] = 0; // Modified 2/6/2009
+//	for(register unsigned int j=0; j<tsize; j++){
+//		if(tree[j].i<=taxon){
+//			int i = tree[j].i;
+//			int father=tree[j].j;
+//
+//			Tau[i][i]=0; // Modified 2/6/2009 - rimodificato il 29/9/2020
+//			Tau[i][0]=0; // modificato il 29/9/2020
+//
+//			M[father-n][4]=1; M[father-n][5]=i; M[father-n][6]=0;
+//			CurrentNode=father;
+//			while(true){
+//				if (M[CurrentNode-n][6]<3){
+//					M[CurrentNode-n][6]++; VisitedNode=M[CurrentNode-n][M[CurrentNode-n][6]];
+//					if (VisitedNode != M[CurrentNode-n][5]){
+//						if (VisitedNode > n){
+//							M[VisitedNode-n][4]=M[CurrentNode-n][4]+1;
+//							M[VisitedNode-n][5]=CurrentNode;
+//							M[VisitedNode-n][6]=0;
+//							CurrentNode=VisitedNode;
+//
+//						}
+//						else{
+//
+//							 // Modified 2/6/2009 - rimodificato il 29/9/2020
+//							 	Tau[i][VisitedNode]=M[CurrentNode-n][4]+1;
+//							 	if(Tau[i][VisitedNode]>Tau[i][0]){
+//							 		Tau[i][0] = Tau[i][VisitedNode];
+//							 		if (Tau[i][0] > Tau[0][0]) Tau[0][0] = Tau[i][0];
+//							 	}
+//							 // End Modified 2/6/2009 - 29/9/2020
+//							 if(VinhHaeseler) len+=dist[i][VisitedNode]/precomputedpowVH[Tau[i][VisitedNode]];              //pow(2.0,(double)Tau[i][VisitedNode]/n);
+//							 else len+=dist[i][VisitedNode]*precomputedpow[n-Tau[i][VisitedNode]];
+//						}
+//					}
+//				}
+//				else{
+//
+////                    cout<<"else in "<<" "<<CurrentNode<<"  "<<father<<endl;
+//					if(CurrentNode == father) {
+////					cout<<"here"<<CurrentNode<<endl;
+//					break;
+////					    cout<<"not here"<<CurrentNode<<endl;
+//					    }
+//					else {
+////                        cout<<"here"<<CurrentNode<<endl;
+//					    CurrentNode=M[CurrentNode-n][5];
+////                        cout<<"not here"<<CurrentNode<<endl;
+//
+//					}
+//				}
+//			}
+//      	}
+//    }
+//}
+
 void Solver::ComputeTopologicalMatrix(int taxon, bool flag){
 	//M[i][1],M[i][2],M[i][3] store the nodes adjacent to the internal node i+n
+
 	int tsize=tree.size();
 	if(flag){
 		for(register unsigned int i=1; i<=n-2;i++) mem[i]=1;
 		for(register unsigned int e=0; e<tsize; e++){
-			int temp1=tree[e].i; int temp2=tree[e].j;	
+			int temp1=tree[e].i; int temp2=tree[e].j;
 			if (temp1 > n) {M[temp1-n][mem[temp1-n]]=temp2; mem[temp1-n]++;}
 			if (temp2 > n) {M[temp2-n][mem[temp2-n]]=temp1; mem[temp2-n]++;}
 		}
-	}	
-	register int CurrentNode,VisitedNode; 
+	}
+
+	register int CurrentNode,VisitedNode;
 	len=0;
 	Tau[0][0] = 0; // Modified 2/6/2009
 	for(register unsigned int j=0; j<tsize; j++){
+
 		if(tree[j].i<=taxon){
+
+
 			int i = tree[j].i;
-			int father=tree[j].j; 
-			
+			int father=tree[j].j;
+
 			Tau[i][i]=0; // Modified 2/6/2009 - rimodificato il 29/9/2020
 			Tau[i][0]=0; // modificato il 29/9/2020
-
-			M[father-n][4]=1; M[father-n][5]=i; M[father-n][6]=0; 
-			CurrentNode=father; 
-			while(true){
-				if (M[CurrentNode-n][6]<3){
+            cout<<"here g "<<tree[j].i<<" "<<tree[j].j<<" "<<n<<endl;
+			M[father-n][4]=1; M[father-n][5]=i; M[father-n][6]=0;
+			cout<<"here ggg"<<endl;
+			CurrentNode=father;
+			bool over = false;
+			while(not over){
+				if (not over and M[CurrentNode-n][6]<3){
 					M[CurrentNode-n][6]++; VisitedNode=M[CurrentNode-n][M[CurrentNode-n][6]];
 					if (VisitedNode != M[CurrentNode-n][5]){
 						if (VisitedNode > n){
@@ -149,28 +227,41 @@ void Solver::ComputeTopologicalMatrix(int taxon, bool flag){
 							M[VisitedNode-n][5]=CurrentNode;
 							M[VisitedNode-n][6]=0;
 							CurrentNode=VisitedNode;
+
 						}
-						else{    
+						else{
+
 							 // Modified 2/6/2009 - rimodificato il 29/9/2020
-							 	Tau[i][VisitedNode]=M[CurrentNode-n][4]+1;	
+							 	Tau[i][VisitedNode]=M[CurrentNode-n][4]+1;
 							 	if(Tau[i][VisitedNode]>Tau[i][0]){
-							 		Tau[i][0] = Tau[i][VisitedNode];        
+							 		Tau[i][0] = Tau[i][VisitedNode];
 							 		if (Tau[i][0] > Tau[0][0]) Tau[0][0] = Tau[i][0];
-							 	} 
+							 	}
 							 // End Modified 2/6/2009 - 29/9/2020
 							 if(VinhHaeseler) len+=dist[i][VisitedNode]/precomputedpowVH[Tau[i][VisitedNode]];              //pow(2.0,(double)Tau[i][VisitedNode]/n);
-							 else len+=dist[i][VisitedNode]*precomputedpow[n-Tau[i][VisitedNode]]; 
-							  	
+							 else len+=dist[i][VisitedNode]*precomputedpow[n-Tau[i][VisitedNode]];
 						}
 					}
 				}
 				else{
-					if(CurrentNode == father) break;
-					else CurrentNode=M[CurrentNode-n][5];
-				}				
+
+//                    cout<<"else in "<<" "<<CurrentNode<<"  "<<father<<endl;
+					if(CurrentNode == father) {
+					    cout<<"here "<<CurrentNode<<endl;
+                        over = true;
+//					break;
+//					    cout<<"not here"<<CurrentNode<<endl;
+					    }
+					else {
+//                        cout<<"here"<<CurrentNode<<endl;
+					    CurrentNode=M[CurrentNode-n][5];
+//                        cout<<"not here"<<CurrentNode<<endl;
+
+					}
+				}
 			}
       	}
-    }  	
+    }
 }
 
 void Solver::LoadProblem(){
@@ -682,6 +773,7 @@ NODE Solver::RetrieveNode_and_Delete_from_Queue() {
 void Solver::SetNode_and_Run(NODE *node){
 	int taxon = node->taxon;
 	tree.clear();
+
 	//Reset of the decoding matrices.
 	for(register unsigned int i=0; i<=n; i++)    for(register unsigned int j=0; j<=n; j++) Tau[i][j]=0;
 	for(register unsigned int i=0; i<=n-2;  i++) for(register unsigned int j=0; j<7;  j++) M[i][j]=0;
@@ -693,11 +785,13 @@ void Solver::SetNode_and_Run(NODE *node){
 		edge.j=node->partial_tree[e].j;
 		tree.push_back(edge);
 	}	
-	
+
 	//clearing the tree of node 
 	node->partial_tree.clear();
 	//Decoding the tree
-	ComputeTopologicalMatrix(taxon,true); 
+	cout<<"started"<<endl;
+	ComputeTopologicalMatrix(taxon,true);
+	cout<<"ended"<<endl;
 	//Resetting all previous bounds...
 	for(register unsigned int i=1; i<=n-1; i++){ 
 		for(register unsigned int j=i+1; j<=n; j++){ 
