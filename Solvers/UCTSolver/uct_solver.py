@@ -3,8 +3,10 @@ import numpy as np
 
 class Node:
 
-    def __init__(self, state, c, parent=None):
+    def __init__(self, state, n_taxa, step_i, c, parent=None):
         self._state = state
+        self._n_taxa = n_taxa
+        self._step_i = step_i
         self._c = c
 
         self._val = None
@@ -44,26 +46,30 @@ class Node:
     '''
     Rollout this node using the given rollout policy and update node value
     '''
-    ### TODO ###
-    # 1. Update the node value after rollout
-    # 2. Update the visit count after rollout
-    ############
     def rollout(self, rollout_policy):
-        pass
+        current_state = self._state
+        for i in range(self._step_i, self._n_taxa):
+            action = rollout_policy(current_state)
+            ### UPDATE STATE ###
+            state = ...
+            ####################
+        self._val = compute_obj_val()
+        self.add_visit()
+
 
     '''
     From the given state extrapolate possible actions
     '''
 
     def _init_children(self):
-        pass
+        self._children = list(zip(*np.nonzero(np.triu(self._state))))
 
     '''
     Checks if the current node corresponds to a terminal node 
     '''
 
     def is_terminal(self):
-        pass
+        return self._step_i == self._n_taxa
 
     '''
     Back-propagate rollout information to parent nodes
