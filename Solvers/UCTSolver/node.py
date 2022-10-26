@@ -1,19 +1,21 @@
+import copy
+
 import numpy as np
 
 
 class Node:
 
-    def __init__(self, state, n_taxa, step_i, c, parent=None):
-        self._state = state
+    def __init__(self, adj_mat, n_taxa, add_node,  c=2**(1/2), step_i=3, parent=None):
+        self._adj_mat = adj_mat
         self._n_taxa = n_taxa
         self._step_i = step_i
         self._c = c
-
+        self.update_adj_mat = add_node
         self._val = None
         self._n_visits = 0
 
         self._parent = parent
-        self._children = []
+        self._children = None
 
     '''
     Return the best child node according to the UCT rule
@@ -38,31 +40,34 @@ class Node:
 
     def expand(self, rollout_policy):
         self._init_children()
-        map(lambda x: x.rollout(rollout_policy), self._children)
+        child_results = list(map(lambda x: x.rollout(rollout_policy), self._children))
         self._val = max([c.value() for c in self._children])
-
+        self.add_visit()
         self._backprop()
+
+        best_idx = np.argmin([child[0] for child in child_results])
+
+        return child_results[best_idx]
 
     '''
     Rollout this node using the given rollout policy and update node value
     '''
     def rollout(self, rollout_policy):
-        current_state = self._state
-        for i in range(self._step_i, self._n_taxa):
-            action = rollout_policy(current_state)
-            ### UPDATE STATE ###
-            state = ...
-            ####################
-        self._val = compute_obj_val()
+        obj_val, sol_adj_mat = rollout_policy(self._adj_mat, self._step_i)
+        self._val = -obj_val
         self.add_visit()
-
+        return obj_val, sol_adj_mat
 
     '''
-    From the given state extrapolate possible actions
+    From the given adj_mat extrapolate possible actions
     '''
 
     def _init_children(self):
-        self._children = list(zip(*np.nonzero(np.triu(self._state))))
+
+        actions = list(zip(*np.nonzero(np.triu(self._adj_mat))))
+        attributes = (self._n_taxa, self.update_adj_mat,  self._c, self._step_i + 1 , self)
+        self._children = [Node(self.update_adj_mat(copy.deepcopy(self._adj_mat), act, self._step_i, self._n_taxa),
+                               *attributes) for act in actions]
 
     '''
     Checks if the current node corresponds to a terminal node 
@@ -77,8 +82,10 @@ class Node:
 
     def _backprop(self):
         parent = self.parent()
-        while parent is not None and parent.value() < self.value():
-            parent._val = self._val
+        while parent is not None:
+            if parent.value() < self.value():
+                parent._val = self._val
+            parent.add_visit()
             parent = parent.parent()
 
     '''
@@ -87,3 +94,6 @@ class Node:
 
     def parent(self):
         return self._parent
+
+    def is_expanded(self):
+        return self._children is not None

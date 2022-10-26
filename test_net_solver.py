@@ -14,6 +14,7 @@ from Solvers.NetSolvers.heuristic_search import HeuristicSearch
 from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
 from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.SWA.swa_solver import SwaSolver
+from Solvers.UCTSolver.utc_solver import UtcSolver
 from Solvers.solver import Solver
 
 funs = Solver()
@@ -22,7 +23,7 @@ compute_obj_val = funs.compute_obj_val_from_adj_mat
 
 folder = 'GNN_TAU'
 file = '_3.622'
-data_folder = '6_taxa_0'
+data_folder = '03-M18_5_9'
 
 net_manager = NetworkManager(folder, file)
 dgn = net_manager.get_network()
@@ -36,8 +37,10 @@ start_test_set = start_test_set + 3 - start_test_set % 3
 
 
 r_swa_list = []
-res_list = []
-res_1_list = []
+r_mcts_list = []
+res_net_list = []
+res_h_net_list = []
+
 or_sol = []
 
 for i in range(start_test_set, start_test_set + n_test_problems, 3):
@@ -45,6 +48,11 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
 
     swa = SwaSolver(d.to('cpu').numpy())
     swa.solve()
+
+    t = time.time()
+    mcts_solver = UtcSolver(d.to('cpu').numpy())
+    mcts_solver.solve(100)
+    print('mcts ', time.time() - t)
 
     t = time.time()
     heuristic = HeuristicSearch2(d, dgn, width=15, distribution_runs=10)
@@ -74,20 +82,24 @@ for i in range(start_test_set, start_test_set + n_test_problems, 3):
     # print(d[:6, :6])
 
     r_swa = np.array_equal(swa.solution, sol)
-    res = np.array_equal(net_solver.solution, sol)
+    res_mcts = np.array_equal(mcts_solver.solution, sol)
+    res_net = np.array_equal(net_solver.solution, sol)
+
     res_1 = np.array_equal(heuristic.solution, sol)
     r_swa_list.append(r_swa)
-    res_list.append(res)
-    res_1_list.append(res_1)
+    r_mcts_list.append(res_mcts)
+    res_net_list.append(res_net)
+    res_h_net_list.append(res_1)
 
     or_sol.append(r_swa or res_1)
 
-    print(i, "correct", r_swa, res, res_1, t,  t1, "    same sol ",
+    print(i, "correct", r_swa, res_net, res_1, t,  t1, "    same sol ",
           np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
-    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), 6))
-print("accuracy", np.mean(r_swa_list))
-print("accuracy", np.mean(res_list))
-print("accuracy", np.mean(res_1_list))
+    print(swa.obj_val, mcts_solver.obj_val, net_solver.obj_val, heuristic.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), 6))
+print("accuracy swa ", np.mean(r_swa_list))
+print("accuracy mcts", np.mean(r_mcts_list))
+print("accuracy ", np.mean(res_net_list))
+print("accuracy", np.mean(res_h_net_list))
 print('or sol', np.mean(or_sol))
 
 

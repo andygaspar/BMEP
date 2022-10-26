@@ -19,7 +19,7 @@ class NetSolver(Solver):
     def solve(self):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
         with torch.no_grad():
-            for i in range(3, self.n):
+            for i in range(3, self.n_taxa):
                 ad_mask, mask = self.get_masks(adj_mat)
                 tau, tau_mask = self.get_tau_tensor(adj_mat, self.device)
                 y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0),
@@ -30,18 +30,18 @@ class NetSolver(Solver):
                 # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
                 a_max = torch.argmax(y.squeeze(0))
                 idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
-                adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i, n=self.n)
+                adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
                 self.adj_mats.append(adj_mat.to("cpu").numpy())
 
         self.solution = self.adj_mats[-1].astype(int)
-        self.obj_val = self.compute_obj_val_from_adj_mat(self.solution, self.d.to('cpu').numpy(), self.n)
+        self.obj_val = self.compute_obj_val_from_adj_mat(self.solution, self.d.to('cpu').numpy(), self.n_taxa)
 
     def initial_mats(self):
         adj_mat = self.initial_mat(self.device)
         size_mask = torch.ones_like(self.d)
         initial_mask = torch.zeros((self.m, 2)).to(self.device)
-        initial_mask[:, 0] = torch.tensor([1 if i < self.n else 0 for i in range(self.m)]).to(self.device)
-        initial_mask[:, 1] = torch.tensor([1 if i >= self.n else 0 for i in range(self.m)]).to(self.device)
+        initial_mask[:, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)
+        initial_mask[:, 1] = torch.tensor([1 if i >= self.n_taxa else 0 for i in range(self.m)]).to(self.device)
         d_mask = copy.deepcopy(self.d)
         d_mask[d_mask > 0] = 1
 
