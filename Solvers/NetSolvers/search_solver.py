@@ -54,7 +54,7 @@ class SearchSolver(NetSolver):
         idx_tensors = [[torch.tensor([x, y]) for x, y in zip(*torch.nonzero(m, as_tuple=True))] for m in masks]
         branch_mats = [self.add_node(copy.deepcopy(b_mat), idx, 4, self.n).unsqueeze(0)
                        for b_mat, idxs in zip(branch_mats, idx_tensors) for idx in idxs]
-        branch_mats = [b_mat.unsqueeze(0) for b_mat in branch_mats]
+        #branch_mats = [b_mat.unsqueeze(0) for b_mat in branch_mats]
 
         return torch.cat(branch_mats, dim=0)
 
@@ -168,7 +168,7 @@ class SearchSolver(NetSolver):
     # 2. Number of actions is less than the number of branches
     ##############
     def _select_best_instances(self, instance_batch, instance_values):
-        best_idxs = np.flip(np.argsort(instance_values))[:self._n_branches]
+        best_idxs = torch.argsort(torch.from_numpy(instance_values))[:self._n_branches]
         return instance_batch[best_idxs]
 
     def _evaluate_solutions(self, adj_mats):
