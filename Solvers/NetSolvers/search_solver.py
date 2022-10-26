@@ -153,7 +153,7 @@ class SearchSolver(NetSolver):
     '''
 
     def _update_best_solution(self, instance_batch, instance_values):
-        best_val, best_id = np.amax(instance_values), np.argmax(instance_values)
+        best_val, best_id = np.amin(instance_values), np.argmin(instance_values)
         if best_val < self._best_obj_val:
             self._best_solution = instance_batch[best_id]
             self._best_obj_val = best_val
@@ -168,7 +168,7 @@ class SearchSolver(NetSolver):
     # 2. Number of actions is less than the number of branches
     ##############
     def _select_best_instances(self, instance_batch, instance_values):
-        best_idxs = np.argsort(instance_values)[:self._n_branches]
+        best_idxs = np.flip(np.argsort(instance_values))[:self._n_branches]
         return instance_batch[best_idxs]
 
     def _evaluate_solutions(self, adj_mats):
