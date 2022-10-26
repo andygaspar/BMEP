@@ -7,6 +7,7 @@ from os import walk
 import numpy as np
 import torch
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
+from FastME.fast_me import FastMeSolver
 from Net.network_manager import NetworkManager
 from Solvers.BBSolver.bb_solver import BB_Solver
 from Solvers.IpSolver.ip_solver import IPSolver
@@ -15,7 +16,9 @@ from Solvers.NetSolvers.heuristic_search import HeuristicSearch
 from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
 from Solvers.NetSolvers.heuristic_search_3 import HeuristicSearch3
 from Solvers.PardiSolver.pardi_solver import PardiSolver
+from Solvers.PardiSolver.pardi_solver_parallel import PardiSolverParallel
 from Solvers.SWA.swa_solver import SwaSolver
+from Solvers.UCTSolver.utc_solver import UtcSolver
 
 warnings.simplefilter("ignore")
 
@@ -42,16 +45,16 @@ m = mats[3]
 dim_dataset = m.shape[0]
 # random.seed(0)
 folder = 'GNN_TAU'
-file = '_4.551_0i'
+file = '_3.622'
 
 # data_folder = '6_taxa_0'
 
-net_manager = NetworkManager(folder, file)
-dgn = net_manager.get_network()
+# net_manager = NetworkManager(folder, file)
+# dgn = net_manager.get_network()
 
-dim = 8
+dim = 15
 better = []
-
+worse = []
 for _ in range(100):
     idx = random.sample(range(dim_dataset), k=dim)
     mat = sort_d(copy.deepcopy(m[idx, :][:, idx]))
@@ -64,10 +67,18 @@ for _ in range(100):
     swa = SwaSolver(d)
     swa.solve()
 
+    # t = time.time()
+    # heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, width=30, distribution_runs=300)
+    # heuristic.solve()
+    # t1 = time.time() - t
+
     t = time.time()
-    heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, width=30, distribution_runs=300)
-    heuristic.solve()
-    t1 = time.time() - t
+    mcts_solver = UtcSolver(d)
+    mcts_solver.solve(100)
+    print('mcts ', time.time() - t)
+
+    fast = FastMeSolver(d[:dim, :dim])
+    fast.solve()
 
     # t1 = time.time()
     # heuristic_ = HeuristicSearch3(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, width=30, distribution_runs=300)
@@ -87,11 +98,20 @@ for _ in range(100):
     # print(heuristic.obj_val)
     # print('')
     # t = time.time() - t
-    print(_, nj.obj_val, swa.obj_val, heuristic.obj_val, swa.obj_val >= heuristic.obj_val)
 
-    better.append(swa.obj_val >= heuristic.obj_val)
+    # pardi = PardiSolverParallel(d[:dim, :dim])
+    # pardi.solve()
+    bet = fast.obj_val > mcts_solver.obj_val
+    wor = fast.obj_val < mcts_solver.obj_val
+    outcome = 'better' if bet else ('worse' if wor else 'equal')
+    print(_, swa.obj_val, fast.obj_val,  mcts_solver.obj_val) #, pardi.obj_val, mcts_solver.obj_val == pardi.obj_val, outcome)
+
+    better.append(bet)
+    worse.append(wor)
 
 print(np.mean(better))
+print(np.mean(worse))
+
 # instance = IPSolver(d[:dim, :dim])
 # instance.solve(init_adj_sol=swa.solution, logs=True)
 

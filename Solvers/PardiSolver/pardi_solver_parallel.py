@@ -16,16 +16,16 @@ class PardiSolverParallel(Solver):
 
     def __init__(self, d):
         super().__init__(d)
-        self.n = d.shape[0]
-        self.m = self.n + self.n - 2
+        self.n_taxa = d.shape[0]
+        self.m = self.n_taxa + self.n_taxa - 2
         self.steps = 0
         self.best_val = 10 ** 5
         self.solution = None
 
     def compute_obj_val(self, mat):
         g = nx.from_numpy_matrix(mat)
-        Tau = nx.floyd_warshall_numpy(g)[:self.n, :self.n]
-        return np.sum([self.d[i, j] / 2 ** (Tau[i, j]) for i in range(self.n) for j in range(self.n)])
+        Tau = nx.floyd_warshall_numpy(g)[:self.n_taxa, :self.n_taxa]
+        return np.sum([self.d[i, j] / 2 ** (Tau[i, j]) for i in range(self.n_taxa) for j in range(self.n_taxa)])
 
     def recursion(self, proc: OpenProcess):
         new_procs, best_sol = [], None
@@ -54,8 +54,8 @@ class PardiSolverParallel(Solver):
     def solve(self):
         mat = np.zeros((self.m, self.m))
         for i in range(3):
-            mat[i, self.n] = mat[self.n, i] = 1
-        procs = ([OpenProcess(mat, step=3, num_steps=self.n + self.n - 3, best_val=self.best_val)])
+            mat[i, self.n_taxa] = mat[self.n_taxa, i] = 1
+        procs = ([OpenProcess(mat, step=3, num_steps=self.n_taxa + self.n_taxa - 3, best_val=self.best_val)])
         num_procs = mp.cpu_count()
         pool = mp.Pool(num_procs)
         while procs:
@@ -79,11 +79,11 @@ class PardiSolverParallel(Solver):
 
     def add_node(self, adj_mat, idxs, new_node_idx):
         adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
-        adj_mat[idxs[0], self.n + new_node_idx - 2] = adj_mat[
-            self.n + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
-        adj_mat[idxs[1], self.n + new_node_idx - 2] = adj_mat[
-            self.n + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
-        adj_mat[new_node_idx, self.n + new_node_idx - 2] = adj_mat[
-            self.n + new_node_idx - 2, new_node_idx] = 1  # attach new
+        adj_mat[idxs[0], self.n_taxa + new_node_idx - 2] = adj_mat[
+            self.n_taxa + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
+        adj_mat[idxs[1], self.n_taxa + new_node_idx - 2] = adj_mat[
+            self.n_taxa + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
+        adj_mat[new_node_idx, self.n_taxa + new_node_idx - 2] = adj_mat[
+            self.n_taxa + new_node_idx - 2, new_node_idx] = 1  # attach new
 
         return adj_mat

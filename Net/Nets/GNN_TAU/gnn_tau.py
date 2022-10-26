@@ -123,7 +123,7 @@ class GNN_TAU(Network):
         mat_size = y_h.shape
         y_hat = F.softmax(y_h.view(mat_size[0], -1), dim=-1)
 
-        return y_hat, h
+        return y_hat, F.log_softmax(y_h.view(mat_size[0], -1), dim=-1)
 
     def context_message(self, h, d, d_mask, initial_mask, rounds):
         for i in range(rounds):

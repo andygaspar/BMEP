@@ -17,8 +17,8 @@ class UtcSolver(Solver):
 
     def solve(self, n_iterations=100):
         adj_mat = self.initial_mat()
-        root = Node(adj_mat, self.n_taxa, self.add_node)
-        self.obj_val, self.solution = root.expand(self.swa_policy)
+        root = Node(adj_mat, self.n_taxa, self.add_node, self.swa_policy)
+        self.obj_val, self.solution = root.expand()
 
         for iter in range(n_iterations):
             node = root
@@ -27,7 +27,7 @@ class UtcSolver(Solver):
 
             if node.is_terminal():
                 break
-            run_best = node.expand(self.swa_policy)
+            run_best = node.expand()
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 

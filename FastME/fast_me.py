@@ -35,7 +35,7 @@ class FastMeSolver(Solver):
             line = str(i) + ' ' + ' '.join(row)
             d_string += line + '\n'
 
-        d_string = str(self.n) + '\n' + d_string
+        d_string = str(self.n_taxa) + '\n' + d_string
 
         with open(self.path+'mat.mat', 'w', newline='') as csvfile:
             csvfile.write(d_string)
@@ -52,8 +52,8 @@ class FastMeSolver(Solver):
 
         tree = trees[0]
 
-        nx.draw(tree, with_labels=True)
-        plt.show()
+        # nx.draw(tree, with_labels=True)
+        # plt.show()
         tree.edges()
         adj_mat = nx.adjacency_matrix(tree).toarray()
         adj_mat[adj_mat != 0] = 1
