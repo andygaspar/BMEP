@@ -14,10 +14,10 @@ class SwaSolver(Solver):
     def __init__(self, d):
         super(SwaSolver, self).__init__(d)
 
-    def solve(self):
-        adj_mat = self.initial_mat()
+    def solve(self, start=3, adj_mat=None):
+        adj_mat = self.initial_mat() if adj_mat is None else adj_mat
         min_val, min_adj_mat = 10 ** 5, None
-        for i in range(3, self.n):
+        for i in range(start, self.n):
             min_val = 10 ** 5
             minor_idxs = [j for j in range(i + 1)] + [j for j in range(self.n, self.n + i - 1)]
             idxs_list = np.array(np.nonzero(np.triu(adj_mat))).T
