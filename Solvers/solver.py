@@ -10,7 +10,7 @@ class Solver:
     def __init__(self, d=None):
         self.d = d
         self.m = d.shape[0] if d is not None else None
-        self.n = (self.m + 2) // 2 if d is not None else None
+        self.n_taxa = (self.m + 2) // 2 if d is not None else None
 
         self.solution = None
         self.obj_val = None
@@ -18,9 +18,9 @@ class Solver:
 
     def initial_mat(self, device=None):
         adj_mat = np.zeros_like(self.d) if device is None else torch.zeros_like(self.d).to(device)
-        adj_mat[0, self.n] = adj_mat[self.n, 0] = 1
-        adj_mat[1, self.n] = adj_mat[self.n, 1] = 1
-        adj_mat[2, self.n] = adj_mat[self.n, 2] = 1
+        adj_mat[0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
+        adj_mat[1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
+        adj_mat[2, self.n_taxa] = adj_mat[self.n_taxa, 2] = 1
         return adj_mat
 
     @staticmethod
