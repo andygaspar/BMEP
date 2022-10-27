@@ -9,15 +9,11 @@ from Solvers.solver import Solver
 class NetSolver(Solver):
 
     def __init__(self, d, net):
-
+        super().__init__(d)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        if type(d) == torch.tensor:
-            super().__init__(d[: self.n_taxa, :self.n_taxa])
-        else:
-            super().__init__(d)
-            d_with_internals = np.zeros((self.m, self.m))
-            d_with_internals[:self.n_taxa, :self.n_taxa] = self.d
-            self.d = torch.tensor(d_with_internals).to(torch.float).to(self.device)
+        d_with_internals = torch.zeros((self.m, self.m))
+        d_with_internals[:self.n_taxa, :self.n_taxa] = d if type(d) == torch.Tensor else torch.tensor(d)
+        self.d = d_with_internals.to(torch.float).to(self.device)
         self.net = net
         self.adj_mats = []
 

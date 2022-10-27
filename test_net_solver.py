@@ -24,7 +24,7 @@ file = '_4.551_0'
 data_folder = '03-M18_5_9' #'6_taxa_0'
 n_test_problems = 100
 
-net_manager = NetworkManager(folder, file)
+net_manager = NetworkManager(folder, file, supervised=True)
 dgn = net_manager.get_network()
 
 # problems = torch.tensor([i for i in range(10000//3 + 1) for j in range(3)][:-2])
@@ -49,7 +49,7 @@ for _ in range(n_test_problems):
     d = data_.d_mats[pb_idxs[0]]
     n = 3 + pb_idxs.shape[0]
     m = n * 2 - 2
-    d = d[: m, : m]
+    d = d[: n, : n]
 
     swa = SwaSolver(d.to('cpu').numpy())
     swa.solve()
