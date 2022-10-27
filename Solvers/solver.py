@@ -30,7 +30,7 @@ class Solver:
                 sorted_d[i, j] = d[order[i], order[j]]
         return sorted_d
 
-    def initial_mat(self, device=None):
+    def initial_adj_mat(self, device=None):
         adj_mat = np.zeros((self.m, self.m)) if device is None else torch.zeros((self.m, self.m)).to(device)
         adj_mat[0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
         adj_mat[1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1

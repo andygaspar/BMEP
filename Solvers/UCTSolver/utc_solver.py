@@ -16,7 +16,7 @@ class UtcSolver(Solver):
         return swa_.obj_val, swa_.solution
 
     def solve(self, n_iterations=100):
-        adj_mat = self.initial_mat()
+        adj_mat = self.initial_adj_mat()
         root = Node(adj_mat, self.n_taxa, self.add_node, self.swa_policy)
         self.obj_val, self.solution = root.expand()
 

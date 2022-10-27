@@ -20,7 +20,7 @@ class PolicyGradientEpisode(NetSolver):
 
     def episode(self, baseline=0):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
-        trajectory = []
+        trajectory, actions = [], []
 
         for i in range(3, self.n_taxa):
             ad_mask, mask = self.get_masks(adj_mat)
@@ -32,6 +32,7 @@ class PolicyGradientEpisode(NetSolver):
 
             # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
             a_max = torch.argmax(probs.squeeze(0))
+            actions.append(a_max)
             trajectory.append(l_probs)
             idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
             adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
@@ -40,14 +41,15 @@ class PolicyGradientEpisode(NetSolver):
         self.solution = self.adj_mats[-1].astype(int)
         self.obj_val = self.compute_obj_val_from_adj_mat(self.solution, self.d.to('cpu').numpy(), self.n_taxa)
         l_probs = torch.vstack(trajectory)
-        l_probs = l_probs[l_probs > - 9e15]
-        self.loss = torch.sum((baseline - self.obj_val) * l_probs)
+        actions = torch.tensor(actions, dtype=torch.long)
+        l_probs = l_probs[(torch.range(0, len(l_probs) - 1, dtype=torch.long), actions)]
+        self.loss = torch.sum(l_probs * (baseline - self.obj_val) / baseline)
         self.optimiser.zero_grad()
         self.loss.backward()
         self.optimiser.step()
 
     def initial_mats(self):
-        adj_mat = self.initial_mat(self.device)
+        adj_mat = self.initial_adj_mat(self.device)
         size_mask = torch.ones_like(self.d)
         initial_mask = torch.zeros((self.m, 2)).to(self.device)
         initial_mask[:, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)

@@ -69,7 +69,7 @@ dim_dataset = m.shape[0]
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
-episodes = 10_000_000
+episodes = 10_000
 
 for episode in range(episodes):
     dim = np.random.choice(range(6, 9))
@@ -82,8 +82,6 @@ for episode in range(episodes):
     swa.solve()
     pol = PolicyGradientEpisode(d, dgn, optimizer)
     pol.episode(swa.obj_val)
-
-
 
     if episode % 10 == 0:
         print(episode, 'dim', dim, '  loss ', pol.loss.item(), '  agent obj', pol.obj_val,  '  swa', swa.obj_val,
