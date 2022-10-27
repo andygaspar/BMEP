@@ -11,7 +11,7 @@ class Solver:
         if sorted_d:
             self.d = d
         else:
-            self.d = self.sort_d(copy.deepcopy(d)) if d is not None else None
+            self.d = self.sort_d(d) if d is not None else None
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
 
@@ -21,9 +21,10 @@ class Solver:
 
     @staticmethod
     def sort_d(d):
-        dist_sum = np.sum(d, axis=0)
-        order = np.argsort(dist_sum)
-        sorted_d = np.zeros_like(d)
+        is_tensor = type(d) == torch.Tensor
+        dist_sum = np.sum(d, axis=0) if not is_tensor else torch.sum(d, dim=-1)
+        order = np.argsort(dist_sum) if not is_tensor else torch.argsort(dist_sum)
+        sorted_d = np.zeros_like(d) if not is_tensor else torch.zeros_like(d)
         for i in order:
             for j in order:
                 sorted_d[i, j] = d[order[i], order[j]]
