@@ -17,6 +17,7 @@ class PolicyGradientEpisode(Solver):
         self.optimiser = optim
         self.adj_mats = []
         self.loss = None
+
     def episode(self):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
         trajectory = []

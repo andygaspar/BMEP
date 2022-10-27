@@ -105,8 +105,6 @@ class GNN_TAU(Network):
         self.fm2 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
         self.fa = FA(h_dimension, hidden_dim, self.drop_out, self.device)
 
-
-
         if network is not None:
             self.load_weights(network)
 

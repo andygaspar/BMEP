@@ -10,10 +10,15 @@ class NetSolver(Solver):
 
     def __init__(self, d, net):
 
-        super().__init__(d)        # adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks
-        self.net = net
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+        if type(d) == torch.tensor:
+            super().__init__(d[: self.n_taxa, :self.n_taxa])
+        else:
+            super().__init__(d)
+            d_with_internals = np.zeros((self.m, self.m))
+            d_with_internals[:self.n_taxa, :self.n_taxa] = self.d
+            self.d = torch.tensor(d_with_internals).to(self.device)
+        self.net = net
         self.adj_mats = []
 
     def solve(self):

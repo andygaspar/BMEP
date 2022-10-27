@@ -23,15 +23,6 @@ from Solvers.UCTSolver.utc_solver import UtcSolver
 warnings.simplefilter("ignore")
 
 
-def sort_d(d):
-    dist_sum = np.sum(d, axis=0)
-    order = np.argsort(dist_sum)
-    sorted_d = np.zeros_like(d)
-    for i in order:
-        for j in order:
-            sorted_d[i, j] = d[order[i], order[j]]
-    return sorted_d
-
 path = 'Data_/csv_'
 filenames = sorted(next(walk(path), (None, None, []))[2])
 
@@ -52,14 +43,12 @@ file = '_3.622'
 # net_manager = NetworkManager(folder, file)
 # dgn = net_manager.get_network()
 
-dim = 15
+dim = 10
 better = []
 worse = []
 for _ in range(100):
     idx = random.sample(range(dim_dataset), k=dim)
-    mat = sort_d(copy.deepcopy(m[idx, :][:, idx]))
-    d = np.zeros((dim*2-2, dim*2-2))
-    d[:dim, :dim] = mat
+    d = m[idx, :][:, idx]
 
     nj = NjSolver(d)
     nj.solve()
@@ -77,7 +66,7 @@ for _ in range(100):
     mcts_solver.solve(100)
     print('mcts ', time.time() - t)
 
-    fast = FastMeSolver(d[:dim, :dim])
+    fast = FastMeSolver(d)
     fast.solve()
 
     # t1 = time.time()

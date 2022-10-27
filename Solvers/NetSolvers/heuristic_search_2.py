@@ -67,7 +67,7 @@ class HeuristicSearch2(NetSolver):
         self.solutions = [Solution(adj_mat, p=1, s=0)]
 
         with torch.no_grad():
-            for i in range(3, self.n):
+            for i in range(3, self.n_taxa):
                 distribution = Distribution(self.distribution_runs)
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
@@ -97,11 +97,11 @@ class HeuristicSearch2(NetSolver):
                 # print(len(dist_solution), [val.prob for val in dist_solution])
                 self.solutions = []
                 for s, idx in enumerate(dist_solution):
-                    adj_mat = self.add_node(copy.deepcopy(idx.sol.adj_mat), idx.idx_tensor, i, self.n)
+                    adj_mat = self.add_node(copy.deepcopy(idx.sol.adj_mat), idx.idx_tensor, i, self.n_taxa)
                     self.solutions.append(Solution(adj_mat, idx.prob, s))
 
         for sol in self.solutions:
-            sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n)
+            sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n_taxa)
 
         solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
         self.solution_object = self.solutions[solution_idx]
@@ -110,13 +110,13 @@ class HeuristicSearch2(NetSolver):
 
     def check_idxs(self, idxs, step):
         for idx in idxs:
-            if idx[0] >= step or idx[1] < self.n:
+            if idx[0] >= step or idx[1] < self.n_taxa:
                 idx[0] = np.random.choice(step)
-                idx[1] = np.random.choice(range(self.n, self.n + step - 1))
+                idx[1] = np.random.choice(range(self.n_taxa, self.n_taxa + step - 1))
         return idxs
 
-    def compute_obj_val(self, adj_mat, d, n):
-        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n)
+    def compute_obj_val(self, adj_mat, d, n_taxa):
+        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n_taxa)
 
     def compute_idxs_distribution(self, idxs, p):
         idxs_distribution = {}
