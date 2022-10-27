@@ -7,8 +7,11 @@ import torch
 
 class Solver:
 
-    def __init__(self, d=None):
-        self.d = self.sort_d(copy.deepcopy(d)) if d is not None else None
+    def __init__(self, d=None, sorted_d=False):
+        if sorted_d:
+            self.d = d
+        else:
+            self.d = self.sort_d(copy.deepcopy(d)) if d is not None else None
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
 

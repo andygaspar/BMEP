@@ -3,14 +3,13 @@ import json
 import torch
 from torch import nn
 
-from Net.Nets.GNN_TAU.gnn_tau import GNN_TAU
-from Net.Nets.GNN_TAU_MH.gnn_tau_multi_head import GNN_TAU_MH
-from Net.network import Network
-from Net.Nets.GNN.gnn import GNN
-from Net.Nets.GNN1.gnn_1 import GNN_1
-from Net.Nets.GNN2.gnn_2 import GNN_2
-from Net.Nets.GNN_edge.gnn_edge import GNN_edge
-from Net.Nets.GNN_GRU.gnn_gru import GNN_GRU
+from Net.Nets.Supervised.GNN_TAU.gnn_tau import GNN_TAU
+from Net.Nets.Supervised.GNN_TAU_MH.gnn_tau_multi_head import GNN_TAU_MH
+from Net.Nets.Supervised.GNN.gnn import GNN
+from Net.Nets.Supervised.GNN1.gnn_1 import GNN_1
+from Net.Nets.Supervised.GNN2.gnn_2 import GNN_2
+from Net.Nets.Supervised.GNN_edge.gnn_edge import GNN_edge
+from Net.Nets.Supervised.GNN_GRU.gnn_gru import GNN_GRU
 
 
 def mse(output, data):
@@ -78,15 +77,17 @@ criterion_dict = {
 
 class NetworkManager:
 
-    def __init__(self, folder, file=None):
+    def __init__(self, folder, file=None, supervised=None, training=False):
         self.folder = folder
         self.file = file
-        self.path = 'Net/Nets/' + folder + '/'
+        algorithm = 'Supervised/' if supervised else ('RlNets/' if not supervised else None)
+        self.path = 'Net/Nets/' + algorithm + folder + '/'
         if self.file is not None:
             self.path += self.file + '/'
         self.standings = []
-        file = open('.current_run.txt.swp', 'w')
-        file.close()
+        if training:
+            file = open('.current_run.txt.swp', 'w')
+            file.close()
 
         with open(self.path + 'params.json', 'r') as json_file:
             self.params = json.load(json_file)

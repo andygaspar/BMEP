@@ -35,15 +35,16 @@ for file in filenames:
 m = mats[3]
 dim_dataset = m.shape[0]
 # random.seed(0)
+supervised = True
 folder = 'GNN_TAU'
 file = '_3.622'
 
 # data_folder = '6_taxa_0'
 
-# net_manager = NetworkManager(folder, file)
-# dgn = net_manager.get_network()
+net_manager = NetworkManager(folder, file, supervised=True)
+dgn = net_manager.get_network()
 
-dim = 10
+dim = 15
 better = []
 worse = []
 for _ in range(100):
@@ -56,14 +57,16 @@ for _ in range(100):
     swa = SwaSolver(d)
     swa.solve()
 
-    # t = time.time()
-    # heuristic = HeuristicSearch2(torch.tensor(d).to(torch.float).to("cuda:0"), dgn, width=30, distribution_runs=300)
-    # heuristic.solve()
-    # t1 = time.time() - t
+    t = time.time()
+    heuristic = HeuristicSearch2(d, dgn, width=30, distribution_runs=10)
+    heuristic.solve()
+    t1 = time.time() - t
+
+    print('heur time ', time.time() - t)
 
     t = time.time()
     mcts_solver = UtcSolver(d)
-    mcts_solver.solve(100)
+    mcts_solver.solve(10)
     print('mcts ', time.time() - t)
 
     fast = FastMeSolver(d)
@@ -93,7 +96,7 @@ for _ in range(100):
     bet = fast.obj_val > mcts_solver.obj_val
     wor = fast.obj_val < mcts_solver.obj_val
     outcome = 'better' if bet else ('worse' if wor else 'equal')
-    print(_, swa.obj_val, fast.obj_val,  mcts_solver.obj_val) #, pardi.obj_val, mcts_solver.obj_val == pardi.obj_val, outcome)
+    print(_, swa.obj_val, heuristic.obj_val, fast.obj_val,  mcts_solver.obj_val) #, pardi.obj_val, mcts_solver.obj_val == pardi.obj_val, outcome)
 
     better.append(bet)
     worse.append(wor)
