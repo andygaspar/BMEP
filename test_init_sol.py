@@ -1,7 +1,5 @@
-import json
 import time
 
-import networkx as nx
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -9,7 +7,6 @@ from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
-from Net.Nets.GNN1.gnn_1 import GNN_1
 from Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver

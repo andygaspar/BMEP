@@ -16,16 +16,15 @@ class IPSolver(Solver):
         self.bmep = gb.Model()
         self.bmep.modelSense = gb.GRB.MINIMIZE
 
-        self.n = self.d.shape[0]
-        self.TuV = range(2 * self.n - 2)
-        self.T = range(self.n)
-        self.V = range(self.n, 2 * self.n - 2)
-        self.L = range(self.n - 1)
+        self.TuV = range(self.m)
+        self.T = range(self.n_taxa)
+        self.V = range(self.n_taxa, self.m)
+        self.L = range(self.n_taxa - 1)
 
         var_type = gb.GRB.BINARY if not relaxation else gb.GRB.CONTINUOUS
 
-        self.x = self.bmep.addMVar((2 * self.n - 2, 2 * self.n - 2, self.n - 1), vtype=var_type)
-        self.y = self.bmep.addMVar((2 * self.n - 2, 2 * self.n - 2, 2 * self.n - 2, 2 * self.n - 2), vtype=var_type)
+        self.x = self.bmep.addMVar((self.m, self.m, self.n_taxa - 1), vtype=var_type)
+        self.y = self.bmep.addMVar((self.m, self.m, self.m, self.m), vtype=var_type)
         self.sol_time = None
 
     def set_objective(self):
@@ -64,7 +63,7 @@ class IPSolver(Solver):
         if out_time:
             return out_time, None, None, None
         else:
-            T_sol = np.zeros((self.n, self.n), dtype=int)
+            T_sol = np.zeros((self.n_taxa, self.n_taxa), dtype=int)
 
             for i in self.T:
                 for j in self.T:
@@ -108,7 +107,7 @@ class IPSolver(Solver):
         self.bmep.addConstr(
             gb.quicksum(gb.quicksum(self.x[i, j, k] for i in self.T for j in self.T if i != j)
                         * (k + 1) * 2 ** (-(k + 1)) for k in self.L[1:])
-            == 2 * self.n - 3
+            == 2 * self.n_taxa - 3
         )
 
         # (36) (37)
@@ -119,14 +118,14 @@ class IPSolver(Solver):
                 self.bmep.addConstr(
                     gb.quicksum((k + 1) * (self.x[i, j, k] + self.x[q, t, k]) for k in self.L) <=
                     gb.quicksum((k + 1) * (self.x[i, q, k] + self.x[j, t, k]) for k in self.L)
-                    + (2 * self.n - 2) * self.y[i, j, q, t]
+                    + (self.m) * self.y[i, j, q, t]
 
                 )
 
                 self.bmep.addConstr(
                     gb.quicksum((k + 1) * (self.x[i, j, k] + self.x[q, t, k]) for k in self.L) <=
                     gb.quicksum((k + 1) * (self.x[i, t, k] + self.x[j, q, k]) for k in self.L) +
-                    (2 * self.n - 2) * (1 - self.y[i, j, q, t])
+                    (self.m) * (1 - self.y[i, j, q, t])
 
                 )
 
@@ -180,7 +179,7 @@ class IPSolver(Solver):
         Tau = nx.floyd_warshall_numpy(g)
         for i in self.TuV:
             for j in self.TuV:
-                for k in range(self.n - 1):
+                for k in range(self.n_taxa - 1):
                     self.x[i, j, k].Start = 1 if k == Tau[i, j] - 1 else 0
 
                     for q in self.TuV:

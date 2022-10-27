@@ -20,17 +20,12 @@ warnings.simplefilter("ignore")
 class FastMeSolver(Solver):
 
     def __init__(self, d):
-
-        size = d.shape[0]*2 - 2
-        new_d = np.zeros((size, size))
-        new_d[:d.shape[0], :d.shape[0]] = d
-        super().__init__(new_d)
-        self.d_small = self.d[:d.shape[0], :d.shape[0]]
+        super().__init__(d)
         self.path = 'FastME/fastme-2.1.6.4/'
 
     def solve(self):
         d_string = ''
-        for i, row in enumerate(self.d_small):
+        for i, row in enumerate(self.d):
             row = map(lambda x: str(round(x, 21)), row)
             line = str(i) + ' ' + ' '.join(row)
             d_string += line + '\n'

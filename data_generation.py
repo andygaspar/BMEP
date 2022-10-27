@@ -2,9 +2,7 @@ import copy
 import random
 import warnings
 from os import walk
-
 import numpy as np
-
 from Instances.generator import Generator
 from Instances.instance import Instance
 

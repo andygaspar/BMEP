@@ -7,17 +7,30 @@ import torch
 
 class Solver:
 
-    def __init__(self, d=None):
-        self.d = d
-        self.m = d.shape[0] if d is not None else None
-        self.n_taxa = (self.m + 2) // 2 if d is not None else None
+    def __init__(self, d=None, sorted_d=False):
+        if sorted_d:
+            self.d = d
+        else:
+            self.d = self.sort_d(copy.deepcopy(d)) if d is not None else None
+        self.n_taxa = d.shape[0] if d is not None else None
+        self.m = self.n_taxa * 2 - 2 if d is not None else None
 
         self.solution = None
         self.obj_val = None
         self.T = None
 
+    @staticmethod
+    def sort_d(d):
+        dist_sum = np.sum(d, axis=0)
+        order = np.argsort(dist_sum)
+        sorted_d = np.zeros_like(d)
+        for i in order:
+            for j in order:
+                sorted_d[i, j] = d[order[i], order[j]]
+        return sorted_d
+
     def initial_mat(self, device=None):
-        adj_mat = np.zeros_like(self.d) if device is None else torch.zeros_like(self.d).to(device)
+        adj_mat = np.zeros((self.m, self.m)) if device is None else torch.zeros((self.m, self.m)).to(device)
         adj_mat[0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
         adj_mat[1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
         adj_mat[2, self.n_taxa] = adj_mat[self.n_taxa, 2] = 1
@@ -33,7 +46,7 @@ class Solver:
         return adj_mat
 
     def compute_obj(self):
-        return np.sum([self.d[i, j] / 2 ** (self.T[i, j]) for i in range(self.m) for j in range(self.m)])
+        return np.sum([self.d[i, j] / 2 ** (self.T[i, j]) for i in range(self.n_taxa) for j in range(self.n_taxa)])
 
     @staticmethod
     def compute_obj_val_from_adj_mat(adj_mat, d, n):
@@ -57,3 +70,5 @@ class Solver:
         tau = nx.floyd_warshall_numpy(g)
         tau[np.isinf(tau)] = 0
         return tau
+
+

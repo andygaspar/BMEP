@@ -23,7 +23,7 @@ class HeuristicSearch3(NetSolver):
         self.solutions = [Solution(adj_mat, p=1, s=0)]
 
         with torch.no_grad():
-            for i in range(3, self.n - 1):
+            for i in range(3, self.n_taxa - 1):
                 distribution = Distribution(self.distribution_runs)
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
@@ -36,24 +36,13 @@ class HeuristicSearch3(NetSolver):
                         idx_tensor = torch.tensor([torch.div(a, self.m, rounding_mode='trunc'),
                                                    a % self.m]).to(self.device)
                         distribution.add(idx_tensor, sol=sol)
-                    # for _ in range(self.distribution_runs):
-                    #     y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
-                    #                      d_mask.unsqueeze(0),
-                    #                      size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
-                    #                      tau.unsqueeze(0),
-                    #                      tau_mask.unsqueeze(0), None))
-                    #     a_max = torch.argmax(y.squeeze(0))
-                    #     idx_tensor = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'),
-                    #                                a_max % self.m]).to(self.device)
-                    #     distribution.add(idx_tensor, sol=sol)
+
                 dist_solution = sorted([idx for idx in distribution.idxs_dict.values()], key=lambda x: x.prob,
                                        reverse=True)
-                # l = len(dist_solution)
                 dist_solution = dist_solution[:min(len(dist_solution), self.w)]
-                # print(len(dist_solution), [val.prob for val in dist_solution])
                 self.solutions = []
                 for s, idx in enumerate(dist_solution):
-                    adj_mat = self.add_node(copy.deepcopy(idx.sol.adj_mat), idx.idx_tensor, i, self.n)
+                    adj_mat = self.add_node(copy.deepcopy(idx.sol.adj_mat), idx.idx_tensor, i, self.n_taxa)
                     self.solutions.append(Solution(adj_mat, idx.prob, s))
 
         d = self.d.to("cpu").numpy()
@@ -62,8 +51,8 @@ class HeuristicSearch3(NetSolver):
             idxs_list = np.array(np.nonzero(np.triu(adj_mat))).T
             min_val, min_adj_mat = 10**5, None
             for idxs in idxs_list:
-                sol_ = self.add_node(copy.deepcopy(adj_mat), idxs, self.n - 1, self.n)
-                obj_val = self.compute_obj_val_from_adj_mat(sol_, d, self.n)
+                sol_ = self.add_node(copy.deepcopy(adj_mat), idxs, self.n_taxa - 1, self.n_taxa)
+                obj_val = self.compute_obj_val_from_adj_mat(sol_, d, self.n_taxa)
                 if obj_val < min_val:
                     min_val, min_adj_mat = obj_val, sol
             sol.adj_mat = min_adj_mat
@@ -76,13 +65,13 @@ class HeuristicSearch3(NetSolver):
 
     def check_idxs(self, idxs, step):
         for idx in idxs:
-            if idx[0] >= step or idx[1] < self.n:
+            if idx[0] >= step or idx[1] < self.n_taxa:
                 idx[0] = np.random.choice(step)
-                idx[1] = np.random.choice(range(self.n, self.n + step - 1))
+                idx[1] = np.random.choice(range(self.n_taxa, self.n_taxa + step - 1))
         return idxs
 
-    def compute_obj_val(self, adj_mat, d, n):
-        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n)
+    def compute_obj_val(self, adj_mat, d, n_taxa):
+        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n_taxa)
 
     def compute_idxs_distribution(self, idxs, p):
         idxs_distribution = {}

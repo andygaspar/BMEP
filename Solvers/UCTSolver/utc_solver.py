@@ -11,7 +11,7 @@ class UtcSolver(Solver):
         super(UtcSolver, self).__init__(d)
 
     def swa_policy(self, adj_mat: np.array, step: int):
-        swa_ = SwaSolver(self.d)
+        swa_ = SwaSolver(self.d, sorted_d=True)
         swa_.solve(start=step, adj_mat=adj_mat)
         return swa_.obj_val, swa_.solution
 

@@ -39,7 +39,7 @@ class HeuristicSearch(NetSolver):
                     for a in a_max.squeeze(0)]
             idxs = self.check_idxs(idxs, 3)
             for s, sol in enumerate(self.solutions[:3]):
-                sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3, self.n)
+                sol.adj_mat = self.add_node(copy.deepcopy(adj_mat), idxs[s], 3, self.n_taxa)
                 sol.prob = probs[s]
 
             if self.w > 3:
@@ -47,7 +47,7 @@ class HeuristicSearch(NetSolver):
                     self.solutions[i].adj_mat = copy.deepcopy(self.solutions[0].adj_mat)
                     self.solutions[i].prob = copy.deepcopy(self.solutions[0].prob)
 
-            for i in range(4, self.n):
+            for i in range(4, self.n_taxa):
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
                     ad_mask, mask = self.get_masks(adj_mat)
@@ -68,7 +68,7 @@ class HeuristicSearch(NetSolver):
                         for a in a_max]
                 idxss = self.check_idxs([idx[1:] for idx in idxs], i)
                 new_adj_mats = [self.add_node(copy.deepcopy(self.solutions[idxs[j][0].item()].adj_mat),
-                                              idxss[j], i, self.n)
+                                              idxss[j], i, self.n_taxa)
                                 for j in range(self.w)]
 
                 for j, sol in enumerate(self.solutions):
@@ -79,7 +79,7 @@ class HeuristicSearch(NetSolver):
             # adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i)
             # self.adj_mats.append(adj_mat.to("cpu").numpy())
         for sol in self.solutions:
-            sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n)
+            sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n_taxa)
 
         solution_idx = np.argmin([sol.obj_val for sol in self.solutions])
         self.solution_object = self.solutions[solution_idx]
@@ -88,11 +88,11 @@ class HeuristicSearch(NetSolver):
 
     def check_idxs(self, idxs, step):
         for idx in idxs:
-            if idx[0] >= step or idx[1] < self.n:
+            if idx[0] >= step or idx[1] < self.n_taxa:
                 idx[0] = np.random.choice(step)
-                idx[1] = np.random.choice(range(self.n, self.n + step-1))
+                idx[1] = np.random.choice(range(self.n_taxa, self.n_taxa + step-1))
         return idxs
 
-    def compute_obj_val(self, adj_mat, d, n):
-        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n)
+    def compute_obj_val(self, adj_mat, d, n_taxa):
+        return self.compute_obj_val_from_adj_mat(adj_mat.to("cpu").numpy(), d.to("cpu").numpy(), n_taxa)
 

@@ -11,8 +11,8 @@ from Solvers.solver import Solver
 
 class SwaSolver(Solver):
 
-    def __init__(self, d):
-        super(SwaSolver, self).__init__(d)
+    def __init__(self, d, sorted_d=False):
+        super(SwaSolver, self).__init__(d, sorted_d)
 
     def solve(self, start=3, adj_mat=None):
         adj_mat = self.initial_mat() if adj_mat is None else adj_mat

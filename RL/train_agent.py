@@ -9,9 +9,7 @@ import torch
 import os
 from Net.network_manager import NetworkManager
 from RL.policy_gradient import PolicyGradientEpisode
-from test_mor_dims import sort_d
 
-print(os.getcwd())
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 import torch.optim as optim
@@ -20,10 +18,25 @@ from torch import nn
 from torch.utils.data import DataLoader
 from importlib.metadata import version
 
+from Solvers.SWA.swa_solver import SwaSolver
+
+print(os.getcwd())
+
+
+def sort_d(d):
+    dist_sum = np.sum(d, axis=0)
+    order = np.argsort(dist_sum)
+    sorted_d = np.zeros_like(d)
+    for i in order:
+        for j in order:
+            sorted_d[i, j] = d[order[i], order[j]]
+    return sorted_d
+
+
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-folder = 'GNN_TAU_MH'
+folder = 'GNN_TAU'
 data_folder = '03-M18_5_9'
 save = True
 
@@ -43,7 +56,6 @@ dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
 dgn = net_manager.make_network(normalisation_factor=data_.max_d_mat)
 
-
 path = 'Data_/csv_'
 filenames = sorted(next(os.walk(path), (None, None, []))[2])
 
@@ -52,20 +64,25 @@ for file in filenames:
     if file[-4:] == '.txt':
         mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
 
-
 m = mats[3]
 dim_dataset = m.shape[0]
 
-
-
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
-episodes = 10
+episodes = 10_000_000
 
 for episode in range(episodes):
-    dim = random.sample(range(6, 9), k=1)
+    dim = np.random.choice(range(6, 9))
     idx = random.sample(range(dim_dataset), k=dim)
     mat = sort_d(copy.deepcopy(m[idx, :][:, idx]))
-    pol = PolicyGradientEpisode(mat, dgn, optimizer)
+    d = np.zeros((dim*2-2, dim*2-2))
+    d[:dim, :dim] = mat
+    pol = PolicyGradientEpisode(d, dgn, optimizer)
+    pol.episode()
 
+    swa = SwaSolver(d)
+    swa.solve()
 
+    if episode % 10 == 0:
+        print(episode, 'dim', dim, '  loss ', pol.loss.item(), '  agent obj', pol.obj_val,  '  swa', swa.obj_val,
+              '  difference ', pol.obj_val - swa.obj_val)

@@ -14,7 +14,7 @@ class NjSolver(Solver):
         super().__init__(d)
         self.solution_assignment = None
         self.max_val = 1e5
-        self.d_update = np.ones_like(self.d) * self.max_val
+        self.d_update = np.ones((self.m, self.m)) * self.max_val
         self.d_update[:self.n_taxa, :self.n_taxa] = d[:self.n_taxa, :self.n_taxa]
         self.q = np.ones_like(self.d_update) * self.max_val
         self.adj = None

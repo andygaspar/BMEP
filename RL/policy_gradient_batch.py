@@ -46,6 +46,7 @@ class PolicyGradientEpisode(Solver):
         self.loss.backward()
         self.optimiser.step()
 
+
     def initial_mats(self):
         adj_mat = self.initial_mat(self.device)
         size_mask = torch.ones_like(self.d)

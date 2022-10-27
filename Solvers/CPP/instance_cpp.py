@@ -18,9 +18,9 @@ class InstanceCpp:
         self.lib.run.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.c_int, ctypes.c_bool]
         self.lib.run.restype = ctypes.c_void_p
 
-    def solve(self, d, n, log):
-        self.lib.run.restype = ndpointer(dtype=ctypes.c_int32, shape=(n*2 - 2, n*2 - 2))
-        return self.lib.run(d.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), n, log)
+    def solve(self, d, n_taxa, log):
+        self.lib.run.restype = ndpointer(dtype=ctypes.c_int32, shape=(n_taxa*2 - 2, n_taxa*2 - 2))
+        return self.lib.run(d.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), n_taxa, log)
 
 
 cpp = InstanceCpp()
@@ -33,7 +33,7 @@ class CppSolver(Solver):
 
     def solve(self, log):
         d = np.ascontiguousarray(self.d.flatten(), dtype=np.float)
-        adj_mat = cpp.solve(d, self.m, log)
+        adj_mat = cpp.solve(d, self.n_taxa, log)
         g = nx.from_numpy_matrix(adj_mat)
-        self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m]
+        self.T = nx.floyd_warshall_numpy(g)[:self.n_taxa, :self.n_taxa]
         return self.compute_obj(), self.T
