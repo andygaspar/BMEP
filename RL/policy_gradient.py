@@ -3,22 +3,22 @@ import copy
 import numpy as np
 import torch.nn.init
 
+from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.solver import Solver
 
 
-class PolicyGradientEpisode(Solver):
+class PolicyGradientEpisode(NetSolver):
 
     def __init__(self, d, net, optim):
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        d = torch.tensor(d).to(torch.float).to(self.device)
-        super().__init__(d)        # adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks
+
+        super().__init__(d, net)        # adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks
         self.net = net
 
         self.optimiser = optim
         self.adj_mats = []
         self.loss = None
 
-    def episode(self):
+    def episode(self, baseline=0):
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
         trajectory = []
 
@@ -39,9 +39,9 @@ class PolicyGradientEpisode(Solver):
 
         self.solution = self.adj_mats[-1].astype(int)
         self.obj_val = self.compute_obj_val_from_adj_mat(self.solution, self.d.to('cpu').numpy(), self.n_taxa)
-        l_probs = torch.vstack(trajectory).flatten()
+        l_probs = torch.vstack(trajectory)
         l_probs = l_probs[l_probs > - 9e15]
-        self.loss = sum(-self.obj_val * l_probs)
+        self.loss = torch.sum((baseline - self.obj_val) * l_probs)
         self.optimiser.zero_grad()
         self.loss.backward()
         self.optimiser.step()
@@ -58,7 +58,7 @@ class PolicyGradientEpisode(Solver):
         return adj_mat, size_mask, initial_mask, d_mask
 
     def get_masks(self, adj_mat):
-        ad_mask = torch.zeros((self.d.shape[0], 2)).to(self.device)
+        ad_mask = torch.zeros((self.m, 2)).to(self.device)
         a = torch.sum(adj_mat, dim=-1)
         ad_mask[:, 0] = a
         ad_mask[ad_mask > 0] = 1
