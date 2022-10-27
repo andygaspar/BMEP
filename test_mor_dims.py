@@ -44,7 +44,7 @@ file = '_3.622'
 net_manager = NetworkManager(folder, file, supervised=True)
 dgn = net_manager.get_network()
 
-dim = 15
+dim = 18
 better = []
 worse = []
 for _ in range(100):
@@ -66,7 +66,7 @@ for _ in range(100):
 
     t = time.time()
     mcts_solver = UtcSolver(d)
-    mcts_solver.solve(10)
+    mcts_solver.solve(20)
     print('mcts ', time.time() - t)
 
     fast = FastMeSolver(d)
