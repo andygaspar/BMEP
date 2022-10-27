@@ -40,7 +40,7 @@ folder = 'GNN_TAU'
 data_folder = '03-M18_5_9'
 save = True
 
-net_manager = NetworkManager(folder)
+net_manager = NetworkManager(folder, supervised=False)
 params = net_manager.get_params()
 train_params, net_params = params["train"], params["net"]
 train_params["train data"] = data_folder
@@ -69,7 +69,7 @@ dim_dataset = m.shape[0]
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
-episodes = 10_000_000
+episodes = 10_000
 
 for episode in range(episodes):
     dim = np.random.choice(range(6, 9))
@@ -77,11 +77,11 @@ for episode in range(episodes):
     mat = sort_d(copy.deepcopy(m[idx, :][:, idx]))
     d = np.zeros((dim*2-2, dim*2-2))
     d[:dim, :dim] = mat
-    pol = PolicyGradientEpisode(d, dgn, optimizer)
-    pol.episode()
 
     swa = SwaSolver(d)
     swa.solve()
+    pol = PolicyGradientEpisode(d, dgn, optimizer)
+    pol.episode(swa.obj_val)
 
     if episode % 10 == 0:
         print(episode, 'dim', dim, '  loss ', pol.loss.item(), '  agent obj', pol.obj_val,  '  swa', swa.obj_val,

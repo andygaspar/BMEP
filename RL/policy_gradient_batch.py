@@ -1,16 +1,24 @@
 import copy
-
+import multiprocessing as mp
 import numpy as np
 import torch.nn.init
 
 from Solvers.solver import Solver
 
 
-class PolicyGradientEpisode(Solver):
+class PolicyGradientBatchEpisode(Solver):
 
-    def __init__(self, d, net, optim):
+    def __init__(self, d_list, net, optim):
+        self.batch_size = len(d_list)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        d = torch.tensor(d).to(torch.float).to(self.device)
+        d_with_internals = torch.zeros((self.batch_size, self.m, self.m)).to(self.device)
+        num_procs = mp.cpu_count()
+        pool = mp.Pool(num_procs)
+        results = pool.map(self.sort_d, d_list)
+        # d_with_internals[:self.n_taxa, :self.n_taxa] = d if type(d) == torch.Tensor else torch.tensor(d)
+        # d_list_sorted = [self.]
+        # d = torch.tensor(d).to(torch.float).to(self.device)
+        d = None
         super().__init__(d)        # adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks
         self.net = net
 
@@ -46,9 +54,8 @@ class PolicyGradientEpisode(Solver):
         self.loss.backward()
         self.optimiser.step()
 
-
     def initial_mats(self):
-        adj_mat = self.initial_mat(self.device)
+        adj_mat = self.initial_step_mats(self.device)
         size_mask = torch.ones_like(self.d)
         initial_mask = torch.zeros((self.m, 2)).to(self.device)
         initial_mask[:, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)
@@ -57,6 +64,12 @@ class PolicyGradientEpisode(Solver):
         d_mask[d_mask > 0] = 1
 
         return adj_mat, size_mask, initial_mask, d_mask
+
+    def initial_step_mats(self, device):
+        adj_mat = np.zeros((self.batch_size, self.m, self.m)) if device is None else torch.zeros((self.m, self.m)).to(device)
+        adj_mat[:, 0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
+        adj_mat[:, 1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
+        adj_mat[:, 2, self.n_taxa] = adj_mat[self.n_taxa, 2] = 1
 
     def get_masks(self, adj_mat):
         ad_mask = torch.zeros((self.d.shape[0], 2)).to(self.device)
