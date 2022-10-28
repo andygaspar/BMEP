@@ -8,29 +8,36 @@ from Solvers.solver import Solver
 
 class PolicyGradientBatchEpisode(Solver):
 
-    def __init__(self, d_list, net, optim):
-        self.batch_size = len(d_list)
+    def __init__(self, net, optim):
+
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        d_with_internals = torch.zeros((self.batch_size, self.m, self.m)).to(self.device)
-        num_procs = mp.cpu_count()
-        pool = mp.Pool(num_procs)
-        results = pool.map(self.sort_d, d_list)
+        self.num_procs = mp.cpu_count()
+        self.batch_size = None
         # d_with_internals[:self.n_taxa, :self.n_taxa] = d if type(d) == torch.Tensor else torch.tensor(d)
         # d_list_sorted = [self.]
         # d = torch.tensor(d).to(torch.float).to(self.device)
-        d = None
-        super().__init__(d)        # adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks
+        super().__init__(None)
         self.net = net
 
         self.optimiser = optim
         self.adj_mats = []
         self.loss = None
 
-    def episode(self):
-        adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
+    def episode(self, d_list, n_taxa):
+        batch_size = len(d_list)
+        self.n_taxa = n_taxa
+        self.m = self.n_taxa * 2 - 2
+        d_with_internals = torch.zeros((batch_size, self.m, self.m)).to(self.device)
+        pool = mp.Pool(self.num_procs)
+        results = pool.map(self.sort_d, d_list)
+        pool.close()
+        pool.join()
+        d = torch.tensor(results)
+
+        adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(batch_size)
         trajectory = []
 
-        for i in range(3, self.n_taxa):
+        for i in range(3, d_list, self.n_taxa):
             ad_mask, mask = self.get_masks(adj_mat)
             tau, tau_mask = self.get_tau_tensor(adj_mat, self.device)
             state = adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0), d_mask.unsqueeze(0), \
@@ -54,10 +61,10 @@ class PolicyGradientBatchEpisode(Solver):
         self.loss.backward()
         self.optimiser.step()
 
-    def initial_mats(self):
-        adj_mat = self.initial_step_mats(self.device)
-        size_mask = torch.ones_like(self.d)
-        initial_mask = torch.zeros((self.m, 2)).to(self.device)
+    def initial_mats(self, d, batch_size):
+        adj_mat = self.initial_step_mats(batch_size)
+        size_mask = torch.ones_like(d)
+        initial_mask = torch.zeros((self.m, 2)).to(self.device)  # ********************************************
         initial_mask[:, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)
         initial_mask[:, 1] = torch.tensor([1 if i >= self.n_taxa else 0 for i in range(self.m)]).to(self.device)
         d_mask = copy.deepcopy(self.d)
@@ -65,11 +72,12 @@ class PolicyGradientBatchEpisode(Solver):
 
         return adj_mat, size_mask, initial_mask, d_mask
 
-    def initial_step_mats(self, device):
-        adj_mat = np.zeros((self.batch_size, self.m, self.m)) if device is None else torch.zeros((self.m, self.m)).to(device)
-        adj_mat[:, 0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
-        adj_mat[:, 1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
-        adj_mat[:, 2, self.n_taxa] = adj_mat[self.n_taxa, 2] = 1
+    def initial_step_mats(self, batch_size):
+        adj_mat = torch.zeros((batch_size, self.m, self.m)).to(self.device)
+        adj_mat[:, 0, self.n_taxa] = adj_mat[:, self.n_taxa, 0] = 1
+        adj_mat[:, 1, self.n_taxa] = adj_mat[:, self.n_taxa, 1] = 1
+        adj_mat[:, 2, self.n_taxa] = adj_mat[:, self.n_taxa, 2] = 1
+        return adj_mat
 
     def get_masks(self, adj_mat):
         ad_mask = torch.zeros((self.d.shape[0], 2)).to(self.device)

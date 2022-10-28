@@ -31,10 +31,13 @@ class PolicyGradientEpisode(NetSolver):
             probs, l_probs = self.net(state)
 
             # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
-            a_max = torch.argmax(probs.squeeze(0))
-            actions.append(a_max)
+            # a_max = torch.argmax(probs.squeeze(0))
+
+            prob_dist = torch.distributions.Categorical(probs.squeeze(0))  # probs should be of size batch x classes
+            action = prob_dist.sample()
+            actions.append(action)
             trajectory.append(l_probs)
-            idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
+            idxs = torch.tensor([torch.div(action, self.m, rounding_mode='trunc'), action % self.m]).to(self.device)
             adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
             self.adj_mats.append(adj_mat.to("cpu").numpy())
 
