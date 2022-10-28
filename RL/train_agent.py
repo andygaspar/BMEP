@@ -18,6 +18,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from importlib.metadata import version
 
+from RL.policy_gradient_batch import PolicyGradientBatchEpisode
 from Solvers.SWA.swa_solver import SwaSolver
 
 print(os.getcwd())
@@ -70,19 +71,41 @@ dim_dataset = m.shape[0]
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
 episodes = 10_000
+batch_size = 2
+
+pol = PolicyGradientBatchEpisode(dgn, optimizer)
 
 for episode in range(episodes):
-    dim = np.random.choice(range(6, 9))
-    idx = random.sample(range(dim_dataset), k=dim)
-    mat = sort_d(copy.deepcopy(m[idx, :][:, idx]))
-    d = np.zeros((dim*2-2, dim*2-2))
-    d[:dim, :dim] = mat
+    n_taxa = np.random.choice(range(6, 9))
+    d_list = []
+    for _ in range(batch_size):
 
-    swa = SwaSolver(d)
-    swa.solve()
-    pol = PolicyGradientEpisode(d, dgn, optimizer)
-    pol.episode(swa.obj_val)
+        idx = random.sample(range(dim_dataset), k=n_taxa)
+        d_list.append(sort_d(copy.deepcopy(m[idx, :][:, idx])))
+
+
+    # swa = SwaSolver(d_list, n_taxa)
+    # swa.solve()
+
+    pol.episode(d_list, n_taxa)
 
     if episode % 10 == 0:
-        print(episode, 'dim', dim, '  loss ', pol.loss.item(), '  agent obj', pol.obj_val,  '  swa', swa.obj_val,
+        print(episode, 'n_taxa', n_taxa, '  loss ', pol.loss.item(), '  agent obj', pol.obj_val,  '  swa', swa.obj_val,
               '  difference ', pol.obj_val - swa.obj_val)
+
+
+# for episode in range(episodes):
+#     dim = np.random.choice(range(6, 9))
+#     idx = random.sample(range(dim_dataset), k=dim)
+#     mat = sort_d(copy.deepcopy(m[idx, :][:, idx]))
+#     d = np.zeros((dim*2-2, dim*2-2))
+#     d[:dim, :dim] = mat
+#
+#     swa = SwaSolver(d)
+#     swa.solve()
+#     pol = PolicyGradientEpisode(d, dgn, optimizer)
+#     pol.episode(swa.obj_val)
+#
+#     if episode % 10 == 0:
+#         print(episode, 'dim', dim, '  loss ', pol.loss.item(), '  agent obj', pol.obj_val,  '  swa', swa.obj_val,
+#               '  difference ', pol.obj_val - swa.obj_val)
