@@ -24,16 +24,6 @@ from Solvers.SWA.swa_solver import SwaSolver
 print(os.getcwd())
 
 
-def sort_d(d):
-    dist_sum = np.sum(d, axis=0)
-    order = np.argsort(dist_sum)
-    sorted_d = np.zeros_like(d)
-    for i in order:
-        for j in order:
-            sorted_d[i, j] = d[order[i], order[j]]
-    return sorted_d
-
-
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
@@ -50,12 +40,10 @@ criterion = train_params["criterion"]
 cross_entropy = True if criterion == "cross" else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data_ = BMEP_Dataset(folder_name=data_folder, scale_d=net_params["scale_d"], start=train_params["start"],
-                     end=train_params["end"], a100=a100)
 batch_size = train_params["batch_size"]
-dataloader = DataLoader(dataset=data_, batch_size=batch_size, shuffle=True)
 
-dgn = net_manager.make_network(normalisation_factor=data_.max_d_mat)
+
+dgn = net_manager.make_network()
 
 path = 'Data_/csv_'
 filenames = sorted(next(os.walk(path), (None, None, []))[2])
@@ -81,11 +69,10 @@ for episode in range(episodes):
     for _ in range(batch_size):
 
         idx = random.sample(range(dim_dataset), k=n_taxa)
-        d_list.append(sort_d(copy.deepcopy(m[idx, :][:, idx])))
+        d_list.append(m[idx, :][:, idx])
 
-
-    # swa = SwaSolver(d_list, n_taxa)
-    # swa.solve()
+    swa = SwaSolver(d_list[0], n_taxa)
+    swa.solve()
 
     pol.episode(d_list, n_taxa)
 
