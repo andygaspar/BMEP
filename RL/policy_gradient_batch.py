@@ -1,5 +1,6 @@
 import copy
 import multiprocessing as mp
+import torch.multiprocessing
 
 import networkx as nx
 import numpy as np
@@ -8,6 +9,41 @@ import torch.nn.init
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver
 
+
+def sort_d(d):
+    dist_sum = np.sum(d, axis=0)
+    order = np.argsort(dist_sum)
+    sorted_d = np.zeros_like(d)
+    for i in order:
+        for j in order:
+            sorted_d[i, j] = d[order[i], order[j]]
+    return sorted_d
+
+
+def make_d_batch(d):
+    m = d.shape[0] * 2 - 2
+    d = sort_d(d)
+    d_with_internals = np.zeros((m, m))
+    d_with_internals[: d.shape[0], : d.shape[0]] = d
+    return d_with_internals
+
+
+def get_tau_tensor_(adj_mat):
+    g = nx.from_numpy_matrix(adj_mat)
+    tau = nx.floyd_warshall_numpy(g)
+    tau[np.isinf(tau)] = 0
+    tau = torch.tensor(tau).to(torch.float)
+    return tau
+
+def compute_obj_and_baseline_(data):
+    adj_mat, d = data
+    swa = SwaSolver(d)
+    n_taxa = swa.n_taxa
+    swa.solve()
+    baseline = swa.obj_val
+    g = nx.from_numpy_matrix(adj_mat)
+    Tau = nx.floyd_warshall_numpy(g)[:n_taxa, :n_taxa]
+    return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n_taxa) for j in range(n_taxa)]), baseline
 
 class PolicyGradientBatchEpisode(Solver):
 
@@ -26,22 +62,16 @@ class PolicyGradientBatchEpisode(Solver):
         self.adj_mats = []
         self.loss = None
 
-    def make_d_batch(self, d):
-        m = d.shape[0] * 2 - 2
-        d = torch.tensor(self.sort_d(d))
-        d_with_internals = torch.zeros((m, m))
-        d_with_internals[: d.shape[0], : d.shape[0]] = d
-        return d_with_internals
-
     def episode(self, d_list, n_taxa):
         batch_size = len(d_list)
         self.n_taxa = n_taxa
         self.m = self.n_taxa * 2 - 2
         pool = mp.Pool(self.num_procs)
-        results = pool.map(self.make_d_batch, d_list)
+        results = pool.map(make_d_batch, d_list)
         pool.close()
         pool.join()
-        d = torch.stack(results).to(torch.float).to(self.device)
+        d = np.array(results)
+        d = torch.tensor(d).to(torch.float).to(self.device)
 
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, batch_size)
         trajectory, actions = [], []
@@ -49,7 +79,7 @@ class PolicyGradientBatchEpisode(Solver):
 
         for i in range(3, self.n_taxa):
             ad_mask, mask = self.get_masks(adj_mat)
-            tau, tau_mask = self.get_taus(adj_mat,  tau)
+            tau, tau_mask = self.get_taus(adj_mat, tau)
             state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask, None
             probs, l_probs = self.net(state)
 
@@ -59,31 +89,34 @@ class PolicyGradientBatchEpisode(Solver):
             trajectory.append(l_probs)
             actions.append(action)
             idxs = (torch.arange(0, batch_size, dtype=torch.long), torch.div(action, self.m, rounding_mode='trunc'),
-                                action % self.m)
+                    action % self.m)
             adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
             self.adj_mats.append(adj_mat.to("cpu").numpy())
 
         adj_mats_np = adj_mat.to('cpu').numpy()
         pool = mp.Pool(self.num_procs)
-        results = torch.tensor(pool.map(self.compute_obj_and_baseline_,
-                        [(adj_mats_np[i], d_list[i]) for i in range(adj_mat.shape[0])]), dtype=torch.float)\
-            .to(self.device)
+        results = pool.map(compute_obj_and_baseline_,
+                           [(adj_mats_np[i], d_list[i]) for i in range(adj_mat.shape[0])])
+        results = torch.tensor(results, dtype=torch.float).to(self.device)
         pool.close()
         pool.join()
         obj_vals = results[:, 0]
         baseline = results[:, 1]
-        l_probs = torch.vstack(trajectory)
-        actions = torch.tensor(actions, dtype=torch.long)
-        l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
-        self.loss = torch.sum(l_probs * (baseline - self.obj_val) / baseline)
+        l_probs_ = [l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions[i])]
+                    for i, l_probs in enumerate(trajectory)]
+        l_probs = torch.stack(l_probs_).T
+        self.loss = torch.mean(torch.cat([l_probs[i] * (baseline[i] - obj_vals[i]) / baseline[i]
+                                         for i in range(batch_size)]))
         self.optimiser.zero_grad()
         self.loss.backward()
         self.optimiser.step()
+        return self.loss.item(), torch.mean(obj_vals - baseline).item()
 
     def initial_mats(self, d, batch_size):
         adj_mat = self.initial_step_mats(batch_size)
         size_mask = torch.ones_like(d)
-        initial_mask = torch.zeros((batch_size, self.m, 2)).to(self.device)  # ********************************************
+        initial_mask = torch.zeros((batch_size, self.m, 2)).to(
+            self.device)  # ********************************************
         initial_mask[:, :, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)
         initial_mask[:, :, 1] = torch.tensor([1 if i >= self.n_taxa else 0 for i in range(self.m)]).to(self.device)
         d_mask = copy.deepcopy(d)
@@ -117,7 +150,7 @@ class PolicyGradientBatchEpisode(Solver):
         else:
             adj_mats_np = adj_mat.to('cpu').numpy()
             pool = mp.Pool(self.num_procs)
-            taus = pool.map(self.get_tau_tensor_, [adj_mats_np[i] for i in range(adj_mat.shape[0])])
+            taus = pool.map(get_tau_tensor_, [adj_mats_np[i] for i in range(adj_mat.shape[0])])
             pool.close()
             pool.join()
             taus = torch.stack(taus).to(torch.float).to(self.device)
@@ -125,31 +158,14 @@ class PolicyGradientBatchEpisode(Solver):
         tau_mask[tau_mask > 0] = 1
         return taus, tau_mask
 
-    def get_tau_tensor_(self, adj_mat):
-        g = nx.from_numpy_matrix(adj_mat)
-        tau = nx.floyd_warshall_numpy(g)
-        tau[np.isinf(tau)] = 0
-        tau = torch.tensor(tau).to(torch.float).to(self.device)
-        return tau
-
     @staticmethod
     def add_nodes(adj_mat, idxs: torch.tensor, new_node_idx, n):
         adj_mat[idxs] = adj_mat[idxs[0], idxs[2], idxs[1]] = 0  # detach selected
-        adj_mat[idxs[0], idxs[1], n + new_node_idx - 2] = adj_mat[idxs[0], n + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
-        adj_mat[idxs[0], idxs[2], n + new_node_idx - 2] = adj_mat[idxs[0], n + new_node_idx - 2, idxs[2]] = 1  # reattach selected to new
-        adj_mat[idxs[0], new_node_idx, n + new_node_idx - 2] = adj_mat[idxs[0], n + new_node_idx - 2, new_node_idx] = 1  # attach new
+        adj_mat[idxs[0], idxs[1], n + new_node_idx - 2] = adj_mat[
+            idxs[0], n + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
+        adj_mat[idxs[0], idxs[2], n + new_node_idx - 2] = adj_mat[
+            idxs[0], n + new_node_idx - 2, idxs[2]] = 1  # reattach selected to new
+        adj_mat[idxs[0], new_node_idx, n + new_node_idx - 2] = adj_mat[
+            idxs[0], n + new_node_idx - 2, new_node_idx] = 1  # attach new
 
         return adj_mat
-
-    def compute_obj_and_baseline_(self, data):
-
-        adj_mat, d = data
-        swa = SwaSolver(d)
-        swa.solve()
-        baseline = swa.obj_val
-        g = nx.from_numpy_matrix(adj_mat)
-        Tau = nx.floyd_warshall_numpy(g)[:self.n_taxa, :self.n_taxa]
-        return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(self.n_taxa) for j in range(self.n_taxa)]), baseline
-
-
-
