@@ -59,7 +59,7 @@ dim_dataset = m.shape[0]
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
 episodes = 10_000
-batch_size = 2
+batch_size = 3
 
 pol = PolicyGradientBatchEpisode(dgn, optimizer)
 
