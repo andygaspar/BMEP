@@ -23,12 +23,6 @@ class Message(nn.Module):
         super(Message, self).__init__()
         self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
         self.v = nn.Linear(hidden_dim, 1).to(self.device)
-        # self.v = nn.Sequential(
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(hidden_dim, 1)).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
         a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))  # messo lrelu
@@ -61,7 +55,8 @@ class MessageNode(nn.Module):
 
     def forward(self, h, m1):
         h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
-        h = nn.functional.dropout(h, p=self.drop_out)
+        drop_out_layer = nn.Dropout(self.drop_out)
+        h = drop_out_layer(h)
         h = torch.tanh(self.fmn2(h))
         return h
 
@@ -76,7 +71,8 @@ class FA(nn.Module):
 
     def forward(self, x):
         x = torch.tanh(self.fc1(x))
-        # x = nn.functional.dropout(x, p=self.drop_out)
+        drop_out_layer = nn.Dropout(self.drop_out)
+        x = drop_out_layer(x)
         q = self.fc2(x)
         return q
 

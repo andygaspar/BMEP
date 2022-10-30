@@ -110,7 +110,10 @@ class PolicyGradientBatchEpisode(Solver):
         self.optimiser.zero_grad()
         self.loss.backward()
         self.optimiser.step()
-        return self.loss.item(), torch.mean(obj_vals - baseline).item()
+        better = sum(obj_vals < baseline).item()
+        equal = sum(obj_vals == baseline).item()
+
+        return self.loss.item(), torch.mean((obj_vals - baseline)/baseline).item(), better, equal
 
     def initial_mats(self, d, batch_size):
         adj_mat = self.initial_step_mats(batch_size)
