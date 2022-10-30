@@ -15,6 +15,7 @@ from Solvers.NJ.nj_solver import NjSolver
 from Solvers.NetSolvers.heuristic_search import HeuristicSearch
 from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
 from Solvers.NetSolvers.heuristic_search_3 import HeuristicSearch3
+from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.PardiSolver.pardi_solver import PardiSolver
 from Solvers.PardiSolver.pardi_solver_parallel import PardiSolverParallel
 from Solvers.SWA.swa_solver import SwaSolver
@@ -35,16 +36,18 @@ for file in filenames:
 m = mats[3]
 dim_dataset = m.shape[0]
 # random.seed(0)
-supervised = True
+supervised = False
 folder = 'GNN_TAU'
-file = '_3.622'
+# file = '_3.622'
+file = '_0.08_0'
+
 
 # data_folder = '6_taxa_0'
 
-net_manager = NetworkManager(folder, file, supervised=True)
+net_manager = NetworkManager(folder, file, supervised=supervised)
 dgn = net_manager.get_network()
 
-dim = 18
+dim = 12
 better = []
 worse = []
 for _ in range(100):
@@ -58,7 +61,7 @@ for _ in range(100):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=30, distribution_runs=10)
+    heuristic = HeuristicSearch(d, dgn, width=10)
     heuristic.solve()
     t1 = time.time() - t
 

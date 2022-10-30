@@ -87,7 +87,7 @@ class GNN_TAU(Network):
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
                                                             net_params["hidden_dim"], net_params["num_messages"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.mask = torch.ones((10, 10)).to(self.device)
+        # self.mask = torch.ones((10, 10)).to(self.device)
 
         self.rounds = num_messages
 

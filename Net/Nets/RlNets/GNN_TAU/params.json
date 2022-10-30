@@ -17,7 +17,7 @@
       "hidden_dim": 256,
       "num_messages": 5,
       "best_loss": "",
-      "drop out": 0.4,
+      "drop out": 0.05,
       "normalisation factor": 0.24807900190353395
 
     },
