@@ -74,8 +74,7 @@ class PolicyGradientBatchEpisode(Solver):
         self.optimiser.zero_grad()
         with torch.no_grad():
             d = torch.tensor(d).to(torch.float).to(self.device)
-
-        adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, batch_size)
+            adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, batch_size)
         trajectory, actions = [], []
         tau, idxs = None, None
 
@@ -98,12 +97,12 @@ class PolicyGradientBatchEpisode(Solver):
 
             trajectory.append(l_probs)
             # self.adj_mats.append(adj_mat.to("cpu").numpy())
-
-        adj_mats_np = adj_mat.to('cpu').numpy()
-        pool = mp.Pool(self.num_procs)
-        results = pool.map(compute_obj_and_baseline_,
-                           [(adj_mats_np[i], d_list[i]) for i in range(adj_mat.shape[0])])
         with torch.no_grad():
+            adj_mats_np = adj_mat.to('cpu').numpy()
+            pool = mp.Pool(self.num_procs)
+            results = pool.map(compute_obj_and_baseline_,
+                               [(adj_mats_np[i], d_list[i]) for i in range(adj_mat.shape[0])])
+
             results = torch.tensor(results, dtype=torch.float).to(self.device)
             pool.close()
             pool.join()
