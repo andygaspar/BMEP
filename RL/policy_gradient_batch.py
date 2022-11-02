@@ -71,49 +71,56 @@ class PolicyGradientBatchEpisode(Solver):
         pool.close()
         pool.join()
         d = np.array(results)
-        d = torch.tensor(d).to(torch.float).to(self.device)
+        self.optimiser.zero_grad()
+        with torch.no_grad():
+            d = torch.tensor(d).to(torch.float).to(self.device)
 
         adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, batch_size)
         trajectory, actions = [], []
         tau, idxs = None, None
 
         for i in range(3, self.n_taxa):
-            ad_mask, mask = self.get_masks(adj_mat)
-            tau, tau_mask = self.get_taus(adj_mat, tau)
-            state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask, None
+            with torch.no_grad():
+                ad_mask, mask = self.get_masks(adj_mat)
+                tau, tau_mask = self.get_taus(adj_mat, tau)
+                state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask, None
             probs, l_probs = self.net(state)
 
             # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
-            prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
-            action = prob_dist.sample()
+            with torch.no_grad():
+                prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
+                action = prob_dist.sample()
+                actions.append(action)
+
+                idxs = (torch.arange(0, batch_size, dtype=torch.long), torch.div(action, self.m, rounding_mode='trunc'),
+                        action % self.m)
+                adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
+
             trajectory.append(l_probs)
-            actions.append(action)
-            idxs = (torch.arange(0, batch_size, dtype=torch.long), torch.div(action, self.m, rounding_mode='trunc'),
-                    action % self.m)
-            adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
-            self.adj_mats.append(adj_mat.to("cpu").numpy())
+            # self.adj_mats.append(adj_mat.to("cpu").numpy())
 
         adj_mats_np = adj_mat.to('cpu').numpy()
         pool = mp.Pool(self.num_procs)
         results = pool.map(compute_obj_and_baseline_,
                            [(adj_mats_np[i], d_list[i]) for i in range(adj_mat.shape[0])])
-        results = torch.tensor(results, dtype=torch.float).to(self.device)
-        pool.close()
-        pool.join()
-        obj_vals = results[:, 0]
-        baseline = results[:, 1]
+        with torch.no_grad():
+            results = torch.tensor(results, dtype=torch.float).to(self.device)
+            pool.close()
+            pool.join()
+            obj_vals = results[:, 0]
+            baseline = results[:, 1]
         l_probs_ = [l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions[i])]
                     for i, l_probs in enumerate(trajectory)]
         l_probs = torch.stack(l_probs_).T
-        self.loss = torch.mean(torch.cat([l_probs[i] * (baseline[i] - obj_vals[i]) / baseline[i]
-                                         for i in range(batch_size)]))
-        self.optimiser.zero_grad()
-        self.loss.backward()
+        loss = torch.mean(torch.cat([l_probs[i] * (baseline[i] - obj_vals[i]) / baseline[i]
+                                         for i in range(batch_size)]))*10
+        loss.backward()
         self.optimiser.step()
         better = sum(obj_vals < baseline).item()
         equal = sum(obj_vals == baseline).item()
+        self.loss = loss.item()
 
-        return self.loss.item(), torch.mean((obj_vals - baseline)/baseline).item(), better, equal
+        return self.loss, torch.mean((obj_vals - baseline)/baseline).item(), better, equal
 
     def initial_mats(self, d, batch_size):
         adj_mat = self.initial_step_mats(batch_size)

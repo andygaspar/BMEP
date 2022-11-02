@@ -39,7 +39,7 @@ dim_dataset = m.shape[0]
 supervised = False
 folder = 'GNN_TAU'
 # file = '_3.622'
-file = '_0.08_0'
+file = '_0.007_0'
 
 
 # data_folder = '6_taxa_0'

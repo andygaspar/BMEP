@@ -13,8 +13,8 @@ class NodeEncoder(nn.Module):
         self.fc = nn.Linear(din, h_dimension).to(self.device)
 
     def forward(self, x):
-        embedding = torch.tanh(self.fc(x))
-        return embedding
+        # embedding = torch.tanh(self.fc(x))
+        return torch.tanh(self.fc(x))
 
 
 class Message(nn.Module):
@@ -25,10 +25,12 @@ class Message(nn.Module):
         self.v = nn.Linear(hidden_dim, 1).to(self.device)
 
     def forward(self, hi, hj, mat, mat_mask):
-        a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))  # messo lrelu
-        a = torch.tanh(self.v(a).view(mat.shape))  # messo lrelu
-        alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
-        return alpha
+        # a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))  # messo lrelu
+        # a = torch.tanh(self.v(a).view(mat.shape))  # messo lrelu
+        # alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
+        return F.softmax(
+            torch.mul(torch.tanh(self.v(torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))).view(mat.shape)), mat)
+            - 9e15 * (1 - mat_mask), dim=-1)
 
 
 class FD(nn.Module):
@@ -39,10 +41,11 @@ class FD(nn.Module):
         self.fd = nn.Linear(1, hidden_dim).to(self.device)
 
     def forward(self, hi, hj, d):
-        dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
-        d_ij = torch.tanh(self.fd(dd))  # messo lrelu
-        out = torch.tanh(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
-        return out
+        # dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
+        # d_ij = torch.tanh(self.fd(dd))  # messo lrelu
+        # out = torch.tanh(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
+        return torch.tanh(
+            self.fe(torch.cat([hi, hj, torch.tanh(self.fd(d.view(d.shape[0], d.shape[1] ** 2, 1)))], dim=-1)))
 
 
 class MessageNode(nn.Module):
@@ -54,11 +57,11 @@ class MessageNode(nn.Module):
         self.drop_out = drop_out
 
     def forward(self, h, m1):
-        h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
-        drop_out_layer = nn.Dropout(self.drop_out)
-        h = drop_out_layer(h)
-        h = torch.tanh(self.fmn2(h))
-        return h
+        # h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
+        #### drop_out_layer = nn.Dropout(self.drop_out)
+        #### h = drop_out_layer(h)
+        # h = torch.tanh(self.fmn2(h))
+        return torch.tanh(self.fmn2(torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))))
 
 
 class FA(nn.Module):
@@ -70,11 +73,11 @@ class FA(nn.Module):
         self.drop_out = drop_out
 
     def forward(self, x):
-        x = torch.tanh(self.fc1(x))
-        drop_out_layer = nn.Dropout(self.drop_out)
-        x = drop_out_layer(x)
-        q = self.fc2(x)
-        return q
+        # x = torch.tanh(self.fc1(x))
+        #### drop_out_layer = nn.Dropout(self.drop_out)
+        #### x = drop_out_layer(x)
+        # q = self.fc2(x)
+        return self.fc2(torch.tanh(self.fc1(x)))
 
 
 class GNN_TAU(Network):
@@ -106,9 +109,10 @@ class GNN_TAU(Network):
 
     def forward(self, data):
         adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
-        d_mats_ = d_mats / self.normalisation_factor
+        with torch.no_grad():
+            taus[taus > 0] = 1 / taus[taus > 0]
+            d_mats_ = d_mats / self.normalisation_factor
         h = self.encoder(initial_masks)
-        taus[taus > 0] = 1 / taus[taus > 0]
         h = self.context_message(h, d_mats_, d_masks, initial_masks, 3)
         h = self.tau_message(h, taus, tau_masks, ad_masks, 3)
         h = self.fa(h)

@@ -15,7 +15,7 @@
       "num_inputs": 2,
       "h_dimension": 256,
       "hidden_dim": 256,
-      "num_messages": 5,
+      "num_messages": 3,
       "best_loss": "",
       "drop out": 0.05,
       "normalisation factor": 0.24807900190353395
