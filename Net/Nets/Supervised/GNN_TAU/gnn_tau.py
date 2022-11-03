@@ -76,7 +76,7 @@ class FA(nn.Module):
 
     def forward(self, x):
         x = torch.tanh(self.fc1(x))
-        # x = nn.functional.dropout(x, p=self.drop_out)
+        x = nn.functional.dropout(x, p=self.drop_out)
         q = self.fc2(x)
         return q
 
