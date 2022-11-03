@@ -75,7 +75,7 @@ class PolicyGradientBatchEpisode(Solver):
         with torch.no_grad():
             d = torch.tensor(d).to(torch.float).to(self.device)
             adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, batch_size)
-        trajectory, actions = [], []
+        trajectory = []
         tau, idxs = None, None
 
         for i in range(3, self.n_taxa):
@@ -89,13 +89,13 @@ class PolicyGradientBatchEpisode(Solver):
             with torch.no_grad():
                 prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
                 action = prob_dist.sample()
-                actions.append(action)
 
                 idxs = (torch.arange(0, batch_size, dtype=torch.long), torch.div(action, self.m, rounding_mode='trunc'),
                         action % self.m)
                 adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
 
-            trajectory.append(l_probs)
+            trajectory.append(l_probs[(torch.arange(0, batch_size, dtype=torch.long), action)])
+            del l_probs
             # self.adj_mats.append(adj_mat.to("cpu").numpy())
         with torch.no_grad():
             adj_mats_np = adj_mat.to('cpu').numpy()
@@ -108,9 +108,7 @@ class PolicyGradientBatchEpisode(Solver):
             pool.join()
             obj_vals = results[:, 0]
             baseline = results[:, 1]
-        l_probs_ = [l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions[i])]
-                    for i, l_probs in enumerate(trajectory)]
-        l_probs = torch.stack(l_probs_).T
+        l_probs = torch.stack(trajectory).T
         loss = torch.mean(torch.cat([l_probs[i] * (baseline[i] - obj_vals[i]) / baseline[i]
                                          for i in range(batch_size)]))*10
         loss.backward()

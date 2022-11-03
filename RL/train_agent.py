@@ -59,14 +59,14 @@ dim_dataset = m.shape[0]
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
 episodes = 1_000
-batch_size = 8
+batch_size = 64
 
 pol = PolicyGradientBatchEpisode(dgn, optimizer)
 
 directory, best_mean_difference = None, 10
 
 for episode in range(1, episodes + 1):
-    n_taxa = np.random.choice(range(10, 18))
+    n_taxa = np.random.choice(range(17, 18))
     d_list = []
     for _ in range(batch_size):
 
