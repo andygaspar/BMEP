@@ -20,6 +20,7 @@ from importlib.metadata import version
 
 from RL.policy_gradient_batch import PolicyGradientBatchEpisode
 from RL.policy_gradient_batch_RM import PolicyGradientBatch
+from RL.trainer import Batch, Trainer
 from Solvers.SWA.swa_solver import SwaSolver
 
 print(os.getcwd())
@@ -59,30 +60,42 @@ dim_dataset = m.shape[0]
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
-episodes = 1_000
-episodes_in_parallel = 32
-episodes_in_batch = 4
 
-pol = PolicyGradientBatchEpisode(dgn, optimizer)
+min_num_taxa, max_num_taxa = 6, 9
+
+runs = 10
+episodes_in_run = 3
+episodes_in_parallel = 36
+
+pol = PolicyGradientBatch(dgn, optimizer)
 
 directory, best_mean_difference = None, 10
 
-for episode in range(1, episodes + 1):
-    n_taxa = np.random.choice(range(17, 18))
-    d_list = []
-    for _ in range(episodes_in_parallel):
+training_batch_size = 64
+trainer = Trainer(dgn, optimizer, training_batch_size)
 
-        idx = random.sample(range(dim_dataset), k=n_taxa)
-        d_list.append(m[idx, :][:, idx])
+for run in range(runs):
+    n_taxa_list = np.random.choice(range(min_num_taxa, max_num_taxa + 1), size=episodes_in_run)
+    total_episodes_in_batch = sum(n_taxa_list) - 3 * episodes_in_run
+    batch = Batch(total_episodes_in_batch, episodes_in_parallel, max_num_taxa)
+    for episode in range(episodes_in_run):
+        n_taxa = n_taxa_list[episode]
+        d_list = []
+        for _ in range(episodes_in_parallel):
 
-    loss, difference_mean, better, equal = pol.episode(d_list, n_taxa)
-    print(episode, episode * episodes_in_parallel, "taxa ", n_taxa, "   loss ", loss, "   difference mean", difference_mean,
-          "   better", better,  "   equal", equal)
+            idx = random.sample(range(dim_dataset), k=n_taxa)
+            d_list.append(m[idx, :][:, idx])
 
-    if episode > 100 and difference_mean < best_mean_difference:
-        if directory is not None and save:
-            shutil.rmtree(directory)
-        directory = dgn.save_net(folder, difference_mean, params, supervised=False)
-        best_mean_difference = difference_mean
+        difference_mean, better, equal = pol.episode(d_list, n_taxa, batch)
+        print(episode, episode * episodes_in_parallel, "taxa ", n_taxa, "   difference mean", difference_mean,
+              "   better", better,  "   equal", equal)
+
+        if episode > 100 and difference_mean < best_mean_difference:
+            if directory is not None and save:
+                shutil.rmtree(directory)
+            directory = dgn.save_net(folder, difference_mean, params, supervised=False)
+            best_mean_difference = difference_mean
 
 
+
+    trainer.train(batch)
