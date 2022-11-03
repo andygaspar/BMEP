@@ -96,6 +96,5 @@ for run in range(runs):
             directory = dgn.save_net(folder, difference_mean, params, supervised=False)
             best_mean_difference = difference_mean
 
-
-
-    trainer.train(batch)
+    loss = trainer.train(batch)
+    print("loss: ", loss)

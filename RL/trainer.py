@@ -69,12 +69,14 @@ class Trainer:
 
     def train(self, batch: Batch):
         random_idx = torch.randperm(batch.batch_size).to(self.device)
+        loss = 0
         for i in range(batch.batch_size//self.training_batch_size):
             idxs = random_idx[i * self.training_batch_size: (i + 1) * self.training_batch_size]
-            self.train_mini_batch(idxs, batch)
+            loss += self.train_mini_batch(idxs, batch)
 
         idxs = random_idx[-batch.batch_size % self.training_batch_size:]
-        self.train_mini_batch(idxs, batch)
+        loss += self.train_mini_batch(idxs, batch)
+        return loss / (batch.batch_size//self.training_batch_size)
 
     def train_mini_batch(self, idxs, batch):
         state = *batch[idxs], None
@@ -86,3 +88,4 @@ class Trainer:
         loss = torch.mean(l_probs * (baseline - obj_vals) / baseline) * 10
         loss.backward()
         self.optimiser.step()
+        return  loss.item()
