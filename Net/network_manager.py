@@ -10,6 +10,7 @@ from Net.Nets.Supervised.GNN1.gnn_1 import GNN_1
 from Net.Nets.Supervised.GNN2.gnn_2 import GNN_2
 from Net.Nets.Supervised.GNN_edge.gnn_edge import GNN_edge
 from Net.Nets.Supervised.GNN_GRU.gnn_gru import GNN_GRU
+from Net.Nets.RlNets.GNN_TAU_RL.gnn_tau_rl import GNN_TAU_RL
 
 
 def mse(output, data):
@@ -64,7 +65,8 @@ nets_dict = {
     'GNN_edge': GNN_edge,
     'GNN_GRU': GNN_GRU,
     'GNN_TAU': GNN_TAU,
-    'GNN_TAU_MH': GNN_TAU_MH
+    'GNN_TAU_MH': GNN_TAU_MH,
+    'GNN_TAU_RL': GNN_TAU_RL
 }
 
 criterion_dict = {

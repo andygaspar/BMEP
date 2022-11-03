@@ -25,9 +25,9 @@ class Batch(Dataset):
         self.tau = torch.zeros((self.batch_size, self.max_dim, self.max_dim)).to(self.device)
         self.tau_mask = torch.zeros((self.batch_size, self.max_dim, self.max_dim)).to(self.device)
         self.size_masks = torch.zeros((self.batch_size, self.max_dim, self.max_dim)).to(self.device)
-        self.actions = torch.zeros(self.batch_size, dtype=torch.long)
-        self.baselines = torch.zeros(self.batch_size)
-        self.rewards = torch.zeros(self.batch_size)
+        self.actions = torch.zeros(self.batch_size, dtype=torch.long).to(self.device)
+        self.baselines = torch.zeros(self.batch_size).to(self.device)
+        self.rewards = torch.zeros(self.batch_size).to(self.device)
         self.size = self.d_mats.shape[0]
         self.index = 0
 
@@ -42,7 +42,7 @@ class Batch(Dataset):
         self.tau[self.index: self.index + self.episodes_in_parallel, : m, : m] = tau
         self.tau_mask[self.index: self.index + self.episodes_in_parallel, : m, : m] = tau_mask
         self.size_masks[self.index: self.index + self.episodes_in_parallel, : m, : m] = size_masks
-        self.actions[self.index: self.index + self.episodes_in_parallel] = actions
+        self.actions[self.index: self.index + self.episodes_in_parallel] = self.adjust_actions(actions, m)
         self.index += self.episodes_in_parallel
 
     def add_rewards_baselines(self, rewards, baselines, n_taxa):
@@ -57,6 +57,9 @@ class Batch(Dataset):
 
     def get_arb(self, index):
         return self.actions[index], self.rewards[index], self.baselines[index]
+
+    def adjust_actions(self, actions, m):
+        return torch.div(actions, m, rounding_mode='trunc') * self.max_dim + actions % m
 
 
 class Trainer:
@@ -79,13 +82,13 @@ class Trainer:
         return loss / (batch.batch_size//self.training_batch_size)
 
     def train_mini_batch(self, idxs, batch):
-        state = *batch[idxs], None
+        actions, obj_vals, baseline = batch.get_arb(idxs)
+        state = batch[idxs]
         self.optimiser.zero_grad()
         probs, l_probs = self.net(state)
-        actions, obj_vals, baseline = batch.get_arb(idxs)
         l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
-
         loss = torch.mean(l_probs * (baseline - obj_vals) / baseline) * 10
         loss.backward()
         self.optimiser.step()
-        return  loss.item()
+
+        return loss.detach().item()

@@ -81,7 +81,7 @@ class PolicyGradientBatch(Solver):
             for i in range(3, self.n_taxa):
                 ad_mask, mask = self.get_masks(adj_mat)
                 tau, tau_mask = self.get_taus(adj_mat, tau)
-                state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask, None
+                state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask
                 probs, l_probs = self.net(state)
 
                 # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))

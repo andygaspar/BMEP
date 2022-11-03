@@ -80,7 +80,7 @@ class FA(nn.Module):
         return self.fc2(torch.tanh(self.fc1(x)))
 
 
-class GNN_TAU(Network):
+class GNN_TAU_RL(Network):
     def __init__(self, net_params, network=None):
         super().__init__(net_params["normalisation factor"])
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
@@ -108,7 +108,7 @@ class GNN_TAU(Network):
             self.load_weights(network)
 
     def forward(self, data):
-        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
+        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks = data
         with torch.no_grad():
             taus[taus > 0] = 1 / taus[taus > 0]
             d_mats_ = d_mats / self.normalisation_factor

@@ -29,7 +29,7 @@ print(os.getcwd())
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-folder = 'GNN_TAU'
+folder = 'GNN_TAU_RL'
 data_folder = '03-M18_5_9'
 save = True
 
@@ -63,15 +63,15 @@ optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_dec
 
 min_num_taxa, max_num_taxa = 6, 9
 
-runs = 10
+runs = 1000
 episodes_in_run = 3
-episodes_in_parallel = 36
+episodes_in_parallel = 128
 
 pol = PolicyGradientBatch(dgn, optimizer)
 
 directory, best_mean_difference = None, 10
 
-training_batch_size = 64
+training_batch_size = 3
 trainer = Trainer(dgn, optimizer, training_batch_size)
 
 for run in range(runs):
