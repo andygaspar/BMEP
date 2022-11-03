@@ -35,6 +35,7 @@ def get_tau_tensor_(adj_mat):
     tau = torch.tensor(tau).to(torch.float)
     return tau
 
+
 def compute_obj_and_baseline_(data):
     adj_mat, d = data
     swa = SwaSolver(d)
@@ -44,6 +45,7 @@ def compute_obj_and_baseline_(data):
     g = nx.from_numpy_matrix(adj_mat)
     Tau = nx.floyd_warshall_numpy(g)[:n_taxa, :n_taxa]
     return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n_taxa) for j in range(n_taxa)]), baseline
+
 
 class PolicyGradientBatchEpisode(Solver):
 
