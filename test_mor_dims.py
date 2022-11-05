@@ -37,9 +37,9 @@ m = mats[3]
 dim_dataset = m.shape[0]
 # random.seed(0)
 supervised = False
-folder = 'GNN_TAU'
+folder = 'GNN_TAU_RL'
 # file = '_3.622'
-file = '_0.007_0'
+file = '_0.092_0'
 
 
 # data_folder = '6_taxa_0'
@@ -61,7 +61,7 @@ for _ in range(100):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch(d, dgn, width=10)
+    heuristic = HeuristicSearch(d, dgn, width=100)
     heuristic.solve()
     t1 = time.time() - t
 
