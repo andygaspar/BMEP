@@ -56,8 +56,10 @@ for file in filenames:
     if file[-4:] == '.txt':
         mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
 
-m = mats[3]
-train_params["train data"] = filenames[3][:-4]
+dataset_num = 2
+
+m = mats[dataset_num]
+train_params["train data"] = filenames[dataset_num][:-4]
 dim_dataset = m.shape[0]
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
