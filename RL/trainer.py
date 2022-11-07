@@ -42,6 +42,7 @@ class Batch(Dataset):
         self.tau[self.index: self.index + self.episodes_in_parallel, : m, : m] = tau
         self.tau_mask[self.index: self.index + self.episodes_in_parallel, : m, : m] = tau_mask
         self.size_masks[self.index: self.index + self.episodes_in_parallel, : m, : m] = size_masks
+
         self.actions[self.index: self.index + self.episodes_in_parallel] = self.adjust_actions(actions, m)
         self.index += self.episodes_in_parallel
 
@@ -92,7 +93,10 @@ class Trainer:
         probs, _ = self.net(state)
         # l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
         pb = torch.distributions.Categorical(probs)
-        loss = torch.sum(pb.log_prob(actions) * (obj_vals - baseline) / baseline)
+        loss = torch.mean(pb.log_prob(actions) * (obj_vals - baseline) / baseline)*10
         loss.backward()
         self.optimiser.step()
         return loss.detach().item()
+
+    def train_acr(self, batch: Batch):
+        pass

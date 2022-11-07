@@ -5,8 +5,8 @@
           "epochs": 5000,
           "start": 0,
           "end": 32768,
-          "lr": -4.5,
-          "weight_decay": -3.5,
+          "lr": -5,
+          "weight_decay": -4,
           "criterion": "cross"
         },
     "net": {

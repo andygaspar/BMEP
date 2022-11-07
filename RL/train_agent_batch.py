@@ -75,7 +75,7 @@ pol = PolicyGradientBatch(dgn, optimizer)
 directory, best_mean_difference = None, 10
 
 training_batch_size = 64
-training_loops = 1
+training_loops = 10
 trainer = Trainer(dgn, optimizer, training_batch_size, training_loops)
 
 num_instances = 0
@@ -93,9 +93,10 @@ for run in range(runs):
             idx = random.sample(range(dim_dataset), k=n_taxa)
             d_list.append(m[idx, :][:, idx])
 
-        difference_mean, better, equal = pol.episode(d_list, n_taxa, batch)
+        difference_mean, better, equal, variance_probs = pol.episode(d_list, n_taxa, batch)
         print(run + 1, num_instances,  "taxa ", n_taxa,
               "   difference mean", difference_mean, "   better", better,  "   equal", equal)
+        print(variance_probs)
 
         if run > 998 and difference_mean < best_mean_difference:
             if directory is not None and save:

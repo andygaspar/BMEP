@@ -23,7 +23,7 @@ class Solver:
     def sort_d(d):
         is_tensor = type(d) == torch.Tensor
         dist_sum = np.sum(d, axis=0) if not is_tensor else torch.sum(d, dim=-1)
-        order = np.argsort(dist_sum)[::-1] if not is_tensor else torch.argsort(dist_sum)[::-1]
+        order = np.argsort(dist_sum) if not is_tensor else torch.argsort(dist_sum)
         sorted_d = np.zeros_like(d) if not is_tensor else torch.zeros_like(d)
         for i in order:
             for j in order:

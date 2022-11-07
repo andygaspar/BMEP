@@ -28,7 +28,7 @@ print(os.getcwd())
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-folder = 'GNN_TAU'
+folder = 'GNN_TAU_RL'
 data_folder = '03-M18_5_9'
 save = True
 
@@ -63,7 +63,7 @@ episodes = 1_000
 episodes_in_parallel = 32
 episodes_in_batch = 4
 
-pol = PolicyGradientBatchEpisode(dgn, optimizer)
+pol = PolicyGradientBatch(dgn, optimizer)
 
 directory, best_mean_difference = None, 10
 
