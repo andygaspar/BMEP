@@ -31,12 +31,16 @@ class Network(nn.Module):
         model = self.vgg16(pretrained=True)
         torch.save(model.state_dict(), filename + '.pt')
 
-    def save_net(self, folder: str, best_loss: float, params: dict, prefix=""):
-        new_folder = 'Net/Nets/' + folder + '/' + prefix + "_" + str(int(best_loss * 1000) / 1000) + "_0"
+    def save_net(self, folder: str, score: float, params: dict, prefix="", supervised=True):
+        if supervised:
+            new_folder = 'Net/Nets/Supervised/' + folder + '/' + prefix + "_" + str(int(score * 1000) / 1000) + "_0"
+        else:
+            new_folder = 'Net/Nets/RlNets/' + folder + '/' + prefix + "_" + str(int(score * 1000) / 1000) + "_0"
         while os.path.isdir(new_folder):
             new_folder += "i"
         os.mkdir(new_folder)
-        params["net"]["best_loss"] = best_loss
+        score = "best_loss" if supervised else "best mean difference"
+        params["net"][score] = score
         params["net"]["normalisation factor"] = self.normalisation_factor
         with open(new_folder + '/params.json', 'w') as outfile:
             json.dump(params, outfile)

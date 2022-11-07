@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from importlib.metadata import version
 
 from RL.policy_gradient_batch import PolicyGradientBatchEpisode
+from RL.policy_gradient_batch_RM import PolicyGradientBatch
 from Solvers.SWA.swa_solver import SwaSolver
 
 print(os.getcwd())
@@ -58,20 +59,30 @@ dim_dataset = m.shape[0]
 
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
-episodes = 10_000
-batch_size = 36
+episodes = 1_000
+episodes_in_parallel = 32
+episodes_in_batch = 4
 
 pol = PolicyGradientBatchEpisode(dgn, optimizer)
 
+directory, best_mean_difference = None, 10
+
 for episode in range(1, episodes + 1):
-    n_taxa = np.random.choice(range(6, 9))
+    n_taxa = np.random.choice(range(17, 18))
     d_list = []
-    for _ in range(batch_size):
+    for _ in range(episodes_in_parallel):
 
         idx = random.sample(range(dim_dataset), k=n_taxa)
         d_list.append(m[idx, :][:, idx])
 
-    loss, difference_mean = pol.episode(d_list, n_taxa)
-    print(episode * batch_size, "taxa ", n_taxa, "   loss ", loss, "   difference mean", difference_mean)
+    loss, difference_mean, better, equal = pol.episode(d_list, n_taxa)
+    print(episode, episode * episodes_in_parallel, "taxa ", n_taxa, "   loss ", loss, "   difference mean", difference_mean,
+          "   better", better,  "   equal", equal)
+
+    if episode > 100 and difference_mean < best_mean_difference:
+        if directory is not None and save:
+            shutil.rmtree(directory)
+        directory = dgn.save_net(folder, difference_mean, params, supervised=False)
+        best_mean_difference = difference_mean
 
 

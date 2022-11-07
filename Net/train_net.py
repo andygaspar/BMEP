@@ -20,11 +20,11 @@ from importlib.metadata import version
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
-folder = 'GNN_TAU_MH'
+folder = 'GNN_TAU'
 data_folder = '03-M18_5_9'
 save = True
 
-net_manager = NetworkManager(folder)
+net_manager = NetworkManager(folder, supervised=True)
 params = net_manager.get_params()
 train_params, net_params = params["train"], params["net"]
 train_params["train data"] = data_folder

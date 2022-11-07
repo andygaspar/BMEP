@@ -32,7 +32,7 @@ class HeuristicSearch(NetSolver):
                              d_mask.unsqueeze(0),
                              size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
                              tau.unsqueeze(0),
-                             tau_mask.unsqueeze(0), None))
+                             tau_mask.unsqueeze(0)))
             probs, a_max = torch.topk(y, min([3, self.w]))
             probs = probs.squeeze(0)
             idxs = [torch.tensor([torch.div(a, self.m, rounding_mode='trunc'), a % self.m]).to(self.device)
@@ -56,7 +56,7 @@ class HeuristicSearch(NetSolver):
                                      d_mask.unsqueeze(0),
                                      size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
                                      tau.unsqueeze(0),
-                                     tau_mask.unsqueeze(0), None))
+                                     tau_mask.unsqueeze(0)))
                     sol.y *= sol.prob
                 p = torch.cat([sol.y for sol in self.solutions])
                 # print(p)
