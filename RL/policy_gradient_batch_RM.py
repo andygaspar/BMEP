@@ -13,8 +13,8 @@ from Solvers.solver import Solver
 
 def sort_d(d):
     dist_sum = np.sum(d, axis=0)
-    order = np.argsort(dist_sum)
-    sorted_d = np.zeros_like(d)
+    order = np.argsort(dist_sum)[::-1]
+    sorted_d = np.zeros_like(d)[::-1]
     for i in order:
         for j in order:
             sorted_d[i, j] = d[order[i], order[j]]

@@ -92,7 +92,7 @@ class Trainer:
         probs, _ = self.net(state)
         # l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
         pb = torch.distributions.Categorical(probs)
-        loss = torch.sum(pb.log_prob(actions) * (baseline - obj_vals) / baseline)
+        loss = torch.sum(pb.log_prob(actions) * (obj_vals - baseline) / baseline)
         loss.backward()
         self.optimiser.step()
         return loss.detach().item()

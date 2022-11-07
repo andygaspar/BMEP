@@ -23,7 +23,6 @@ from RL.policy_gradient_batch_RM import PolicyGradientBatch
 from RL.trainer import Batch, Trainer
 from Solvers.SWA.swa_solver import SwaSolver
 
-print(os.getcwd())
 
 
 a100 = True if version('torch') == '1.9.0+cu111' else False
@@ -69,7 +68,7 @@ min_num_taxa, max_num_taxa = 6, 9
 
 runs = 1000
 episodes_in_run = 6
-episodes_in_parallel = 256
+episodes_in_parallel = 128
 
 pol = PolicyGradientBatch(dgn, optimizer)
 
@@ -98,7 +97,7 @@ for run in range(runs):
         print(run + 1, num_instances,  "taxa ", n_taxa,
               "   difference mean", difference_mean, "   better", better,  "   equal", equal)
 
-        if run > 30 and difference_mean < best_mean_difference:
+        if run > 998 and difference_mean < best_mean_difference:
             if directory is not None and save:
                 shutil.rmtree(directory)
             directory = dgn.save_net(folder, difference_mean, params, supervised=False)
