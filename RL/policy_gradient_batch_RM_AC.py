@@ -77,13 +77,13 @@ class PolicyGradientBatch(Solver):
 
             adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, n_problems)
             tau, idxs = None, None
-            variance_probs = []
+
             for i in range(3, self.n_taxa):
                 ad_mask, mask = self.get_masks(adj_mat)
                 tau, tau_mask = self.get_taus(adj_mat, tau)
                 state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask
-                probs, _ = self.net(state)
-                variance_probs.append(torch.var(probs[probs > 0.001]).item())
+                probs, l_probs = self.net(state)
+
                 # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
                 prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
                 action = prob_dist.sample()
@@ -107,7 +107,7 @@ class PolicyGradientBatch(Solver):
             better = sum(obj_vals < baseline).item()
             equal = sum(obj_vals == baseline).item()
 
-            return torch.mean((obj_vals - baseline) / baseline).item(), better, equal, variance_probs
+            return torch.mean((obj_vals - baseline) / baseline).item(), better, equal
 
     def standings(self):
         return self.loss, self.mean_difference, self.better, self.equal

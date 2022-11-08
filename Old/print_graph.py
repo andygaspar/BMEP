@@ -1,7 +1,11 @@
 import copy
+import os
+
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+
+from Solvers.SWA.swa_solver import SwaSolver
 
 
 def get_graph(matrix, labels=None):
@@ -56,8 +60,6 @@ def get_graph(matrix, labels=None):
             G.add_edges_from([(s[0, i], s[0, j])])
             over = True
 
-
-
     mapping = dict(zip(G, [labels[int(node)] if int(node) < n else int(node) for node in G]))
     G = nx.relabel_nodes(G, mapping)
 
@@ -72,3 +74,38 @@ T = np.array([[0, 3, 5, 5, 2, 4],
               [4, 3, 4, 3, 3, 0]])
 
 get_graph(T, ["A", "B", "C", "D", "E", "F"])
+
+import os
+import numpy as np
+
+path = 'Data_/csv_'
+filenames = sorted(next(os.walk(path), (None, None, []))[2])
+
+mats = []
+for file in filenames:
+    if file[-4:] == '.txt':
+        mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
+
+mat = mats[2][:7, :7]/np.max(mats[2][:7, :7])
+mat_sum = mat.sum(axis=1)
+mat_means = mat.mean(axis=1)
+mat_stad = mat.std(axis=1)
+swa = SwaSolver(mat[:5, :5])
+swa.solve()
+tau_full = swa.get_tau(swa.solution)
+tau = tau_full[:5, :5]
+
+
+def get_taxa_standing(d, tau, taxa_idx):
+    return sum(d[taxa_idx] / 2 ** (tau[taxa_idx]))
+
+
+def get_internal_standing(d_means, tau_full, internal_idx):
+    return sum(d_means / 2 ** tau_full[internal_idx, :d_means.shape[0]])
+
+
+for i in range(5):
+    print(get_taxa_standing(mat[:5, :5], tau, i))
+
+for j in range(5, 8):
+    print(get_internal_standing(mat_means, tau_full, j))

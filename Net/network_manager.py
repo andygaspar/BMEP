@@ -3,6 +3,7 @@ import json
 import torch
 from torch import nn
 
+from Net.Nets.RlNets.GNN_TAU_RL_AC.gnn_tau_rl_ac import GNN_TAU_RL_AC
 from Net.Nets.Supervised.GNN_TAU.gnn_tau import GNN_TAU
 from Net.Nets.Supervised.GNN_TAU_MH.gnn_tau_multi_head import GNN_TAU_MH
 from Net.Nets.Supervised.GNN.gnn import GNN
@@ -66,7 +67,8 @@ nets_dict = {
     'GNN_GRU': GNN_GRU,
     'GNN_TAU': GNN_TAU,
     'GNN_TAU_MH': GNN_TAU_MH,
-    'GNN_TAU_RL': GNN_TAU_RL
+    'GNN_TAU_RL': GNN_TAU_RL,
+    'GNN_TAU_RL_AC': GNN_TAU_RL_AC
 }
 
 criterion_dict = {
