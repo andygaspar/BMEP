@@ -157,3 +157,5 @@ class GNN_TAU_RL(Network):
         hj = h[:, idxs[:, 1]]
 
         return hi, hj
+
+

@@ -6,65 +6,19 @@ import torch.nn.functional as F
 from Net.network import Network
 
 
-class NodeEncoder(nn.Module):
-    def __init__(self, din, h_dimension, device=None):
-        super(NodeEncoder, self).__init__()
+class Encoder(nn.Module):
+    def __init__(self, din, h_dimension, hidden_dim, device=None):
+        super(Encoder, self).__init__()
         self.device = device
-        self.fc = nn.Linear(din, h_dimension).to(self.device)
+        self.fc = nn.Sequential(
+            nn.Linear(din, hidden_dim),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_dim, h_dimension),
+            nn.Tanh()
+        ).to(self.device)
 
     def forward(self, x):
-        embedding = torch.tanh(self.fc(x))
-        return embedding
-
-
-class Message(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
-        self.device = device
-        super(Message, self).__init__()
-        self.f_alpha = nn.Linear(h_dimension * 2, hidden_dim).to(self.device)
-        self.v = nn.Linear(hidden_dim, 1).to(self.device)
-        # self.v = nn.Sequential(
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(hidden_dim, hidden_dim),
-        #     nn.LeakyReLU(),
-        #     nn.Linear(hidden_dim, 1)).to(self.device)
-
-    def forward(self, hi, hj, mat, mat_mask):
-        a = torch.tanh(self.f_alpha(torch.cat([hi, hj], dim=-1)))  # messo lrelu
-        a = torch.tanh(self.v(a).view(mat.shape))  # messo lrelu
-        alpha = F.softmax(torch.mul(a, mat) - 9e15 * (1 - mat_mask), dim=-1)
-        return alpha
-
-
-class FD(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, device):
-        self.device = device
-        super(FD, self).__init__()
-        self.fe = nn.Linear(h_dimension * 2 + hidden_dim, hidden_dim).to(self.device)
-        self.fd = nn.Linear(1, hidden_dim).to(self.device)
-
-    def forward(self, hi, hj, d):
-        dd = d.view(d.shape[0], d.shape[1] ** 2, 1)
-        d_ij = torch.tanh(self.fd(dd))  # messo lrelu
-        out = torch.tanh(self.fe(torch.cat([hi, hj, d_ij], dim=-1)))
-        return out
-
-
-class MessageNode(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, drop_out, device):
-        self.device = device
-        super(MessageNode, self).__init__()
-        self.fmn1 = nn.Linear(h_dimension + hidden_dim, h_dimension).to(self.device)
-        self.fmn2 = nn.Linear(h_dimension, hidden_dim).to(self.device)
-        self.drop_out = drop_out
-
-    def forward(self, h, m1):
-        h = torch.tanh(self.fmn1(torch.cat([h, m1], dim=-1)))
-        h = nn.functional.dropout(h, p=self.drop_out)
-        h = torch.tanh(self.fmn2(h))
-        return h
-
+        return self.fc(x)
 
 class FA(nn.Module):
     def __init__(self, h_dimension, hidden_dim, drop_out, device):
@@ -84,31 +38,22 @@ class FA(nn.Module):
 class EGAT_MH_RL(Network):
     def __init__(self, net_params, network=None):
         super().__init__(net_params["normalisation factor"])
-        num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
-                                                            net_params["hidden_dim"], net_params["num_messages"]
+        self.node_inputs, self.edge_inputs = net_params["node_inputs"], net_params["edge_inputs"]
+        self.h_dimension, self.hidden_dim = net_params["h_dimension"], net_params["hidden_dim"]
+        self.rounds, self.num_heads = net_params["num_messages"], net_params["num_heads"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # self.mask = torch.ones((10, 10)).to(self.device)
 
-        self.rounds = num_messages
-        self.num_heads = net_params['num_heads']
+        self.node_encoder = Encoder(self.node_inputs, self.h_dimension, self.hidden_dim, self.device)
+        self.edge_inputs = Encoder(self.edge_inputs, self.h_dimension, self.hidden_dim, self.device)
 
-        self.in_taxa_encoder = NodeEncoder(num_inputs, h_dimension, self.device)
-
-
-        self.W = nn.Linear(hidden_dim, self.num_heads * hidden_dim, bias=False)
-        self.a_target = nn.Parameter(torch.Tensor(1, self.num_heads, hidden_dim))
-
-        self.fd = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.ft = nn.ModuleList([FD(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-
-        self.alpha_d = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
-        self.alpha_t = nn.ModuleList([Message(h_dimension, hidden_dim, self.device) for _ in range(self.rounds)])
+        self.W = nn.ModuleList([nn.Linear(self.h_dimension, self.num_heads * self.h_dimension, bias=False)
+                                for _ in range(self.rounds)])
+        self.a_target = [nn.Parameter(torch.Tensor(1, self.num_heads, self.hidden_dim)) for _ in range(self.rounds)]
 
         self.drop_out = net_params['drop out']
 
-        self.fm1 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
-        self.fm2 = MessageNode(h_dimension, hidden_dim, self.drop_out, self.device)
-        self.fa = FA(h_dimension, hidden_dim, self.drop_out, self.device)
+        self.fa = FA(self.h_dimension, self.hidden_dim, self.drop_out, self.device)
 
         if network is not None:
             self.load_weights(network)
@@ -163,3 +108,72 @@ class EGAT_MH_RL(Network):
         hj = h[:, idxs[:, 1]]
 
         return hi, hj
+
+
+import os
+import numpy as np
+from Solvers.SWA.swa_solver import SwaSolver
+
+def get_taxa_standing(d, tau, taxa_idx, n_taxa):
+    return sum(d[taxa_idx] / 2 ** (tau[taxa_idx, n_taxa]))
+
+def get_internal_standing_d(d_means, tau_full, internal_idx):
+    return np.mean(d_means / 2 ** tau_full[internal_idx, :d_means.shape[0]])
+
+def get_internal_standing(tau_full, internal_idx):
+    return np.mean(tau_full[internal_idx] / 2 ** tau_full[internal_idx])
+
+
+
+
+path = 'Data_/csv_'
+filenames = sorted(next(os.walk(path), (None, None, []))[2])
+
+mats = []
+for file in filenames:
+    if file[-4:] == '.txt':
+        mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
+
+n_taxa = 7
+step = 2
+
+mat = mats[2][:n_taxa, :n_taxa]/np.max(mats[2][:n_taxa, :n_taxa])
+
+swa = SwaSolver(mat[:step + 3, :step + 3])
+swa.solve()
+tau_partial = swa.get_tau(swa.solution)
+tau = np.zeros((n_taxa*2 -2, n_taxa*2-2))
+tau[:step+3, :step+3] = tau_partial[:step+3, :step+3]
+tau[n_taxa: n_taxa+3, :n_taxa] = tau_partial[n_taxa-step:, :n_taxa]
+
+tau[:n_taxa, n_taxa: n_taxa+3] = tau_partial[:n_taxa, n_taxa-step:]
+y = tau_partial[n_taxa-step:, n_taxa-step:]
+tau[n_taxa: n_taxa+3, n_taxa: n_taxa+3] = tau_partial[n_taxa-step:, n_taxa-step:]
+
+def make_node_input(d, n_taxa, tau, step):
+    step += 3
+    m = n_taxa*2 - 2
+    node_input = np.zeros((m, 7))
+    d_means = mat.mean(axis=1)
+    node_input[:n_taxa, 0] = d_means
+    node_input[:n_taxa, 1] = mat.std(axis=1)
+    node_input[:n_taxa, 2] = mat.sum(axis=1)/step
+    node_input[:n_taxa, 3] = np.sqrt(((mat - mat.mean(axis=1))**2).sum(axis=1))/step
+
+    for i in range(step):
+        node_input[i, 4] = get_taxa_standing(d, tau, i, n_taxa)
+
+    for j in range(n_taxa, n_taxa + step - 3):
+        node_input[j, 5] = get_internal_standing_d(d_means, tau, j)
+        node_input[j, 6] = get_internal_standing(tau, j)
+    print(node_input)
+
+make_node_input(mat, n_taxa, tau, step)
+
+# for i in range(5):
+#     print(get_taxa_standing(mat[:5, :5], tau, i))
+
+
+net_params = {'normalisation factor': np.max(mat), 'node_inputs': 6, 'edge_inputs': 5,  'h_dimension': 128, 'hidden_dim': 64, 'num_messages': 3, 'num_heads': 3}
+
+
