@@ -30,43 +30,64 @@ class FA(nn.Module):
 
     def forward(self, x):
         x = torch.tanh(self.fc1(x))
-        x = nn.functional.dropout(x, p=self.drop_out)
+        # x = nn.functional.dropout(x, p=self.drop_out)
         q = self.fc2(x)
         return q
 
 
 class EGAT_MH_RL(Network):
-    def __init__(self, net_params, network=None):
+    def __init__(self, net_params, network=None, normalised=False):
         super().__init__(net_params["normalisation factor"])
-        self.node_inputs, self.edge_inputs = net_params["node_inputs"], net_params["edge_inputs"]
-        self.h_dimension, self.hidden_dim = net_params["h_dimension"], net_params["hidden_dim"]
+        self.taxa_inputs, self.internal_inputs, self.edge_inputs = \
+            net_params["taxa_inputs"], net_params["internal_inputs"], net_params["edge_inputs"]
+        self.embedding_dim, self.hidden_dim = net_params["embedding_dim"], net_params["hidden_dim"]
         self.rounds, self.num_heads = net_params["num_messages"], net_params["num_heads"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        # self.mask = torch.ones((10, 10)).to(self.device)
+        self.normalised = normalised
 
-        self.node_encoder = Encoder(self.node_inputs, self.h_dimension, self.hidden_dim, self.device)
-        self.edge_inputs = Encoder(self.edge_inputs, self.h_dimension, self.hidden_dim, self.device)
 
-        self.W = nn.ModuleList([nn.Linear(self.h_dimension, self.num_heads * self.h_dimension, bias=False)
-                                for _ in range(self.rounds)])
-        self.a_target = [nn.Parameter(torch.Tensor(1, self.num_heads, self.hidden_dim)) for _ in range(self.rounds)]
+        self.taxa_encoder = Encoder(self.taxa_inputs, self.embedding_dim, self.hidden_dim, self.device)
+        self.internal_encoder = Encoder(self.internal_inputs, self.embedding_dim, self.hidden_dim, self.device)
+        self.edge_encoder = Encoder(self.edge_inputs, self.embedding_dim, self.hidden_dim, self.device)
 
-        self.drop_out = net_params['drop out']
+        attention_dims = [self.embedding_dim]
+        for i in range(self.rounds):
+            attention_dims.append(attention_dims[-1]*self.num_heads)
 
-        self.fa = FA(self.h_dimension, self.hidden_dim, self.drop_out, self.device)
+        self.W = nn.ModuleList([nn.Linear(attention_dims[i], attention_dims[i + 1], bias=False).to(self.device)
+                                for i in range(self.rounds)])
+        self.a = [nn.Parameter(torch.Tensor(1, 1, attention_dims[i + 1] * 3)).to(self.device)
+                         for i in range(self.rounds)]
+
+        # self.drop_out = net_params['drop out']
+        self.drop_out = None
+
+        self.fa = FA(attention_dims[-1], attention_dims[-1], self.drop_out, self.device)
 
         if network is not None:
             self.load_weights(network)
 
     def forward(self, data):
-        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
-        d_mats_ = d_mats / self.normalisation_factor
+        taxa, internal, messages, masks = data
+        if not self.normalised:
+            taxa = taxa / self.normalisation_factor
+            internal = internal / self.normalisation_factor
+            messages = messages / self.normalisation_factor
 
-        h = self.encoder(initial_masks)
-        taus[taus > 0] = 1 / taus[taus > 0]
-        h = self.context_message(h, d_mats_, d_masks, initial_masks, 3)
-        h = self.tau_message(h, taus, tau_masks, ad_masks, 3)
-        h = self.fa(h)
+        a = self.taxa_encoder(taxa)
+        b = self.internal_encoder(internal)
+
+        h = torch.cat([a, b], dim=1)
+        message = self.edge_encoder(messages)
+
+        for i in range(self.rounds):
+            z = self.W[i](h)
+            e_i = z.repeat_interleave(z.shape[1], 1)
+            e_j = z.repeat(1, z.shape[1], 1)
+            e = nn.functional.leaky_relu((self.a[i] * torch.cat([e_i, e_j, message], dim=-1)).sum(dim=-1))
+            alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]), dim=-1)
+            h = torch.tanh(torch.matmul(alpha, z))
+
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * masks - 9e15 * (1 - masks)
         mat_size = y_h.shape
@@ -74,28 +95,7 @@ class EGAT_MH_RL(Network):
 
         return y_hat, F.log_softmax(y_h.view(mat_size[0], -1), dim=-1)
 
-    def context_message(self, h, d, d_mask, initial_mask, rounds):
-        for i in range(rounds):
-            hi, hj = self.i_j(h)
-            alpha_d = self.alpha_d[i](hi, hj, d, d_mask).unsqueeze(-1)
-            e_d = self.fd[i](hi, hj, d).view(d.shape[0], d.shape[1], d.shape[2], -1)
-            m_1 = (alpha_d * e_d).sum(dim=-2)
-            hd = initial_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
-            h_not_d = initial_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
-            h = self.fm1(h, m_1) * hd + h * h_not_d
 
-        return h
-
-    def tau_message(self, h, taus, tau_masks, ad_masks, rounds):
-        for i in range(rounds):
-            hi, hj = self.i_j(h)
-            alpha_t = self.alpha_t[i](hi, hj, taus, tau_masks).unsqueeze(-1)
-            e_d = self.ft[i](hi, hj, taus).view(taus.shape[0], taus.shape[1], taus.shape[2], -1)
-            m_2 = (alpha_t * e_d).sum(dim=-2)
-            h_adj = ad_masks[:, :, 0].unsqueeze(-1).expand(-1, -1, h.shape[-1])
-            h_not_adj = ad_masks[:, :, 1].unsqueeze(-1).expand(-1, -1, h.shape[-1])
-            h = self.fm2(h, m_2) * h_adj + h * h_not_adj
-        return h
 
     @staticmethod
     def i_j(h):
@@ -153,27 +153,32 @@ tau[n_taxa: n_taxa+3, n_taxa: n_taxa+3] = tau_partial[n_taxa-step:, n_taxa-step:
 def make_node_input(d, n_taxa, tau, step):
     step += 3
     m = n_taxa*2 - 2
-    node_input = np.zeros((m, 7))
+    taxa_input = np.zeros((m, 7))
     d_means = mat.mean(axis=1)
-    node_input[:n_taxa, 0] = d_means
-    node_input[:n_taxa, 1] = mat.std(axis=1)
-    node_input[:n_taxa, 2] = mat.sum(axis=1)/step
-    node_input[:n_taxa, 3] = np.sqrt(((mat - mat.mean(axis=1))**2).sum(axis=1))/step
+    taxa_input[:n_taxa, 0] = d_means
+    taxa_input[:n_taxa, 1] = mat.std(axis=1)
+    taxa_input[:n_taxa, 2] = mat.sum(axis=1)/step
+    taxa_input[:n_taxa, 3] = np.sqrt(((mat - mat.mean(axis=1))**2).sum(axis=1))/step
 
     for i in range(step):
-        node_input[i, 4] = get_taxa_standing(d, tau, i, n_taxa)
+        taxa_input[i, 4] = get_taxa_standing(d, tau, i, n_taxa)
 
     for j in range(n_taxa, n_taxa + step - 3):
-        node_input[j, 5] = get_internal_standing_d(d_means, tau, j)
-        node_input[j, 6] = get_internal_standing(tau, j)
-    print(node_input)
+        taxa_input[j, 5] = get_internal_standing_d(d_means, tau, j)
+        taxa_input[j, 6] = get_internal_standing(tau, j)
+    return torch.tensor(taxa_input).to(torch.float).to("cuda:0")
 
-make_node_input(mat, n_taxa, tau, step)
+taxa = make_node_input(mat, n_taxa, tau, step).unsqueeze(0)
+internals = torch.ones((4, 2)).to(torch.float).to("cuda:0").unsqueeze(0)
+messages = torch.ones((16**2, 2)).to(torch.float).to("cuda:0").unsqueeze(0)
 
 # for i in range(5):
 #     print(get_taxa_standing(mat[:5, :5], tau, i))
 
 
-net_params = {'normalisation factor': np.max(mat), 'node_inputs': 6, 'edge_inputs': 5,  'h_dimension': 128, 'hidden_dim': 64, 'num_messages': 3, 'num_heads': 3}
+net_params = {'normalisation factor': np.max(mat), 'embedding_inputs': 6, 'edge_inputs': 2,  'embedding_dim': 4,
+              'hidden_dim': 6, 'num_messages': 3, 'num_heads': 2, 'taxa_inputs': 7, 'internal_inputs': 2}
 
+net = EGAT_MH_RL(net_params)
+net((taxa, internals, messages, None))
 
