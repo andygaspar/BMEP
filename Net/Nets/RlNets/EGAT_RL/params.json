@@ -5,7 +5,7 @@
           "epochs": 5000,
           "start": 0,
           "end": 32768,
-          "lr": -7,
+          "lr": -5,
           "weight_decay": -4,
           "criterion": "cross"
         },
@@ -19,7 +19,7 @@
       "taxa_inputs":  5,
       "internal_inputs": 5,
       "edge_inputs": 2,
-      "embedding_dim": 512,
+      "embedding_dim": 128,
       "normalisation factor": "",
       "drop out": 0.05
 

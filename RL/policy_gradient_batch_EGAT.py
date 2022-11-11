@@ -119,6 +119,7 @@ class PolicyGradientEGAT(Solver):
 
                 state = taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask, action_mask
                 probs, _ = self.net(state)
+                # print(probs[0])
                 variance_probs.append(torch.var(probs[probs > 0.001]).item())
                 prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
                 action = prob_dist.sample()

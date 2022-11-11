@@ -17,15 +17,17 @@ class Encoder(nn.Module):
         self.device = device
         self.fc = nn.Sequential(
             nn.Linear(din, hidden_dim),
-            nn.LeakyReLU(),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
             nn.Linear(hidden_dim, embedding_dimension),
-            nn.LeakyReLU(),
         ).to(self.device)
 
         self.fc.apply(init_w)
 
     def forward(self, x):
-        return self.fc(x)
+        out = self.fc(x) * 10
+        return out
 
 
 class FA(nn.Module):
@@ -96,7 +98,7 @@ class EGAT_MH_RL(Network):
         a = self.taxa_encoder(taxa) * size_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
         b = self.internal_encoder(internal) * size_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
 
-        h = a + b
+        h = (a + b)
         m_z = self.edge_encoder(messages)
         batch_size = h.shape[0]
 
