@@ -6,6 +6,11 @@ import torch.nn.functional as F
 from Net.network import Network
 
 
+def init_w(w):
+    if type(w) == nn.Linear:
+        nn.init.xavier_uniform_(w.weight)
+
+
 class Encoder(nn.Module):
     def __init__(self, din, embedding_dimension, hidden_dim, device=None):
         super(Encoder, self).__init__()
@@ -14,11 +19,14 @@ class Encoder(nn.Module):
             nn.Linear(din, hidden_dim),
             nn.LeakyReLU(),
             nn.Linear(hidden_dim, embedding_dimension),
-            nn.Tanh()
+            nn.LeakyReLU(),
         ).to(self.device)
+
+        self.fc.apply(init_w)
 
     def forward(self, x):
         return self.fc(x)
+
 
 class FA(nn.Module):
     def __init__(self, h_dimension, hidden_dim, drop_out, device):
@@ -51,22 +59,33 @@ class EGAT_MH_RL(Network):
 
         self.attention_dims = [self.embedding_dim]
         for i in range(self.rounds):
-            self.attention_dims.append(self.attention_dims[-1]*self.num_heads)
+            self.attention_dims.append(self.attention_dims[-1] * self.num_heads)
 
-        self.W = nn.ModuleList([nn.Linear(self.attention_dims[i], self.attention_dims[i + 1], bias=False).to(self.device)
-                                for i in range(self.rounds)])
-        self.W_m = nn.ModuleList([nn.Linear(self.attention_dims[i], self.attention_dims[i + 1], bias=False).to(self.device)
-                                for i in range(self.rounds)])
+        self.W = nn.ModuleList(
+            [nn.Linear(self.attention_dims[i], self.attention_dims[i + 1], bias=False).to(self.device)
+             for i in range(self.rounds)])
+        self.W_m = nn.ModuleList(
+            [nn.Linear(self.attention_dims[i], self.attention_dims[i + 1], bias=False).to(self.device)
+             for i in range(self.rounds)])
         self.a = [nn.Parameter(torch.Tensor(1, 1, self.attention_dims[i + 1] * 3)).to(self.device)
-                         for i in range(self.rounds)]
+                  for i in range(self.rounds)]
 
         # self.drop_out = net_params['drop out']
         self.drop_out = None
+        self.leakyReLU = nn.LeakyReLU(0.2)
 
         self.fa = FA(self.attention_dims[-1], self.attention_dims[-1], self.drop_out, self.device)
 
         if network is not None:
             self.load_weights(network)
+
+        self.init_params()
+
+    def init_params(self):
+        for i in range(self.rounds):
+            nn.init.xavier_uniform_(self.W[i].weight)
+            nn.init.xavier_uniform_(self.W_m[i].weight)
+            nn.init.xavier_uniform_(self.a[i])
 
     def forward(self, data):
         taxa, internal, messages, curr_mask, size_mask, action_mask = data
@@ -83,12 +102,13 @@ class EGAT_MH_RL(Network):
         batch_size = h.shape[0]
 
         for i in range(self.rounds):
-            z = self.W[i](h).view(batch_size, -1,  self.num_heads * self.attention_dims[i])
+            z = self.W[i](h).view(batch_size, -1, self.num_heads * self.attention_dims[i])
             m_z = self.W_m[i](m_z).view(batch_size, -1, self.num_heads * self.attention_dims[i])
             e_i = z.repeat_interleave(z.shape[1], 1)
             e_j = z.repeat(1, z.shape[1], 1)
-            e = nn.functional.leaky_relu((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
-            alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]) * curr_mask - 9e15 * (1 - curr_mask), dim=-1)
+            e = self.leakyReLU((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
+            alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]) * curr_mask - 9e15 * (1 - curr_mask),
+                                          dim=-1)
             h = torch.tanh(torch.matmul(alpha, z))
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * action_mask - 9e15 * (1 - action_mask)
@@ -96,4 +116,3 @@ class EGAT_MH_RL(Network):
         y_hat = F.softmax(y_h.view(mat_size[0], -1), dim=-1)
 
         return y_hat, F.log_softmax(y_h.view(mat_size[0], -1), dim=-1)
-

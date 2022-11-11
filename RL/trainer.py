@@ -33,10 +33,10 @@ class Trainer:
         actions, obj_vals, baseline = batch.get_arb(idxs)
         state = batch[idxs]
         self.optimiser.zero_grad()
-        probs, _ = self.net(state)
-        # l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
-        pb = torch.distributions.Categorical(probs)
-        loss = torch.mean(pb.log_prob(actions) * (obj_vals - baseline) / baseline)*10
+        probs, l_probs = self.net(state)
+        l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
+        # pb = torch.distributions.Categorical(probs)
+        loss = torch.mean(l_probs * (obj_vals - baseline) / baseline)*10
         loss.backward()
         self.optimiser.step()
         return loss.detach().item()

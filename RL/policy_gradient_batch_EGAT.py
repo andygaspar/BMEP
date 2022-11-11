@@ -78,6 +78,7 @@ class PolicyGradientEGAT(Solver):
 
             adj_mat = self.initial_mats(d, n_problems)
             tau, idxs = None, None
+            variance_probs = []
 
             taxa_embeddings = torch.zeros((n_problems, self.m, 5)).to(self.device)
             taxa_embeddings[:, :self.n_taxa, 0] = (d[:, :self.n_taxa, :self.n_taxa]/self.normalisation_factor).mean(dim=-1)
@@ -117,9 +118,8 @@ class PolicyGradientEGAT(Solver):
                 message_embeddings[:, :, 1] = message_i.reshape(-1, self.m**2)
 
                 state = taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask, action_mask
-                probs, l_probs = self.net(state)
-
-                # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
+                probs, _ = self.net(state)
+                variance_probs.append(torch.var(probs[probs > 0.001]).item())
                 prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
                 action = prob_dist.sample()
                 idxs = (torch.arange(0, n_problems, dtype=torch.long), torch.div(action, self.m, rounding_mode='trunc'),
@@ -142,7 +142,7 @@ class PolicyGradientEGAT(Solver):
             better = sum(obj_vals < baseline).item()
             equal = sum(obj_vals == baseline).item()
 
-            return torch.mean((obj_vals - baseline) / baseline).item(), better, equal, None
+            return torch.mean((obj_vals - baseline) / baseline).item(), better, equal, variance_probs
 
     def standings(self):
         return self.mean_difference, self.better, self.equal
