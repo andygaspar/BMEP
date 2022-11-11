@@ -7,6 +7,7 @@ import numpy as np
 import torch.nn.init
 
 from RL.Batches.batch import Batch
+from RL.Batches.batch_EGAT import BatchEGAT
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver
 
@@ -48,21 +49,21 @@ def compute_obj_and_baseline_(data):
     return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n_taxa) for j in range(n_taxa)]), baseline
 
 
-class PolicyGradientBatch(Solver):
+class PolicyGradientEGAT(Solver):
 
-    def __init__(self, net, optim):
+    def __init__(self, net, normalisation_factor):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.num_procs = mp.cpu_count()
         self.batch_size = None
         super().__init__(None)
         self.net = net
+        self.normalisation_factor = normalisation_factor
 
-        self.optimiser = optim
         self.adj_mats = []
-        self.loss, self.better, self.equal, self.mean_difference = (None for _ in range(4))
+        self.better, self.equal, self.mean_difference = None, None, None
 
-    def episode(self, d_list, n_taxa, replay_memory: Batch):
+    def episode(self, d_list, n_taxa, replay_memory: BatchEGAT):
 
         with torch.no_grad():
             n_problems = len(d_list)
@@ -75,23 +76,57 @@ class PolicyGradientBatch(Solver):
             d = np.array(results)
             d = torch.tensor(d).to(torch.float).to(self.device)
 
-            adj_mat, size_mask, initial_mask, d_mask = self.initial_mats(d, n_problems)
+            adj_mat = self.initial_mats(d, n_problems)
             tau, idxs = None, None
-            variance_probs = []
+
+            taxa_embeddings = torch.zeros((n_problems, self.m, 5)).to(self.device)
+            taxa_embeddings[:, :self.n_taxa, 0] = (d[:, :self.n_taxa, :self.n_taxa]/self.normalisation_factor).mean(dim=-1)
+            taxa_embeddings[:, :self.n_taxa, 1] = (d[:, :self.n_taxa, :self.n_taxa]/self.normalisation_factor).std(dim=-1)
+            internal_embeddings = torch.zeros((n_problems, self.m, 5)).to(self.device)
+            message_d = copy.deepcopy(d)/self.normalisation_factor
+            message_d[:, self.n_taxa:, :] = message_d[:, :, self.n_taxa:] = 1
+            message_d = 1 - message_d
+            message_embeddings = torch.zeros((n_problems, self.m**2, 2)).to(self.device)
+            message_embeddings[:, :, 0] = message_d.reshape(-1, self.m**2)
+
+            current_mask = torch.zeros((n_problems, self.m, self.m)).to(self.device)
+            size_mask = torch.zeros((n_problems, self.m, 2)).to(self.device)
+            size_mask[:, :self.n_taxa, 0] = 1
+
             for i in range(3, self.n_taxa):
-                ad_mask, mask = self.get_masks(adj_mat)
-                tau, tau_mask = self.get_taus(adj_mat, tau)
-                state = adj_mat, ad_mask, d, d_mask, size_mask, initial_mask, mask, tau, tau_mask
-                probs, _ = self.net(state)
-                variance_probs.append(torch.var(probs[probs > 0.001]).item())
+                tau, action_mask = self.get_taus_and_masks(adj_mat, tau)
+                current_mask[:, :self.n_taxa + i - 2, :self.n_taxa + i - 2] = 1
+                size_mask[:, self.n_taxa: self.n_taxa + i - 2, 1] = 1
+
+                taxa_embeddings[:, :, 2] = 1/i
+                taxa_embeddings[:, :, 3] = i/self.n_taxa
+                taxa_embeddings[:, :i, 4] = (d[:, :i, :i]/(self.normalisation_factor * 2**tau[:, :i, :i])).sum(dim=-1)
+
+                internal_embeddings[:, self.n_taxa: self.n_taxa + i-2, 0] = 1 / i
+                internal_embeddings[:, self.n_taxa: self.n_taxa + i-2, 1] = i / self.n_taxa
+                mean_current_taxa = taxa_embeddings[:, :i, 0].unsqueeze(1).repeat(1, i-2, 1)
+                std_current_taxa = taxa_embeddings[:, :i, 1].unsqueeze(1).repeat(1, i - 2, 1)
+                tau_current_internal = tau[:, n_taxa: n_taxa + i - 2, :i]
+                internal_embeddings[:, self.n_taxa: self.n_taxa + i-2, 2] = (mean_current_taxa / 2**tau_current_internal).sum(dim=-1)
+                internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 3] = (std_current_taxa / 2 ** tau_current_internal).sum(dim=-1)
+                internal_embeddings[:, self.n_taxa:, 4] = (tau[:, n_taxa:, :] / 2 ** tau[:, n_taxa:, :]).mean(dim=-1)
+                message_i = tau + 1
+                message_i[message_i > 1] = 4/10 + 1/message_i[message_i > 1]
+                message_i[:, i: self.n_taxa, :] = message_i[:, :, i: self.n_taxa] = \
+                    message_i[:, :, self.n_taxa + i - 2:] = message_i[:, self.n_taxa + i - 2:, :] = 0
+                message_embeddings[:, :, 1] = message_i.reshape(-1, self.m**2)
+
+                state = taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask, action_mask
+                probs, l_probs = self.net(state)
+
                 # y, _ = self.net(adj_mat.unsqueeze(0), self.d.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0))
                 prob_dist = torch.distributions.Categorical(probs)  # probs should be of size batch x classes
                 action = prob_dist.sample()
                 idxs = (torch.arange(0, n_problems, dtype=torch.long), torch.div(action, self.m, rounding_mode='trunc'),
                         action % self.m)
 
-                replay_memory.add_states(d, d_mask, initial_mask, adj_mat, ad_mask, mask, tau, tau_mask, size_mask,
-                                         action, self.m)
+                replay_memory.add_states(taxa_embeddings, internal_embeddings, message_embeddings,
+                                         current_mask, size_mask, action_mask, action, self.n_taxa, self.m)
                 adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
 
             adj_mats_np = adj_mat.to('cpu').numpy()
@@ -107,10 +142,10 @@ class PolicyGradientBatch(Solver):
             better = sum(obj_vals < baseline).item()
             equal = sum(obj_vals == baseline).item()
 
-            return torch.mean((obj_vals - baseline) / baseline).item(), better, equal, variance_probs
+            return torch.mean((obj_vals - baseline) / baseline).item(), better, equal, None
 
     def standings(self):
-        return self.loss, self.mean_difference, self.better, self.equal
+        return self.mean_difference, self.better, self.equal
 
     def initial_mats(self, d, n_problems):
         adj_mat = self.initial_step_mats(n_problems)
@@ -119,10 +154,9 @@ class PolicyGradientBatch(Solver):
             self.device)  # ********************************************
         initial_mask[:, :, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)
         initial_mask[:, :, 1] = torch.tensor([1 if i >= self.n_taxa else 0 for i in range(self.m)]).to(self.device)
-        d_mask = copy.deepcopy(d)
-        d_mask[d_mask > 0] = 1
 
-        return adj_mat, size_mask, initial_mask, d_mask
+
+        return adj_mat
 
     def initial_step_mats(self, n_problems):
         adj_mat = torch.zeros((n_problems, self.m, self.m)).to(self.device)
@@ -131,17 +165,7 @@ class PolicyGradientBatch(Solver):
         adj_mat[:, 2, self.n_taxa] = adj_mat[:, self.n_taxa, 2] = 1
         return adj_mat
 
-    def get_masks(self, adj_mat):
-        n_problems, m, _ = adj_mat.shape
-        ad_mask = torch.zeros((n_problems, m, 2)).to(self.device)
-        a = torch.sum(adj_mat, dim=-1)
-        ad_mask[:, :, 0] = a
-        ad_mask[ad_mask > 0] = 1
-        ad_mask[:, :, 1] = torch.abs(ad_mask[:, :, 0] - 1)
-        mask = torch.stack([torch.triu(adj_mat[i, :, :]) for i in range(n_problems)])
-        return ad_mask, mask
-
-    def get_taus(self, adj_mat, taus):
+    def get_taus_and_masks(self, adj_mat, taus):
         n = self.n_taxa
         if taus is None:
             taus = torch.zeros_like(adj_mat)
@@ -154,9 +178,11 @@ class PolicyGradientBatch(Solver):
             pool.close()
             pool.join()
             taus = torch.stack(taus).to(torch.float).to(self.device)
-        tau_mask = copy.deepcopy(taus)
-        tau_mask[tau_mask > 0] = 1
-        return taus, tau_mask
+
+        action_mask = torch.stack([torch.triu(adj_mat[i, :, :]) for i in range(adj_mat.shape[0])])
+
+
+        return taus, action_mask
 
     @staticmethod
     def add_nodes(adj_mat, idxs: torch.tensor, new_node_idx, n):
@@ -169,3 +195,12 @@ class PolicyGradientBatch(Solver):
             idxs[0], n + new_node_idx - 2, new_node_idx] = 1  # attach new
 
         return adj_mat
+    #
+    # def get_taxa_standing(self, d, tau, taxa_idx, n_taxa):
+    #     return sum(d[taxa_idx] / 2 ** (tau[taxa_idx, n_taxa]))
+    #
+    # def get_internal_standing_d(self,d_means, tau_full, internal_idx):
+    #     return np.mean(d_means / 2 ** tau_full[internal_idx, :d_means.shape[0]])
+    #
+    # def get_internal_standing(self, tau_full, internal_idx):
+    #     return np.mean(tau_full[internal_idx] / 2 ** tau_full[internal_idx])

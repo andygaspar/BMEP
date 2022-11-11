@@ -1,0 +1,28 @@
+{
+    "train":
+        {
+          "batch_size": 64,
+          "epochs": 5000,
+          "start": 0,
+          "end": 32768,
+          "lr": -5,
+          "weight_decay": -4,
+          "criterion": "cross"
+        },
+    "net": {
+      "scale_d": 1,
+      "name": "GNN_TAU",
+      "hidden_dim": 128,
+      "num_messages": 3,
+      "num_heads": 1,
+      "best_loss": "",
+      "taxa_inputs":  5,
+      "internal_inputs": 5,
+      "edge_inputs": 2,
+      "embedding_dim": 64,
+      "normalisation factor": "",
+      "drop out": 0.05
+
+    },
+  "comment": "EGAT"
+}
