@@ -29,18 +29,17 @@ class Encoder(nn.Module):
 
 
 class FA(nn.Module):
-    def __init__(self, h_dimension, hidden_dim, drop_out, device):
+    def __init__(self, out_dimension, hidden_dim, drop_out, device):
         self.device = device
         super(FA, self).__init__()
-        self.fc1 = nn.Linear(h_dimension, hidden_dim).to(self.device)
-        self.fc2 = nn.Linear(hidden_dim, h_dimension).to(self.device)
+        self.fc = nn.Sequential(nn.Linear(out_dimension, hidden_dim),
+                                nn.LeakyReLU(),
+                                nn.Linear(hidden_dim, out_dimension)).to(self.device)
         self.drop_out = drop_out
+        self.fc.apply(init_w)
 
     def forward(self, x):
-        x = torch.tanh(self.fc1(x))
-        # x = nn.functional.dropout(x, p=self.drop_out)
-        q = self.fc2(x)
-        return q
+        return self.fc(x)
 
 
 class EGAT_MH_RL(Network):
@@ -74,7 +73,7 @@ class EGAT_MH_RL(Network):
         self.drop_out = None
         self.leakyReLU = nn.LeakyReLU(0.2)
 
-        self.fa = FA(self.attention_dims[-1], self.attention_dims[-1], self.drop_out, self.device)
+        self.fa = FA(self.attention_dims[-1], self.hidden_dim, self.drop_out, self.device)
 
         if network is not None:
             self.load_weights(network)
@@ -106,10 +105,12 @@ class EGAT_MH_RL(Network):
             m_z = self.W_m[i](m_z).view(batch_size, -1, self.num_heads * self.attention_dims[i])
             e_i = z.repeat_interleave(z.shape[1], 1)
             e_j = z.repeat(1, z.shape[1], 1)
-            e = self.leakyReLU((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
+            e = torch.tanh((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
             alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]) * curr_mask - 9e15 * (1 - curr_mask),
                                           dim=-1)
             h = torch.tanh(torch.matmul(alpha, z))
+
+        h = self.fa(h)
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * action_mask - 9e15 * (1 - action_mask)
         mat_size = y_h.shape

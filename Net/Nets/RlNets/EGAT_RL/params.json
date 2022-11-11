@@ -12,14 +12,14 @@
     "net": {
       "scale_d": 1,
       "name": "GNN_TAU",
-      "hidden_dim": 128,
+      "hidden_dim": 512,
       "num_messages": 3,
       "num_heads": 1,
       "best_loss": "",
       "taxa_inputs":  5,
       "internal_inputs": 5,
       "edge_inputs": 2,
-      "embedding_dim": 256,
+      "embedding_dim": 512,
       "normalisation factor": "",
       "drop out": 0.05
 
