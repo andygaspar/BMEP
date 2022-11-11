@@ -16,9 +16,9 @@
       "num_messages": 3,
       "num_heads": 1,
       "best_loss": "",
-      "taxa_inputs":  5,
-      "internal_inputs": 5,
-      "edge_inputs": 2,
+      "taxa_inputs":  8,
+      "internal_inputs": 8,
+      "edge_inputs": 4,
       "embedding_dim": 128,
       "normalisation factor": "",
       "drop out": 0.05

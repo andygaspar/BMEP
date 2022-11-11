@@ -11,9 +11,9 @@ class BatchEGAT(Dataset):
         self.total_episodes_in_batch = total_episodes_in_batch
         self.max_dim = max_num_taxa * 2 - 2
 
-        self.taxa_embeddings = torch.zeros((self.batch_size, self.max_dim, 5)).to(self.device)
-        self.internal_embeddings = torch.zeros((self.batch_size, self.max_dim, 5)).to(self.device)
-        self.message_embeddings = torch.zeros((self.batch_size, self.max_dim ** 2, 2)).to(self.device)
+        self.taxa_embeddings = torch.zeros((self.batch_size, self.max_dim, 8)).to(self.device)
+        self.internal_embeddings = torch.zeros((self.batch_size, self.max_dim, 8)).to(self.device)
+        self.message_embeddings = torch.zeros((self.batch_size, self.max_dim ** 2, 4)).to(self.device)
         self.size_mask = torch.zeros((self.batch_size, self.max_dim, 2)).to(self.device)
         self.current_mask = torch.zeros((self.batch_size, self.max_dim, self.max_dim)).to(self.device)
         self.action_mask = torch.zeros((self.batch_size, self.max_dim, self.max_dim)).to(self.device)
@@ -24,7 +24,7 @@ class BatchEGAT(Dataset):
         self.index = 0
 
     def add_states(self, taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask, action_mask,
-                   actions, n_taxa, m):
+                   actions, m):
         self.taxa_embeddings[self.index: self.index + self.episodes_in_parallel, : m, :] = taxa_embeddings
         self.internal_embeddings[self.index: self.index + self.episodes_in_parallel, : m, :] = internal_embeddings
         self.message_embeddings[self.index: self.index + self.episodes_in_parallel, : m ** 2, :] = message_embeddings

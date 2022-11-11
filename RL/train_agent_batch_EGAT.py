@@ -71,7 +71,7 @@ min_num_taxa, max_num_taxa = 6, 6
 normalisation_factor = np.max(m)
 
 runs = 1000
-episodes_in_run = 6
+episodes_in_run = 3
 episodes_in_parallel = 128
 
 pol = PolicyGradientEGAT(dgn, normalisation_factor)

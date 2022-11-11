@@ -78,9 +78,10 @@ class PolicyGradientEGAT(Solver):
             adj_mat = self.initial_mats(n_problems)
             tau, idxs = None, None
             variance_probs = []
+            n_node_features, n_message_features = 8, 4
 
             taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask = \
-                self.get_initial_embeddings(d, n_problems)
+                self.get_initial_embeddings(d, n_problems, n_node_features, n_message_features)
 
             for i in range(3, self.n_taxa):
                 tau, action_mask = self.get_taus_and_masks(adj_mat, tau)
@@ -98,7 +99,7 @@ class PolicyGradientEGAT(Solver):
                         action % self.m)
 
                 replay_memory.add_states(taxa_embeddings, internal_embeddings, message_embeddings,
-                                         current_mask, size_mask, action_mask, action, self.n_taxa, self.m)
+                                         current_mask, size_mask, action_mask, action, self.m)
                 adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
 
             adj_mats_np = adj_mat.to('cpu').numpy()
@@ -142,7 +143,6 @@ class PolicyGradientEGAT(Solver):
 
         action_mask = torch.stack([torch.triu(adj_mat[i, :, :]) for i in range(adj_mat.shape[0])])
 
-
         return taus, action_mask
 
     @staticmethod
@@ -156,18 +156,37 @@ class PolicyGradientEGAT(Solver):
             idxs[0], n + new_node_idx - 2, new_node_idx] = 1  # attach new
 
         return adj_mat
+    @staticmethod
+    def get_min_max(tens, expanded_size):
+        if tens.shape[-1] == 1:
+            return tens
+        else:
+            max_vals = tens.max(dim=-1).values.view(-1, 1).expand(-1, expanded_size)
+            min_vals = tens.min(dim=-1).values.view(-1, 1).expand(-1, expanded_size)
+            return (tens - min_vals) / (max_vals - min_vals)
 
-    def get_initial_embeddings(self, d, n_problems):
-        taxa_embeddings = torch.zeros((n_problems, self.m, 5)).to(self.device)
+    def get_initial_embeddings(self, d, n_problems, n_node_features, n_message_features):
+
+        taxa_embeddings = torch.zeros((n_problems, self.m, n_node_features)).to(self.device)
         taxa_embeddings[:, :self.n_taxa, 0] = (d[:, :self.n_taxa, :self.n_taxa] / self.normalisation_factor).mean(
             dim=-1)
-        taxa_embeddings[:, :self.n_taxa, 1] = (d[:, :self.n_taxa, :self.n_taxa] / self.normalisation_factor).std(dim=-1)
-        internal_embeddings = torch.zeros((n_problems, self.m, 5)).to(self.device)
+        taxa_embeddings[:, :self.n_taxa, 1] = self.get_min_max(taxa_embeddings[:, :self.n_taxa, 0], self.n_taxa)
+        taxa_embeddings[:, :self.n_taxa, 2] = (d[:, :self.n_taxa, :self.n_taxa] / self.normalisation_factor).std(dim=-1)
+        taxa_embeddings[:, :self.n_taxa, 3] = self.get_min_max(taxa_embeddings[:, :self.n_taxa, 2], self.n_taxa)
+
+        internal_embeddings = torch.zeros((n_problems, self.m, n_node_features)).to(self.device)
+
         message_d = copy.deepcopy(d) / self.normalisation_factor
         message_d[:, self.n_taxa:, :] = message_d[:, :, self.n_taxa:] = 1
         message_d = 1 - message_d
-        message_embeddings = torch.zeros((n_problems, self.m ** 2, 2)).to(self.device)
+        min_vals = message_d[:, :self.n_taxa, :self.n_taxa].reshape(-1, self.n_taxa**2).min(dim=-1).values\
+            .unsqueeze(-1).unsqueeze(-1).expand(-1, self.m, self.m)
+
+        message_embeddings = torch.zeros((n_problems, self.m ** 2, n_message_features)).to(self.device)
         message_embeddings[:, :, 0] = message_d.reshape(-1, self.m ** 2)
+        message_embeddings[:, :, 1] = ((message_d - min_vals) / (1 - min_vals))\
+            .reshape(-1, self.m ** 2)
+        message_embeddings[message_embeddings < 0] = 0
 
         current_mask = torch.zeros((n_problems, self.m, self.m)).to(self.device)
         size_mask = torch.zeros((n_problems, self.m, 2)).to(self.device)
@@ -180,25 +199,35 @@ class PolicyGradientEGAT(Solver):
         current_mask[:, :self.n_taxa + i - 2, :self.n_taxa + i - 2] = 1
         size_mask[:, self.n_taxa: self.n_taxa + i - 2, 1] = 1
 
-        taxa_embeddings[:, :, 2] = 1 / i
-        taxa_embeddings[:, :, 3] = i / self.n_taxa
-        taxa_embeddings[:, :i, 4] = (d[:, :i, :i] / (self.normalisation_factor * 2 ** tau[:, :i, :i])).sum(dim=-1)
+        taxa_embeddings[:, :, 4] = 1 / i
+        taxa_embeddings[:, :, 5] = i / self.n_taxa
+        taxa_embeddings[:, :i, 6] = (d[:, :i, :i] / (self.normalisation_factor * 2 ** tau[:, :i, :i])).sum(dim=-1)
+        taxa_embeddings[:, :i, 7] = self.get_min_max(taxa_embeddings[:, :i, 6], i)
 
         internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 0] = 1 / i
         internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 1] = i / self.n_taxa
-        mean_current_taxa = taxa_embeddings[:, :i, 0].unsqueeze(1).repeat(1, i - 2, 1)
-        std_current_taxa = taxa_embeddings[:, :i, 1].unsqueeze(1).repeat(1, i - 2, 1)
-        tau_current_internal = tau[:, self.n_taxa: self.n_taxa + i - 2, :i]
-        internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 2] = (
-                    mean_current_taxa / 2 ** tau_current_internal).sum(dim=-1)
-        internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 3] = (
-                    std_current_taxa / 2 ** tau_current_internal).sum(dim=-1)
-        internal_embeddings[:, self.n_taxa:, 4] = (tau[:, self.n_taxa:, :] / 2 ** tau[:, self.n_taxa:, :]).mean(dim=-1)
+        mean_cur_taxa = taxa_embeddings[:, :i, 0].unsqueeze(1).repeat(1, i - 2, 1)
+        std_cur_taxa = taxa_embeddings[:, :i, 1].unsqueeze(1).repeat(1, i - 2, 1)
+        tau_cur_internal = tau[:, self.n_taxa: self.n_taxa + i - 2, :i]
+        internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 2] = \
+            (mean_cur_taxa / 2 ** tau_cur_internal).sum(dim=-1)
+        internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 3] = \
+            self.get_min_max(internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 2], i - 2)
+        internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 4] = (
+                    std_cur_taxa / 2 ** tau_cur_internal).sum(dim=-1)
+        internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 5] = \
+            self.get_min_max(internal_embeddings[:, self.n_taxa: self.n_taxa + i - 2, 4], i - 2)
+
+        internal_embeddings[:, self.n_taxa:, 6] = (tau[:, self.n_taxa:, :] / 2 ** tau[:, self.n_taxa:, :]).mean(dim=-1)
+        internal_embeddings[:, self.n_taxa:, 7] = \
+            self.get_min_max(internal_embeddings[:, self.n_taxa:, 6], self.m - self.n_taxa)
         message_i = tau + 1
         message_i[message_i > 1] = 4 / 10 + 1 / message_i[message_i > 1]
         message_i[:, i: self.n_taxa, :] = message_i[:, :, i: self.n_taxa] = \
             message_i[:, :, self.n_taxa + i - 2:] = message_i[:, self.n_taxa + i - 2:, :] = 0
-        message_embeddings[:, :, 1] = message_i.reshape(-1, self.m ** 2)
-
+        message_embeddings[:, :, 2] = message_i.reshape(-1, self.m ** 2)
+        max_val = tau.reshape(-1, self.m ** 2).max(dim=-1).values.view(-1, 1, 1).expand(-1, self.m, self.m)
+        message_linear = 1 - tau/max_val
+        message_embeddings[:, :, 3] = message_linear.reshape(-1, self.m ** 2)
         return taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask
 
