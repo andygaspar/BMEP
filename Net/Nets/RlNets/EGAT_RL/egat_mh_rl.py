@@ -105,7 +105,7 @@ class EGAT_MH_RL(Network):
             m_z = self.W_m[i](m_z).view(batch_size, -1, self.num_heads * self.attention_dims[i])
             e_i = z.repeat_interleave(z.shape[1], 1)
             e_j = z.repeat(1, z.shape[1], 1)
-            e = torch.tanh((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
+            e = self.leakyReLU((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
             alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]) * curr_mask - 9e15 * (1 - curr_mask),
                                           dim=-1)
             h = torch.tanh(torch.matmul(alpha, z))
