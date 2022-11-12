@@ -14,6 +14,7 @@ class Solver:
             self.d = self.sort_d(d) if d is not None else None
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.solution = None
         self.obj_val = None
@@ -38,6 +39,13 @@ class Solver:
         return adj_mat
 
     @staticmethod
+    def get_tau(adj_mat, device=None):
+        g = nx.from_numpy_matrix(adj_mat)
+        tau = nx.floyd_warshall_numpy(g)
+        tau[np.isinf(tau)] = 0
+        return tau if device is not None else torch.tensor(tau).to(torch.float).to(device)
+
+    @staticmethod
     def add_node(adj_mat, idxs, new_node_idx, n):
         adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
         adj_mat[idxs[0], n + new_node_idx - 2] = adj_mat[n + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
@@ -55,21 +63,6 @@ class Solver:
         Tau = nx.floyd_warshall_numpy(g)[:n, :n]
         return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
 
-    @staticmethod
-    def get_tau_tensor(adj_mat, device):
-        g = nx.from_numpy_matrix(adj_mat.to('cpu').numpy())
-        tau = nx.floyd_warshall_numpy(g)
-        tau[np.isinf(tau)] = 0
-        tau = torch.tensor(tau).to(torch.float).to(device)
-        tau_mask = copy.deepcopy(tau)
-        tau_mask[tau_mask > 0] = 1
-        return tau, tau_mask
 
-    @staticmethod
-    def get_tau(adj_mat):
-        g = nx.from_numpy_matrix(adj_mat)
-        tau = nx.floyd_warshall_numpy(g)
-        tau[np.isinf(tau)] = 0
-        return tau
 
 

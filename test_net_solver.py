@@ -5,7 +5,7 @@ import numpy as np
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
-from FastME.fast_me import FastMeSolver
+# from FastME.fast_me import FastMeSolver
 from Net.network_manager import NetworkManager
 from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
 from Solvers.NetSolvers.net_solver import NetSolver
@@ -20,7 +20,7 @@ random.seed(0)
 np.random.seed(0)
 
 folder = 'GNN_TAU'
-file = '_4.551_0'
+file = '_3.622'
 data_folder = '03-M18_5_9' #'6_taxa_0'
 n_test_problems = 100
 
@@ -73,8 +73,8 @@ for _ in range(n_test_problems):
     last_move = np.nonzero(data_.y[pb_idxs[-1]].view(size, size)[: m, : m].to("cpu").numpy())
     sol = add_node(pre_final_adj_mat, last_move, n-1, n)[:m, :m]
 
-    fast = FastMeSolver(d.to("cpu").numpy()[:n, :n])
-    fast.solve()
+    # fast = FastMeSolver(d.to("cpu").numpy()[:n, :n])
+    # fast.solve()
 
     # t2 = time.time()
     # instance = Instance(d.to("cpu").numpy()[:6, :6])
