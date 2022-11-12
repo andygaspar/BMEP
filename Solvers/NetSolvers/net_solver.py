@@ -38,7 +38,6 @@ class NetSolver(Solver):
         self.obj_val = self.compute_obj_val_from_adj_mat(self.solution, self.d.to('cpu').numpy(), self.n_taxa)
 
     def initial_mats(self):
-        adj_mat = self.initial_adj_mat(self.device)
         size_mask = torch.ones_like(self.d)
         initial_mask = torch.zeros((self.m, 2)).to(self.device)
         initial_mask[:, 0] = torch.tensor([1 if i < self.n_taxa else 0 for i in range(self.m)]).to(self.device)

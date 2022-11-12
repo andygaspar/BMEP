@@ -13,23 +13,8 @@ class Network(nn.Module):
         self.normalisation_factor = normalisation_factor
         self.loss = 0
 
-    def get_action(self, state):
-        with torch.no_grad():
-            state: torch.Tensor
-            return self.forward(state.unsqueeze(0))
-
-    def take_weights(self, model_network):
-        self.load_state_dict(copy.deepcopy(model_network.state_dict()))
-
     def load_weights(self, file):
         self.load_state_dict(torch.load(file))
-
-    def save_weights(self, filename: str):
-        torch.save(self.state_dict(), filename + '.pt')
-
-    def save_model(self, filename: str):
-        model = self.vgg16(pretrained=True)
-        torch.save(model.state_dict(), filename + '.pt')
 
     def save_net(self, folder: str, score: float, params: dict, prefix="", supervised=True):
         if supervised:
@@ -46,3 +31,10 @@ class Network(nn.Module):
             json.dump(params, outfile)
         torch.save(self.state_dict(), new_folder + '/weights.pt')
         return new_folder
+
+
+class Gat(Network):
+
+    def __int__(self, normalisation_factor):
+        super(Gat, self).__int__()
+

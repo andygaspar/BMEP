@@ -8,6 +8,7 @@ from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.solver import Solver
 from Solvers.NetSolvers.heuristic_search_2 import Solution, Distribution, get_idx_tuple
 
+
 class HeuristicSearch3(NetSolver):
 
     def __init__(self, d, net, width=2, distribution_runs=50):
