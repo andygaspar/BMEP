@@ -112,7 +112,7 @@ class EGAT_MH_RL(Network):
                                           dim=-1)
             h = torch.tanh(torch.matmul(alpha, z))
 
-        h = self.fa(h)
+        # h = self.fa(h)
 
         y_h = torch.matmul(h, h.permute(0, 2, 1)) * action_mask - 9e15 * (1 - action_mask)
         mat_size = y_h.shape

@@ -71,12 +71,12 @@ min_num_taxa, max_num_taxa = 6, 6
 normalisation_factor = np.max(m)
 
 runs = 1000
-episodes_in_run = 3
+episodes_in_run = 6
 episodes_in_parallel = 128
 
 pol = PolicyGradientEGAT(dgn, normalisation_factor)
 
-directory, best_mean_difference = None, 10
+directory, best_mean_loss = None, 10**5
 
 training_batch_size = 64
 training_loops = 10
@@ -102,11 +102,12 @@ for run in range(runs):
               "   difference mean", difference_mean, "   better", better,  "   equal", equal)
         print(variance_probs)
 
-        if run > 998 and difference_mean < best_mean_difference:
-            if directory is not None and save:
-                shutil.rmtree(directory)
-            directory = dgn.save_net(folder, difference_mean, params, supervised=False)
-            best_mean_difference = difference_mean
+
 
     loss = trainer.train(batch)
     print("mean loss: ", loss)
+    if run > 100 and loss < best_mean_loss:
+        if directory is not None and save:
+            shutil.rmtree(directory)
+        directory = dgn.save_net(folder, loss, params, supervised=False)
+        best_mean_loss = loss
