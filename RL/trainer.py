@@ -36,7 +36,10 @@ class Trainer:
         probs, l_probs = self.net(state)
         l_probs = l_probs[(torch.arange(0, len(l_probs), dtype=torch.long), actions)]
         # pb = torch.distributions.Categorical(probs)
-        loss = torch.mean(l_probs * (obj_vals - baseline) / baseline)*10
+        with torch.no_grad():
+            reward = (obj_vals - baseline) / baseline
+            reward[reward <= 0] = (reward[reward <= 0] - 1) * 100
+        loss = torch.mean(l_probs * reward)
         loss.backward()
         self.optimiser.step()
         return loss.detach().item()
