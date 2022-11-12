@@ -37,4 +37,3 @@ class Gat(Network):
 
     def __int__(self, normalisation_factor):
         super(Gat, self).__int__()
-
