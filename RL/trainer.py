@@ -38,8 +38,8 @@ class Trainer:
         # pb = torch.distributions.Categorical(probs)
         with torch.no_grad():
             reward = (obj_vals - baseline) / baseline
-            reward[reward <= 0] = (reward[reward <= 0] - 1) * 100
-            reward[reward > 0] = (reward[reward > 0] + 1) * 10
+            reward[reward <= 0] = reward[reward <= 0] * 10 - 1
+            reward[reward > 0] = reward[reward > 0] * 10 + 1
         loss = torch.mean(l_probs * reward)
         loss.backward()
         self.optimiser.step()
