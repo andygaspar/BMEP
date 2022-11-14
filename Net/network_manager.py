@@ -108,7 +108,8 @@ class NetworkManager:
 
     def make_network(self, normalisation_factor=None):
         self.print_info()
-        self.net_params["normalisation factor"] = normalisation_factor
+        if normalisation_factor is not None:
+            self.net_params["normalisation factor"] = normalisation_factor
         dgn = nets_dict[self.folder](net_params=self.net_params)
 
         return dgn
