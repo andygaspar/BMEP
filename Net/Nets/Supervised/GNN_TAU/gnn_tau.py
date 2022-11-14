@@ -83,7 +83,7 @@ class FA(nn.Module):
 
 class GNN_TAU(Gat):
     def __init__(self, net_params, network=None):
-        super().__init__(net_params["normalisation factor"])
+        super().__init__(net_params)
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \
                                                             net_params["hidden_dim"], net_params["num_messages"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -109,7 +109,7 @@ class GNN_TAU(Gat):
             self.load_weights(network)
 
     def forward(self, data):
-        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks, y = data
+        adj_mats, ad_masks, d_mats, d_masks, size_masks, initial_masks, masks, taus, tau_masks = data
         d_mats_ = d_mats / self.normalisation_factor
         h = self.encoder(initial_masks)
         taus[taus > 0] = 1 / taus[taus > 0]

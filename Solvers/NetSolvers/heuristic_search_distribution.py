@@ -15,24 +15,20 @@ class Solution:
         self.y = None
 
 
-class HeuristicSearch(NetSolver):
+class HeuristicSearchDistribution(NetSolver):
 
-    def __init__(self, d, net, width=2):
+    def __init__(self, d, net, width=10):
         super().__init__(d, net)
         self.solution_object = None
         self.w = width
         self.solutions = [Solution() for _ in range(self.w)]
 
     def solve(self):
-        adj_mat, size_mask, initial_mask, d_mask = self.initial_mats()
+        adj_mat = self.initial_adj_mat(self.device)
         with torch.no_grad():
-            ad_mask, mask = self.get_masks(adj_mat)
-            tau, tau_mask = self.get_tau_tensor(adj_mat, self.device)
-            y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
-                             d_mask.unsqueeze(0),
-                             size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
-                             tau.unsqueeze(0),
-                             tau_mask.unsqueeze(0)))
+            tau = self.get_tau(adj_mat.to("cpu").numpy(), device=self.device)
+            net_input = self.net.get_net_input(adj_mat, self.d, tau, self.m, self.n_taxa, step=3)
+            y, _ = self.net(net_input)
             probs, a_max = torch.topk(y, min([3, self.w]))
             probs = probs.squeeze(0)
             idxs = [torch.tensor([torch.div(a, self.m, rounding_mode='trunc'), a % self.m]).to(self.device)
@@ -50,13 +46,9 @@ class HeuristicSearch(NetSolver):
             for i in range(4, self.n_taxa):
                 for sol in self.solutions:
                     adj_mat = sol.adj_mat
-                    ad_mask, mask = self.get_masks(adj_mat)
-                    tau, tau_mask = self.get_tau_tensor(adj_mat, self.device)
-                    sol.y, _ = self.net((adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), self.d.unsqueeze(0),
-                                     d_mask.unsqueeze(0),
-                                     size_mask.unsqueeze(0), initial_mask.unsqueeze(0), mask.unsqueeze(0),
-                                     tau.unsqueeze(0),
-                                     tau_mask.unsqueeze(0)))
+                    tau = self.get_tau(adj_mat.to("cpu").numpy(), device=self.device)
+                    net_input = self.net.get_net_input(adj_mat, self.d, tau, self.m, self.n_taxa, step=i)
+                    sol.y, _ = self.net(net_input)
                     sol.y *= sol.prob
                 p = torch.cat([sol.y for sol in self.solutions])
                 # print(p)

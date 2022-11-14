@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver
-from Solvers.NetSolvers.heuristic_search import HeuristicSearch
+from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearch
 from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver

@@ -34,7 +34,7 @@ class Network(nn.Module):
         torch.save(self.state_dict(), new_folder + '/weights.pt')
         return new_folder
 
-    def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=None):
+    def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=1):
         pass
 
 
@@ -62,7 +62,7 @@ class Gat(Network):
         mask = torch.triu(adj_mat)
         return ad_mask, mask
 
-    def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=None):
+    def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=1):
         if step == 3:
             self.d = d
             self.size_mask = torch.ones_like(self.d)
@@ -76,7 +76,7 @@ class Gat(Network):
         return (adj_mat.unsqueeze(0), ad_mask.unsqueeze(0), d.unsqueeze(0), self.d_mask.unsqueeze(0),
                 self.size_mask.unsqueeze(0), self.initial_mask.unsqueeze(0), mask.unsqueeze(0),
                 tau.unsqueeze(0),
-                tau_mask.unsqueeze(0), None)
+                tau_mask.unsqueeze(0))
 
 
 class EGAT(Network):
@@ -104,7 +104,7 @@ class EGAT(Network):
             min_vals = tens.min(dim=-1).values.view(-1, 1).expand(-1, expanded_size)
             return (tens - min_vals) / (max_vals - min_vals)
 
-    def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=None):
+    def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=1):
 
         if step == 3:
             self.current_mask = torch.zeros((n_problems, m, m)).to(self.device)

@@ -7,8 +7,8 @@ from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
 from FastME.fast_me import FastMeSolver
 from Net.network_manager import NetworkManager
-from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
-from Solvers.NetSolvers.heuristic_search_4 import HeuristicSearch4
+from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearchDistribution
+from Solvers.NetSolvers.heuristic_search_dropout import HeuristicSearchDropOut
 from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver
@@ -25,13 +25,14 @@ file = '_3.622'
 data_folder = '03-M18_5_9' #'6_taxa_0'
 n_test_problems = 100
 
-net_manager = NetworkManager(folder, file, supervised=True)
+net_manager = NetworkManager(folder, file=file, supervised=True)
 dgn = net_manager.get_network()
 
 # problems = torch.tensor([i for i in range(10000//3 + 1) for j in range(3)][:-2])
 # torch.save(problems, 'Data_/Datasets/6_taxa_0/problems.pt')
 
 start_test_set = net_manager.get_params()['train']['end']
+start_test_set = 0
 data_ = BMEP_Dataset(folder_name=data_folder, start=start_test_set)
 problems = np.unique(data_.problems.numpy())[1:-1]
 
@@ -61,10 +62,15 @@ for _ in range(n_test_problems):
     t1 = time.time() - t1
 
     t = time.time()
-    heuristic = HeuristicSearch4(d, dgn, width=20, distribution_runs=30)
-    heuristic.solve()
+    heuristic_distribution = HeuristicSearchDistribution(d, dgn, width=20)
+    heuristic_distribution.solve()
     t = time.time() - t
-    # print(heuristic.solution)
+
+    t = time.time()
+    heuristic_drop = HeuristicSearchDropOut(d, dgn, width=20, distribution_runs=30)
+    heuristic_drop.solve()
+    t = time.time() - t
+    # print(heuristic_drop.solution)
 
 
     # print(net_solver.solution)
@@ -87,21 +93,21 @@ for _ in range(n_test_problems):
     r_fast = fast.obj_val > compute_obj_val(sol, d.to('cpu').numpy(), n)
     r_swa = np.array_equal(swa.solution, sol)
     res = np.array_equal(net_solver.solution, sol)
-    res_1 = np.array_equal(heuristic.solution, sol)
+    res_1 = np.array_equal(heuristic_drop.solution, sol)
     res_fast.append(r_fast)
     r_swa_list.append(r_swa)
     res_list.append(res)
     res_1_list.append(res_1)
 
     or_sol.append(r_swa or res_1)
-    better.append(heuristic.obj_val <= swa.obj_val)
+    better.append(heuristic_drop.obj_val <= swa.obj_val)
 
     print(_, n, "correct", r_swa, res, res_1, r_fast, "    same sol ",
-          np.array_equal(net_solver.solution, heuristic.solution), np.mean(or_sol))
-    print(swa.obj_val, net_solver.obj_val, heuristic.obj_val, "f", fast.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
+          np.array_equal(net_solver.solution, heuristic_drop.solution), np.mean(or_sol))
+    print(swa.obj_val, net_solver.obj_val, heuristic_drop.obj_val, "f", fast.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
 print("accuracy swa", np.mean(r_swa_list))
 print("accuracy net", np.mean(res_list))
-print("accuracy heuristics", np.mean(res_1_list))
+print("accuracy heuristic_drop", np.mean(res_1_list))
 print("accuracy fasta", np.mean(res_fast))
 print('or sol', np.mean(or_sol))
 print('better', np.mean(better))
