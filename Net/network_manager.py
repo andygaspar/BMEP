@@ -103,6 +103,9 @@ class NetworkManager:
         if normalisation_factor is not None:
             self.net_params["normalisation factor"] = normalisation_factor
 
+        if training:
+            self.train_params["type"] = 'supervised' if supervised else 'RL'
+
     def make_network(self):
         self.print_info()
         dgn = nets_dict[self.folder](net_params=self.net_params)

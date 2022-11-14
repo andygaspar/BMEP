@@ -91,8 +91,6 @@ for run in range(runs):
               "   difference mean", difference_mean, "   better", better,  "   equal", equal)
         print(variance_probs)
 
-
-
     loss = trainer.train(batch)
     print("mean loss: ", loss)
     if run > 100 and loss < best_mean_loss:
