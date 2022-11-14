@@ -20,12 +20,12 @@ compute_obj_val = funs.compute_obj_val_from_adj_mat
 random.seed(0)
 np.random.seed(0)
 
-folder = 'GNN_TAU'
-file = '_3.622'
+folder = 'EGAT_RL'
+file = '_0.079_0'
 data_folder = '03-M18_5_9' #'6_taxa_0'
 n_test_problems = 100
 
-net_manager = NetworkManager(folder, file=file, supervised=True)
+net_manager = NetworkManager(folder, file=file, supervised=False)
 dgn = net_manager.get_network()
 
 # problems = torch.tensor([i for i in range(10000//3 + 1) for j in range(3)][:-2])
@@ -104,7 +104,8 @@ for _ in range(n_test_problems):
 
     print(_, n, "correct", r_swa, res, res_1, r_fast, "    same sol ",
           np.array_equal(net_solver.solution, heuristic_drop.solution), np.mean(or_sol))
-    print(swa.obj_val, net_solver.obj_val, heuristic_drop.obj_val, "f", fast.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
+    print(swa.obj_val, net_solver.obj_val, heuristic_drop.obj_val, heuristic_distribution.obj_val,
+          "f", fast.obj_val, compute_obj_val(sol, d.to('cpu').numpy(), n))
 print("accuracy swa", np.mean(r_swa_list))
 print("accuracy net", np.mean(res_list))
 print("accuracy heuristic_drop", np.mean(res_1_list))

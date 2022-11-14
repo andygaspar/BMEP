@@ -45,6 +45,7 @@ for file in filenames:
 m = mats[dataset_num]
 dim_dataset = m.shape[0]
 normalisation_factor = np.max(m)
+print(normalisation_factor)
 
 net_manager = NetworkManager(folder, supervised=False, normalisation_factor=normalisation_factor)
 params = net_manager.get_params()

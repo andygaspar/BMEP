@@ -22,21 +22,23 @@ for file in filenames:
         mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
 
 
-m = mats[3]
+m = mats[2]
 dim_dataset = m.shape[0]
 # random.seed(0)
-supervised = True
-folder = 'GNN_TAU'
-file = '_3.622'
+# supervised = True
+# folder = 'GNN_TAU'
+# file = '_3.622'
 # file = '_0.092_0'
-
+supervised = False
+folder = 'EGAT_RL'
+file = '_0.079_0'
 
 # data_folder = '6_taxa_0'
 
 net_manager = NetworkManager(folder, file=file, supervised=supervised)
 dgn = net_manager.get_network()
 
-dim = 12
+dim = 6
 better = []
 worse = []
 for _ in range(100):
@@ -50,7 +52,8 @@ for _ in range(100):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearchDistribution(d, dgn, width=100)
+    heuristic = HeuristicSearchDistribution(d, dgn, width=20
+                                            )
     heuristic.solve()
     t1 = time.time() - t
 

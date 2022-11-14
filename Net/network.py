@@ -106,6 +106,10 @@ class EGAT(Network):
 
     def get_net_input(self, adj_mat, d, tau, m, n_taxa, step, n_problems=1):
 
+        if len(adj_mat.shape) < 3:
+            adj_mat = adj_mat.unsqueeze(0)
+            d = d.unsqueeze(0)
+            tau = tau.unsqueeze(0)
         if step == 3:
             self.current_mask = torch.zeros((n_problems, m, m)).to(self.device)
             self.active_nodes_mask = torch.zeros((n_problems, m, 2)).to(self.device)

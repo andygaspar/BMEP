@@ -14,9 +14,10 @@ class Solution:
         self.obj_val = None
         self.y = None
 
+    def __repr__(self):
+        return str(self.prob) + ' ' + str(self.obj_val)
 
 class HeuristicSearchDistribution(NetSolver):
-
     def __init__(self, d, net, width=10):
         super().__init__(d, net)
         self.solution_object = None
@@ -58,18 +59,15 @@ class HeuristicSearchDistribution(NetSolver):
                                       torch.div(a % self.m ** 2, self.m, rounding_mode='trunc'),
                                       a % self.m]).to(self.device)
                         for a in a_max]
-                idxss = self.check_idxs([idx[1:] for idx in idxs], i)
+
                 new_adj_mats = [self.add_node(copy.deepcopy(self.solutions[idxs[j][0].item()].adj_mat),
-                                              idxss[j], i, self.n_taxa)
+                                              idxs[j][1:], i, self.n_taxa)
                                 for j in range(self.w)]
 
                 for j, sol in enumerate(self.solutions):
                     sol.prob = probs[j]
                     sol.adj_mat = new_adj_mats[j]
 
-            # idxs = torch.tensor([torch.div(a_max, self.m, rounding_mode='trunc'), a_max % self.m]).to(self.device)
-            # adj_mat = self.add_node(adj_mat, idxs, new_node_idx=i)
-            # self.adj_mats.append(adj_mat.to("cpu").numpy())
         for sol in self.solutions:
             sol.obj_val = self.compute_obj_val(sol.adj_mat, self.d, self.n_taxa)
 
