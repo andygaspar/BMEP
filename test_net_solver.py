@@ -5,9 +5,10 @@ import numpy as np
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
-# from FastME.fast_me import FastMeSolver
+from FastME.fast_me import FastMeSolver
 from Net.network_manager import NetworkManager
 from Solvers.NetSolvers.heuristic_search_2 import HeuristicSearch2
+from Solvers.NetSolvers.heuristic_search_4 import HeuristicSearch4
 from Solvers.NetSolvers.net_solver import NetSolver
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.solver import Solver
@@ -54,16 +55,18 @@ for _ in range(n_test_problems):
     swa = SwaSolver(d.to('cpu').numpy())
     swa.solve()
 
-    t = time.time()
-    heuristic = HeuristicSearch2(d, dgn, width=20, distribution_runs=400)
-    heuristic.solve()
-    t = time.time() - t
-    # print(heuristic.solution)
-
     t1 = time.time()
     net_solver = NetSolver(d, dgn)
     net_solver.solve()
     t1 = time.time() - t1
+
+    t = time.time()
+    heuristic = HeuristicSearch4(d, dgn, width=20, distribution_runs=30)
+    heuristic.solve()
+    t = time.time() - t
+    # print(heuristic.solution)
+
+
     # print(net_solver.solution)
     # print(data_.y[i * 3 + 2])
 
@@ -73,8 +76,8 @@ for _ in range(n_test_problems):
     last_move = np.nonzero(data_.y[pb_idxs[-1]].view(size, size)[: m, : m].to("cpu").numpy())
     sol = add_node(pre_final_adj_mat, last_move, n-1, n)[:m, :m]
 
-    # fast = FastMeSolver(d.to("cpu").numpy()[:n, :n])
-    # fast.solve()
+    fast = FastMeSolver(d.to("cpu").numpy()[:n, :n])
+    fast.solve()
 
     # t2 = time.time()
     # instance = Instance(d.to("cpu").numpy()[:6, :6])

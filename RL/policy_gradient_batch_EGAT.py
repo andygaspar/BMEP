@@ -75,21 +75,25 @@ class PolicyGradientEGAT(Solver):
             d = np.array(results)
             d = torch.tensor(d).to(torch.float).to(self.device)
 
-            adj_mat = self.initial_mats(n_problems)
+            adj_mat = self.initial_adj_mats(n_problems)
             tau, idxs = None, None
             variance_probs = []
             n_node_features, n_message_features = 8, 4
 
-            taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask = \
+            taxa_embeddings, internal_embeddings, message_embeddings, problem_mask, active_nodes_mask = \
                 self.get_initial_embeddings(d, n_problems, n_node_features, n_message_features)
 
             for i in range(3, self.n_taxa):
                 tau, action_mask = self.get_taus_and_masks(adj_mat, tau)
-                taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask = \
+                taxa_embeddings, internal_embeddings, message_embeddings, problem_mask, active_nodes_mask = \
                     self.update_embeddings(taxa_embeddings, internal_embeddings, message_embeddings,
-                                           current_mask, size_mask, d, tau, i)
-
-                state = taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask, action_mask
+                                           problem_mask, active_nodes_mask, d, tau, i)
+                pippo = self.net.get_net_input(adj_mat, d, tau, self.m, self.n_taxa, step=i,
+                                               n_problems=n_problems)
+                print(pippo)
+                state = taxa_embeddings, internal_embeddings, message_embeddings, problem_mask, active_nodes_mask, action_mask
+                for k in range(len(pippo)):
+                    print(torch.all(pippo[k].eq(state[k])))
                 probs, _ = self.net(state)
                 # print(probs[0])
                 variance_probs.append(torch.var(probs[probs > 0.001]).item())
@@ -99,7 +103,7 @@ class PolicyGradientEGAT(Solver):
                         action % self.m)
 
                 replay_memory.add_states(taxa_embeddings, internal_embeddings, message_embeddings,
-                                         current_mask, size_mask, action_mask, action, self.m)
+                                         problem_mask, active_nodes_mask, action_mask, action, self.m)
                 adj_mat = self.add_nodes(adj_mat, idxs, new_node_idx=i, n=self.n_taxa)
 
             adj_mats_np = adj_mat.to('cpu').numpy()
@@ -120,7 +124,7 @@ class PolicyGradientEGAT(Solver):
     def standings(self):
         return self.mean_difference, self.better, self.equal
 
-    def initial_mats(self, n_problems):
+    def initial_adj_mats(self, n_problems):
         adj_mat = torch.zeros((n_problems, self.m, self.m)).to(self.device)
         adj_mat[:, 0, self.n_taxa] = adj_mat[:, self.n_taxa, 0] = 1
         adj_mat[:, 1, self.n_taxa] = adj_mat[:, self.n_taxa, 1] = 1
@@ -188,16 +192,16 @@ class PolicyGradientEGAT(Solver):
             .reshape(-1, self.m ** 2)
         message_embeddings[message_embeddings < 0] = 0
 
-        current_mask = torch.zeros((n_problems, self.m, self.m)).to(self.device)
-        size_mask = torch.zeros((n_problems, self.m, 2)).to(self.device)
-        size_mask[:, :self.n_taxa, 0] = 1
+        problem_mask = torch.zeros((n_problems, self.m, self.m)).to(self.device)
+        active_nodes_mask = torch.zeros((n_problems, self.m, 2)).to(self.device)
+        active_nodes_mask[:, :self.n_taxa, 0] = 1
 
-        return taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask
+        return taxa_embeddings, internal_embeddings, message_embeddings, problem_mask, active_nodes_mask
 
-    def update_embeddings(self, taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask,
+    def update_embeddings(self, taxa_embeddings, internal_embeddings, message_embeddings, problem_mask, active_nodes_mask,
                           d, tau, i):
-        current_mask[:, :self.n_taxa + i - 2, :self.n_taxa + i - 2] = 1
-        size_mask[:, self.n_taxa: self.n_taxa + i - 2, 1] = 1
+        problem_mask[:, :self.n_taxa + i - 2, :self.n_taxa + i - 2] = 1
+        active_nodes_mask[:, self.n_taxa: self.n_taxa + i - 2, 1] = 1
 
         taxa_embeddings[:, :, 4] = 1 / i
         taxa_embeddings[:, :, 5] = i / self.n_taxa
@@ -229,5 +233,5 @@ class PolicyGradientEGAT(Solver):
         max_val = tau.reshape(-1, self.m ** 2).max(dim=-1).values.view(-1, 1, 1).expand(-1, self.m, self.m)
         message_linear = 1 - tau/max_val
         message_embeddings[:, :, 3] = message_linear.reshape(-1, self.m ** 2)
-        return taxa_embeddings, internal_embeddings, message_embeddings, current_mask, size_mask
+        return taxa_embeddings, internal_embeddings, message_embeddings, problem_mask, active_nodes_mask
 

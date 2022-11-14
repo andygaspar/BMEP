@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.autograd as autograd
 import torch.nn.functional as F
 
-from Net.network import Network
+from Net.network import Network, EGAT
 
 
 def init_w(w):
@@ -44,11 +44,9 @@ class FA(nn.Module):
         return self.fc(x)
 
 
-class EGAT_MH_RL(Network):
+class EGAT_MH_RL(EGAT):
     def __init__(self, net_params, network=None, normalised=True):
-        super().__init__(net_params["normalisation factor"])
-        self.taxa_inputs, self.internal_inputs, self.edge_inputs = \
-            net_params["taxa_inputs"], net_params["internal_inputs"], net_params["edge_inputs"]
+        super().__init__(net_params)
         self.embedding_dim, self.hidden_dim = net_params["embedding_dim"], net_params["hidden_dim"]
         self.rounds, self.num_heads = net_params["num_messages"], net_params["num_heads"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -89,14 +87,14 @@ class EGAT_MH_RL(Network):
             nn.init.xavier_uniform_(self.a[i])
 
     def forward(self, data):
-        taxa, internal, messages, curr_mask, size_mask, action_mask = data
+        taxa, internal, messages, problem_mask, active_nodes_mask, action_mask = data
         if not self.normalised:
             taxa = taxa / self.normalisation_factor
             internal = internal / self.normalisation_factor
             messages = messages / self.normalisation_factor
 
-        a = self.taxa_encoder(taxa) * size_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
-        b = self.internal_encoder(internal) * size_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
+        a = self.taxa_encoder(taxa) * active_nodes_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
+        b = self.internal_encoder(internal) * active_nodes_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
 
         h = (a + b)
         m_z = self.edge_encoder(messages)
@@ -108,7 +106,7 @@ class EGAT_MH_RL(Network):
             e_i = z.repeat_interleave(z.shape[1], 1)
             e_j = z.repeat(1, z.shape[1], 1)
             e = self.leakyReLU((self.a[i] * torch.cat([e_i, e_j, m_z], dim=-1)).sum(dim=-1))
-            alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]) * curr_mask - 9e15 * (1 - curr_mask),
+            alpha = nn.functional.softmax(e.view(-1, z.shape[1], z.shape[1]) * problem_mask - 9e15 * (1 - problem_mask),
                                           dim=-1)
             h = torch.tanh(torch.matmul(alpha, z))
 

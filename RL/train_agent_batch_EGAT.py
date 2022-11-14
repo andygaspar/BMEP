@@ -27,14 +27,26 @@ from RL.trainer import Trainer
 from Solvers.SWA.swa_solver import SwaSolver
 
 
-
 a100 = True if version('torch') == '1.9.0+cu111' else False
 edge = False
 
 folder = 'EGAT_RL'
 save = True
+dataset_num = 2
 
-net_manager = NetworkManager(folder, supervised=False)
+
+path = 'Data_/csv_'
+filenames = sorted(next(os.walk(path), (None, None, []))[2])
+mats = []
+for file in filenames:
+    if file[-4:] == '.txt':
+        mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
+
+m = mats[dataset_num]
+dim_dataset = m.shape[0]
+normalisation_factor = np.max(m)
+
+net_manager = NetworkManager(folder, supervised=False, normalisation_factor=normalisation_factor)
 params = net_manager.get_params()
 train_params, net_params = params["train"], params["net"]
 
@@ -47,28 +59,10 @@ batch_size = train_params["batch_size"]
 
 
 dgn = net_manager.make_network()
-
-path = 'Data_/csv_'
-filenames = sorted(next(os.walk(path), (None, None, []))[2])
-
-
-
-mats = []
-for file in filenames:
-    if file[-4:] == '.txt':
-        mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
-
-dataset_num = 2
-
-m = mats[dataset_num]
-train_params["train data"] = filenames[dataset_num][:-4]
-dim_dataset = m.shape[0]
-
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
 
 min_num_taxa, max_num_taxa = 6, 6
-normalisation_factor = np.max(m)
 
 runs = 1000
 episodes_in_run = 6

@@ -83,7 +83,7 @@ criterion_dict = {
 
 class NetworkManager:
 
-    def __init__(self, folder, file=None, supervised=None, training=False):
+    def __init__(self, folder, data_file=None, normalisation_factor=None, file=None, supervised=None, training=False):
         self.folder = folder
         self.file = file
         algorithm = 'Supervised/' if supervised else ('RlNets/' if not supervised else None)
@@ -99,11 +99,12 @@ class NetworkManager:
             self.params = json.load(json_file)
 
         self.train_params, self.net_params = self.params["train"], self.params["net"]
-
-    def make_network(self, normalisation_factor=None):
-        self.print_info()
+        self.train_params["train data"] = data_file if data_file is not None else ''
         if normalisation_factor is not None:
             self.net_params["normalisation factor"] = normalisation_factor
+
+    def make_network(self):
+        self.print_info()
         dgn = nets_dict[self.folder](net_params=self.net_params)
 
         return dgn

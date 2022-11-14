@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.autograd as autograd
 import torch.nn.functional as F
 
-from Net.network import Network
+from Net.network import Network, Gat
 
 
 class NodeEncoder(nn.Module):
@@ -81,7 +81,7 @@ class FA(nn.Module):
         return q
 
 
-class GNN_TAU(Network):
+class GNN_TAU(Gat):
     def __init__(self, net_params, network=None):
         super().__init__(net_params["normalisation factor"])
         num_inputs, h_dimension, hidden_dim, num_messages = net_params["num_inputs"], net_params["h_dimension"], \

@@ -20,8 +20,8 @@ class NetSolver(Solver):
         adj_mat = self.initial_adj_mat(self.device)
         with torch.no_grad():
             for i in range(3, self.n_taxa):
-                tau = self.get_tau(adj_mat, self.device)
-                net_input = self.net.get_net_input(adj_mat, self.d, tau, self.m, self.n_taxa, initial=i == 3)
+                tau = self.get_tau(adj_mat.to("cpu").numpy(), self.device)
+                net_input = self.net.get_net_input(adj_mat, self.d, tau, self.m, self.n_taxa, i)
                 y, _ = self.net(net_input)
                 a_max = torch.argmax(y.squeeze(0))
                 idxs = self.get_idx_from_prob(a_max)

@@ -24,7 +24,10 @@ class Solver:
     def sort_d(d):
         is_tensor = type(d) == torch.Tensor
         dist_sum = np.sum(d, axis=0) if not is_tensor else torch.sum(d, dim=-1)
-        order = np.argsort(dist_sum)[::-1] if not is_tensor else torch.argsort(dist_sum)[::-1]
+        if not is_tensor:
+            order = np.flip(np.argsort(dist_sum))
+        else:
+            order = torch.flip(torch.argsort(dist_sum), dims=(0,))
         sorted_d = np.zeros_like(d) if not is_tensor else torch.zeros_like(d)
         for i in order:
             for j in order:
@@ -43,7 +46,7 @@ class Solver:
         g = nx.from_numpy_matrix(adj_mat)
         tau = nx.floyd_warshall_numpy(g)
         tau[np.isinf(tau)] = 0
-        return tau if device is not None else torch.tensor(tau).to(torch.float).to(device)
+        return tau if device is None else torch.tensor(tau).to(torch.float).to(device)
 
     @staticmethod
     def add_node(adj_mat, idxs, new_node_idx, n):
