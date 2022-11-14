@@ -45,12 +45,11 @@ class FA(nn.Module):
 
 
 class EGAT_MH_RL(EGAT):
-    def __init__(self, net_params, network=None, normalised=True):
+    def __init__(self, net_params, network=None):
         super().__init__(net_params)
         self.embedding_dim, self.hidden_dim = net_params["embedding_dim"], net_params["hidden_dim"]
         self.rounds, self.num_heads = net_params["num_messages"], net_params["num_heads"]
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.normalised = normalised
 
         self.taxa_encoder = Encoder(self.taxa_inputs, self.embedding_dim, self.hidden_dim, self.device)
         self.internal_encoder = Encoder(self.internal_inputs, self.embedding_dim, self.hidden_dim, self.device)
@@ -88,10 +87,6 @@ class EGAT_MH_RL(EGAT):
 
     def forward(self, data):
         taxa, internal, messages, problem_mask, active_nodes_mask, action_mask = data
-        if not self.normalised:
-            taxa = taxa / self.normalisation_factor
-            internal = internal / self.normalisation_factor
-            messages = messages / self.normalisation_factor
 
         a = self.taxa_encoder(taxa) * active_nodes_mask[:, :, 0].unsqueeze(-1).expand(-1, -1, self.embedding_dim)
         b = self.internal_encoder(internal) * active_nodes_mask[:, :, 1].unsqueeze(-1).expand(-1, -1, self.embedding_dim)

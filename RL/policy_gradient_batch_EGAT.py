@@ -50,14 +50,13 @@ def compute_obj_and_baseline_(data):
 
 class PolicyGradientEGAT(Solver):
 
-    def __init__(self, net, normalisation_factor):
+    def __init__(self, net):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.num_procs = mp.cpu_count()
         self.batch_size = None
         super().__init__(None)
         self.net = net
-        self.normalisation_factor = normalisation_factor
 
         self.adj_mats = []
         self.better, self.equal, self.mean_difference = None, None, None

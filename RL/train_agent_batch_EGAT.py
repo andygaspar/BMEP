@@ -50,9 +50,6 @@ net_manager = NetworkManager(folder, supervised=False, normalisation_factor=norm
 params = net_manager.get_params()
 train_params, net_params = params["train"], params["net"]
 
-
-criterion = train_params["criterion"]
-cross_entropy = True if criterion == "cross" else False
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 batch_size = train_params["batch_size"]
@@ -62,18 +59,16 @@ dgn = net_manager.make_network()
 optimizer = optim.Adam(dgn.parameters(), lr=10 ** train_params["lr"], weight_decay=10 ** train_params["weight_decay"])
 
 
-min_num_taxa, max_num_taxa = 6, 6
+min_num_taxa, max_num_taxa = train_params["min_num_taxa"], train_params["max_num_taxa"]
 
-runs = 1000
-episodes_in_run = 6
-episodes_in_parallel = 128
+runs = train_params["runs"]
+episodes_in_run, episodes_in_parallel = train_params["episodes_in_run"], train_params["episodes_in_parallel"]
 
-pol = PolicyGradientEGAT(dgn, normalisation_factor)
+pol = PolicyGradientEGAT(dgn)
 
 directory, best_mean_loss = None, 10**5
 
-training_batch_size = 64
-training_loops = 10
+training_batch_size, training_loops = train_params['batch_size'], train_params['training_loops']
 trainer = Trainer(dgn, optimizer, training_batch_size, training_loops)
 
 num_instances = 0

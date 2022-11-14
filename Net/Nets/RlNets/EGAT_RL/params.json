@@ -1,13 +1,15 @@
 {
     "train":
         {
-          "batch_size": 64,
-          "epochs": 5000,
-          "start": 0,
-          "end": 32768,
+          "runs": 1000,
+          "episodes_in_run": 6,
+          "episodes_in_parallel": 128,
+          "min_num_taxa":  6,
+          "max_num_taxa": 6,
           "lr": -6,
           "weight_decay": -4,
-          "criterion": "cross"
+          "batch_size": 64,
+          "training_loops": 10
         },
     "net": {
       "scale_d": 1,
