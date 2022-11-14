@@ -6,7 +6,7 @@ import numpy as np
 from FastME.fast_me import FastMeSolver
 from Net.network_manager import NetworkManager
 from Solvers.NJ.nj_solver import NjSolver
-from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearch
+from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearchDistribution
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.UCTSolver.utc_solver import UtcSolver
 
@@ -25,15 +25,15 @@ for file in filenames:
 m = mats[3]
 dim_dataset = m.shape[0]
 # random.seed(0)
-supervised = False
-folder = 'GNN_TAU_RL'
-# file = '_3.622'
-file = '_0.092_0'
+supervised = True
+folder = 'GNN_TAU'
+file = '_3.622'
+# file = '_0.092_0'
 
 
 # data_folder = '6_taxa_0'
 
-net_manager = NetworkManager(folder, file, supervised=supervised)
+net_manager = NetworkManager(folder, file=file, supervised=supervised)
 dgn = net_manager.get_network()
 
 dim = 12
@@ -50,7 +50,7 @@ for _ in range(100):
     swa.solve()
 
     t = time.time()
-    heuristic = HeuristicSearch(d, dgn, width=100)
+    heuristic = HeuristicSearchDistribution(d, dgn, width=100)
     heuristic.solve()
     t1 = time.time() - t
 

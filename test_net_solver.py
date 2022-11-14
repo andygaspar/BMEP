@@ -82,7 +82,7 @@ for _ in range(n_test_problems):
     last_move = np.nonzero(data_.y[pb_idxs[-1]].view(size, size)[: m, : m].to("cpu").numpy())
     sol = add_node(pre_final_adj_mat, last_move, n-1, n)[:m, :m]
 
-    fast = FastMeSolver(d.to("cpu").numpy()[:n, :n])
+    fast = FastMeSolver(d.to("cpu").numpy())
     fast.solve()
 
     # t2 = time.time()
