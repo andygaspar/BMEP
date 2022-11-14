@@ -42,10 +42,10 @@ def compute_obj_and_baseline_(data):
     swa = SwaSolver(d)
     n_taxa = swa.n_taxa
     swa.solve()
-    baseline = swa.obj_val
+    baseline = swa.obj_val * 2 ** (n_taxa - 2)
     g = nx.from_numpy_matrix(adj_mat)
     Tau = nx.floyd_warshall_numpy(g)[:n_taxa, :n_taxa]
-    return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n_taxa) for j in range(n_taxa)]), baseline
+    return np.sum([d[i, j] * 2 ** (n_taxa - 2 - Tau[i, j]) for i in range(n_taxa) for j in range(n_taxa)]), baseline
 
 
 class PolicyGradientEGAT(Solver):
