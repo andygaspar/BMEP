@@ -15,6 +15,7 @@ class Solver:
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.powers = np.array([2**i for i in range(self.n_taxa - 1)])
 
         self.solution = None
         self.obj_val = None
@@ -50,6 +51,7 @@ class Solver:
 
     @staticmethod
     def get_tau(adj_mat, device=None):
+        # DA SISTEMARE CON OTTIMIZZAZIONE
         g = nx.from_numpy_matrix(adj_mat)
         tau = nx.floyd_warshall_numpy(g)
         tau[np.isinf(tau)] = 0
@@ -65,13 +67,23 @@ class Solver:
         return adj_mat
 
     def compute_obj(self):
-        return np.sum([self.d[i, j] / 2 ** (self.T[i, j]) for i in range(self.n_taxa) for j in range(self.n_taxa)])
+        return np.sum([self.d[i, j] / self.powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
+
+    def compute_obj_val_from_adj_mat(self, adj_mat, d, n_taxa):
+        A = np.full(adj_mat.shape, n_taxa)
+        A[adj_mat > 0] = adj_mat[adj_mat > 0]
+        np.fill_diagonal(A, 0)  # diagonal elements should be zero
+        for i in range(adj_mat.shape[0]):
+            # The second term has the same shape as A due to broadcasting
+            A = np.minimum(A, A[i, :][np.newaxis, :] + A[:, i][:, np.newaxis])
+        A = A[:n_taxa, :n_taxa]
+        return np.sum([d[i, j] / self.powers[A[i, j]] for i in range(n_taxa) for j in range(n_taxa)])
 
     @staticmethod
-    def compute_obj_val_from_adj_mat(adj_mat, d, n):
+    def compute_obj_val_from_adj_mat_old(adj_mat, d, n):
         g = nx.from_numpy_matrix(adj_mat)
         Tau = nx.floyd_warshall_numpy(g)[:n, :n]
-        return np.sum([d[i, j] / 2 ** (Tau[i, j]) for i in range(n) for j in range(n)])
+        return np.sum([d[i, j] / 2**Tau[i, j] for i in range(n) for j in range(n)])
 
 
 

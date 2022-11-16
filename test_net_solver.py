@@ -21,7 +21,7 @@ random.seed(0)
 np.random.seed(0)
 
 folder = 'EGAT_RL'
-file = '_0.079_0'
+file = '_-245901.018_0'
 data_folder = '03-M18_5_9' #'6_taxa_0'
 n_test_problems = 100
 
