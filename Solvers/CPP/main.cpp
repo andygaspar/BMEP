@@ -272,7 +272,7 @@ int* Initializer_and_Terminator(double* d, int taxa, bool rescaling, int Max_Cor
 	return adj_mat;
 }
 
-int* InputPaarser(double* d, int n_taxa){
+int* InputParser(double* d, int n_taxa){
 	int taxa_to_consider=n_taxa;
 	bool rescaling=false;
 	int cores_to_use=16;
@@ -295,7 +295,7 @@ extern "C" {
             cout.setstate(std::ios_base::failbit);
             XPRB::setMsgLevel(0);
             }
-		int* adj_mat = InputPaarser(d, n_taxa);
+		int* adj_mat = InputParser(d, n_taxa);
 		cout.clear();
 		return adj_mat;
 	}

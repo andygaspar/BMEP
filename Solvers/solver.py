@@ -15,7 +15,7 @@ class Solver:
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.powers = np.array([2**i for i in range(self.n_taxa - 1)])
+        self.powers = np.array([2**i for i in range(self.n_taxa)])
 
         self.solution = None
         self.obj_val = None
@@ -77,7 +77,8 @@ class Solver:
             # The second term has the same shape as A due to broadcasting
             A = np.minimum(A, A[i, :][np.newaxis, :] + A[:, i][:, np.newaxis])
         A = A[:n_taxa, :n_taxa]
-        return np.sum([d[i, j] / self.powers[A[i, j]] for i in range(n_taxa) for j in range(n_taxa)])
+        r = range(n_taxa)
+        return np.sum([d[i, j] / self.powers[A[i, j]] for i in r for j in r])
 
     @staticmethod
     def compute_obj_val_from_adj_mat_old(adj_mat, d, n):

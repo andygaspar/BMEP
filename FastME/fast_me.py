@@ -13,8 +13,8 @@ from matplotlib import pyplot as plt
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from Solvers.solver import Solver
-warnings.simplefilter("ignore")
 
+warnings.simplefilter("ignore")
 
 
 class FastMeSolver(Solver):
@@ -22,30 +22,34 @@ class FastMeSolver(Solver):
     def __init__(self, d):
         super().__init__(d)
         self.path = 'FastME/fastme-2.1.6.4/'
+        self.flags = ''
 
-    def solve(self):
+    def solve(self, bme=True, nni=True, digits=None, triangular_inequality=False, logs=False):
+
+        self.set_flags(bme, nni, digits, triangular_inequality, logs)
+
+        # mettere tutte flag bene e controllare taxaaddbal
         d_string = ''
         for i, row in enumerate(self.d):
-            row = map(lambda x: str(round(x, 21)), row)
-            line = str(i) + ' ' + ' '.join(row)
+            # row_ = map(lambda x: str(round(x, 21)), row)
+            # line = str(i) + ' ' + ' '.join(row_)
+            row_string = ['{:.19f}'.format(el) for el in row]
+            line = str(i) + ' ' + ' '.join(row_string)
             d_string += line + '\n'
 
         d_string = str(self.n_taxa) + '\n' + d_string
 
-        with open(self.path+'mat.mat', 'w', newline='') as csvfile:
+        with open(self.path + 'mat.mat', 'w', newline='') as csvfile:
             csvfile.write(d_string)
 
-        os.system(self.path + "src/fastme -i " + self.path + "mat.mat > /dev/null")
+        os.system(self.path + "src/fastme -i " + self.path + "mat.mat " + self.flags)
 
-        with open(self.path+'mat.mat_fastme_stat.txt', 'r') as f:
-            file_str = f.read()
-            fastme_obj = list(map(float, re.findall('Tree length is (.+)', file_str)))
-        # print(fastme_obj)
-
-        trees_parsed = Phylo.parse(self.path+'mat.mat_fastme_tree.nwk', "newick")
+        trees_parsed = Phylo.parse(self.path + 'mat.mat_fastme_tree.nwk', "newick")
         trees = [Phylo.to_networkx(t) for t in trees_parsed]
 
         tree = trees[0]
+
+        #os.system(self.path + "src/fastme -help")
 
         # nx.draw(tree, with_labels=True)
         # plt.show()
@@ -61,8 +65,18 @@ class FastMeSolver(Solver):
 
         self.solution = adj_mat[idx][:, idx]
         g = nx.from_numpy_matrix(self.solution)
-        self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m]
+        self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m].astype(int)
         self.obj_val = self.compute_obj()
 
+    def set_flags(self, bme, nni, digits, triangular_inequality, logs):
 
-
+        if bme:
+            self.flags += " -m b "
+        if nni:
+            self.flags += " -n "
+        if triangular_inequality:
+            self.flags += " -q "
+        if digits is not None:
+            self.flags += " -f " + str(digits) + " "
+        if not logs:
+            self.flags += " > /dev/null"
