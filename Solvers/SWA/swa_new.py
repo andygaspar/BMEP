@@ -17,57 +17,52 @@ class SwaSolverNew(Solver):
 
     def solve(self, start=3, adj_mat=None):
         adj_mat = self.initial_adj_mat() if adj_mat is None else adj_mat
-        adj = np.array([self.n_taxa]*3 + [0]*(self.m - 3))
-        min_val, min_adj_mat = None, None
-        min_val_, min_adj = None, None
-        for i in range(start, self.n_taxa):
+        adj_dict = {(i, self.n_taxa): (i, self.n_taxa) for i in range(3)}
+
+        min_val, min_adj_dict = None, None
+        for step in range(start, self.n_taxa):
             min_val = 10 ** 5
-            min_val_ = 10 ** 5
-            minor_idxs = [j for j in range(i + 1)] + [j for j in range(self.n_taxa, self.n_taxa + i - 1)]
-            idxs_list = np.array(np.nonzero(np.triu(adj_mat))).T
-            m = (i + 1) * 2 - 2
+
+            m = (step + 1) * 2 - 2
             T = np.empty((m, m), dtype=int)
-            for selection, idxs in enumerate(idxs_list):
-                sol = self.add_node(copy.deepcopy(adj_mat), idxs, i, self.n_taxa)
-                obj_val = self.compute_obj_val_from_adj_mat(sol[minor_idxs][:, minor_idxs], self.d[:i+1, :i+1], i+1)
+            range_m = range(m)
+            range_step = range(step + 1)
+            sum_idxs = [(i, j) for i in range_step for j in range_step if i < j]
+            for idxs in adj_dict.values():
 
-                new_adj = self.add_node_(adj, selection, i, self.n_taxa)
-                obj_val_ = self.compute_obj_(new_adj, i + 1, T, m)
+                new_adj_dict = self.add_node_(copy.deepcopy(adj_dict), idxs, step, self.n_taxa)
+                obj_val = self.compute_obj_(new_adj_dict, step + 1, T, range_m, sum_idxs)
+
                 if obj_val < min_val:
-                    min_val, min_adj_mat = obj_val, sol
+                    min_val, min_adj_dict = obj_val, new_adj_dict
 
-                if obj_val_ < min_val_:
-                    min_val_, min_adj = obj_val, new_adj
-
-            adj_mat = min_adj_mat
-            adj = min_adj
+            adj_dict = min_adj_dict
 
         self.solution = adj_mat
         self.obj_val = min_val
-        self.obj_val_ = min_val_
-        P = 1
+
 
     @staticmethod
-    def add_node_(adj, selection, i, n_taxa):
-        new_adj = copy.copy(adj)
-        new_adj[i] = i + n_taxa - 2
-        new_adj[selection] = new_adj[adj[selection]] = i + n_taxa - 2
-        new_adj[i + n_taxa - 2] = adj[selection]
+    def add_node_(adj_dict, idxs, new_node_idx, n):
+        adj_dict.pop((idxs[0], idxs[1]))  # detach selected
+        adj_dict[(idxs[0], n + new_node_idx - 2)] = (idxs[0], n + new_node_idx - 2)  # reattach selected to new
+        adj_dict[(idxs[1], n + new_node_idx - 2)] = (idxs[1], n + new_node_idx - 2)  # reattach selected to new
+        adj_dict[(new_node_idx, n + new_node_idx - 2)] = (new_node_idx, n + new_node_idx - 2)  # attach new
 
-        return new_adj
+        return adj_dict
 
-    def compute_obj_(self, adj, step, T, m):
+    def compute_obj_(self, new_adj_dict: dict, step, T, range_m, sum_idxs):
         T.fill(step)
-        adj_reduced = adj[adj > 0] - step + 2
-        elements = range(m)
-        T[elements, adj_reduced] = T[adj_reduced, elements] = 1
+        adj_reduced_x = [val[0] - (self.n_taxa - step) if val[0] >= self.n_taxa else val[0] for val in new_adj_dict.values()]
+        adj_reduced_y = [val[1] - (self.n_taxa - step) for val in new_adj_dict.values()]
+        T[adj_reduced_x, adj_reduced_y] = 1
+        T[adj_reduced_y, adj_reduced_x] = 1
         np.fill_diagonal(T, 0)  # diagonal elements should be zero
-        for i in range(m):
+        for i in range_m:
             # The second term has the same shape as A due to broadcasting
             T = np.minimum(T, T[i, :][np.newaxis, :] + T[:, i][:, np.newaxis])
         T = T[:step, :step]
-        r = range(step)
-        return np.sum([self.d[i, j] / self.powers[T[i, j]] for i in r for j in r if i < j]) * 2
+        return np.sum([self.d[i, j] / self.powers[T[i, j]] for i, j in sum_idxs]) * 2
 
 
 

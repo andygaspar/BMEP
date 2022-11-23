@@ -14,25 +14,28 @@ class OpenProcess:
 
 class PardiSolverParallel(Solver):
 
-    def __init__(self, d):
+    def __init__(self, d, bme_obj_fun=True):
         super().__init__(d)
         self.n_taxa = d.shape[0]
         self.m = self.n_taxa + self.n_taxa - 2
+        self.obj_fun = self.bme if bme_obj_fun else self.lin_bme
         self.steps = 0
         self.best_val = 10 ** 5
         self.solution = None
 
-    def compute_obj_val(self, mat):
-        g = nx.from_numpy_matrix(mat)
-        Tau = nx.floyd_warshall_numpy(g)[:self.n_taxa, :self.n_taxa]
+
+    def bme(self, Tau):
         return np.sum([self.d[i, j] / 2 ** (Tau[i, j]) for i in range(self.n_taxa) for j in range(self.n_taxa)])
+
+    def lin_bme(self, Tau):
+        return np.sum([self.d[i, j] / Tau[i, j] for i in range(self.n_taxa) for j in range(self.n_taxa) if i != j])
 
     def recursion(self, proc: OpenProcess):
         new_procs, best_sol = [], None
         selection = np.array(np.nonzero(np.triu(proc.mat))).T
         recursion_step = selection.shape[0]
         if recursion_step == proc.num_steps:
-            obj_val = self.compute_obj_val(proc.mat)
+            obj_val = self.obj_fun(self.get_tau_(proc.mat, self.n_taxa))
             # print(obj_val)
             # print(obj_val, proc.best_val)
             if obj_val < proc.best_val:

@@ -47,15 +47,17 @@ file = '_-245901.018_0'
 # net_manager = NetworkManager(folder, file=file, supervised=supervised)
 # dgn = net_manager.get_network()
 
-dim = 6
+dim = 40
 better = []
 worse = []
-for _ in range(10):
+for _ in range(20):
     idx = random.sample(range(dim_dataset), k=dim)
     d = m[idx, :][:, idx]
 
+    t = time.time()
     swa_new = SwaSolverNew(d)
     swa_new.solve()
+    t = time.time() - t
 
     nj = NjSolver(d)
     nj.solve()
@@ -65,8 +67,12 @@ for _ in range(10):
     # print(nj.obj_val, nj_phylo.obj_val)
 
 
+    t1 = time.time()
     swa = SwaSolver(d)
     swa.solve()
+    t1 = time.time() - t1
+
+    print(t, t1)
 
 
 
@@ -78,10 +84,10 @@ for _ in range(10):
 
     # print('heur time ', time.time() - t)
 
-    t = time.time()
-    mcts_solver = UtcSolver(d)
-    mcts_solver.solve(20)
-    print('mcts ', time.time() - t)
+    # t = time.time()
+    # mcts_solver = UtcSolver(d)
+    # mcts_solver.solve(20)
+    # print('mcts ', time.time() - t)
 
     fast = FastMeSolver(d)
     fast.solve()
@@ -107,14 +113,14 @@ for _ in range(10):
     #
     # pardi = CPPSolver(d[:dim, :dim])
     # pardi.solve()
-    bet = fast.obj_val > mcts_solver.obj_val
-    wor = fast.obj_val < mcts_solver.obj_val
-    outcome = 'better' if bet else ('worse' if wor else 'equal')
-    print(_,  '  swa ', swa.obj_val, '  nj ', nj_phylo.obj_val, '  fast ',  fast.obj_val,
-          '  mcts ', mcts_solver.obj_val) #, pardi.obj_val, mcts_solver.obj_val == pardi.obj_val, outcome)
+    # bet = fast.obj_val > mcts_solver.obj_val
+    # wor = fast.obj_val < mcts_solver.obj_val
+    # outcome = 'better' if bet else ('worse' if wor else 'equal')
+    # print(_,  '  swa ', swa.obj_val, '  nj ', nj_phylo.obj_val, '  fast ',  fast.obj_val,
+    #       '  mcts ', mcts_solver.obj_val) #, pardi.obj_val, mcts_solver.obj_val == pardi.obj_val, outcome)
 
-    better.append(bet)
-    worse.append(wor)
+    # better.append(bet)
+    # worse.append(wor)
 
 print(np.mean(better))
 print(np.mean(worse))
