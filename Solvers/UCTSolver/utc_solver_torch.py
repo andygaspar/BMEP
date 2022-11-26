@@ -12,12 +12,15 @@ class UtcSolverTorch(Solver):
 
     def __init__(self, d: np.array):
         super(UtcSolverTorch, self).__init__(d)
+        self.numpy_d = self.d
         self.d = torch.Tensor(self.d).to(self.device)
+        self.adj_mat_sparse = None
 
-    def solve(self, n_iterations=100, parallel=True):
+    def solve(self, n_iterations=100):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
         root = NodeTorch(self.d, adj_mat, self.n_taxa, device=self.device)
         self.obj_val, self.solution = root.expand()
+
 
         for iter in range(n_iterations):
             node = root
@@ -31,4 +34,7 @@ class UtcSolverTorch(Solver):
                 self.obj_val, self.solution = run_best
 
         self.obj_val = self.obj_val.item()
-        self.T = self.get_tau_(self.solution, self.n_taxa)
+        self.T = self.get_tau(self.solution.to('cpu').numpy()).astype(np.int8)
+        self.d = self.numpy_d
+        self.obj_val = self.compute_obj()
+        self.adj_mat_sparse = torch.nonzero(torch.triu(self.solution))
