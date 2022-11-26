@@ -67,6 +67,7 @@ class PolicyGradientEGAT(Solver):
             n_problems = len(d_list)
             self.n_taxa = n_taxa
             self.m = self.n_taxa * 2 - 2
+            self.powers = np.array([2 ** i for i in range(self.n_taxa)])
             pool = mp.Pool(self.num_procs)
             results = pool.map(make_d_batch, d_list)
             pool.close()

@@ -11,7 +11,7 @@ def rollout_node(node):
 
 class Node:
 
-    def __init__(self, adj_mat, n_taxa, add_node, rollout_policy, c=2 ** (1 / 2), step_i=3, parent=None):
+    def __init__(self, adj_mat, n_taxa, add_node, rollout_policy, c=2 ** (1 / 2), step_i=3, parent=None, to_tensor=False):
         self._adj_mat = adj_mat
         self._n_taxa = n_taxa
         self._step_i = step_i
@@ -24,8 +24,10 @@ class Node:
         self._children = None
 
         self._rollout_policy = rollout_policy
+        self._to_tensor = to_tensor
 
-        self.expand = self.expand_seq if self._n_taxa < 10 else self.expand_parallel
+        self.expand = self.expand_seq if self._n_taxa < 10 or self._to_tensor else self.expand_parallel
+
 
     '''
     Return the best child node according to the UCT rule
@@ -101,7 +103,8 @@ class Node:
     def _init_children(self):
 
         actions = list(zip(*np.nonzero(np.triu(self._adj_mat))))
-        attributes = (self._n_taxa, self.update_adj_mat, self._rollout_policy, self._c, self._step_i + 1, self)
+        attributes = (self._n_taxa, self.update_adj_mat, self._rollout_policy,
+                      self._c, self._step_i + 1, self, self._to_tensor)
         self._children = [Node(self.update_adj_mat(copy.deepcopy(self._adj_mat), act, self._step_i, self._n_taxa),
                                *attributes) for act in actions]
 

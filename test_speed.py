@@ -1,82 +1,71 @@
-import random
-import time
-import warnings
-from os import walk
 import numpy as np
 from FastME.fast_me import FastMeSolver
-from Net.network_manager import NetworkManager
-from Solvers.NJ.nj_solver import NjSolver
-from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearchDistribution
 from Solvers.SWA.swa_solver import SwaSolver
+from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.UCTSolver.utc_solver import UtcSolver
 
+import sys
 
-warnings.simplefilter("ignore")
+from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
+
+from Data_.data_loader import DistanceData
+
+distances = DistanceData()
+distances.print_dataset_names()
+
+data_set = distances.get_dataset(3)
 
 
-path = 'Data_/csv_'
-filenames = sorted(next(walk(path), (None, None, []))[2])
+dim = 20
 
-mats = []
-for file in filenames:
-    if file[-4:] == '.txt':
-        mats.append(np.genfromtxt('Data_/csv_/' + file, delimiter=','))
-
-
-m = mats[3]
-dim_dataset = m.shape[0]
-
-dim = 50
-
-runs = 100
+runs = 6
 
 results = np.zeros((runs, 4))
 
 
 for run in range(runs):
-    idx = random.sample(range(dim_dataset), k=dim)
-    d = m[idx, :][:, idx]
+    print(run)
+    d = data_set.generate_random(dim)
 
-    t = time.time()
-    swa = SwaSolver(d)
-    swa.solve()
-    t = time.time() - t
+    mcts_rand = UtcSolver(d, SwaSolverTorch)
+    mcts_rand.solve_timed(20)
 
-    t1 = time.time()
+    swa_new = SwaSolver(d)
+    swa_new.solve_timed()
+
+    # nj_i = NjIlp(d)
+    # nj_i.solve()
+
     mcts = UtcSolver(d)
-    mcts.solve(10)
-    t1 = time.time() - t1
+    mcts.solve_timed(10)
 
-    t2 = time.time()
-    fast = FastMeSolver(d)
-    fast.solve(bme=False, nni=False, triangular_inequality=False, logs=False)
-    t2 = time.time() - t2
-    print("ffff")
-    t3 = time.time()
-    fast1 = FastMeSolver(d)
-    fast1.solve(bme=True, nni=False, triangular_inequality=False, logs=False)
-    t3 = time.time() - t3
+    mcts_1 = UtcSolver(d)
+    mcts_1.solve_timed(20)
 
-    t4 = time.time()
-    fast2 = FastMeSolver(d)
-    fast2.solve(bme=True, nni=True, triangular_inequality=False, logs=False)
-    t4 = time.time() - t4
 
-    t5 = time.time()
-    fast3 = FastMeSolver(d)
-    fast3.solve(bme=True, nni=True, digits=17, triangular_inequality=True, logs=False)
-    t5 = time.time() - t5
 
-    order = list(np.argsort([fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val]))
-    score = [order.index(i) for i in range(4)]
-    results[run] = score
+    mcts_rand1 = UtcSolverTorch(d)
+    mcts_rand1.solve_timed(30)
 
-    print(t1, t2, t3, t4, t5)
-    print(mcts.obj_val, fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val, "\n")
+    print(swa_new.time, mcts.time, mcts_1.time, mcts_rand.time, mcts_rand1.time)
+    print(swa_new.obj_val, mcts.obj_val, mcts_1.obj_val, mcts_rand.obj_val, mcts_rand1.obj_val)
+    print('')
 
-    # print(t, t1, t2, t3, swa.obj_val, utc.obj_val, "f1", fast.obj_val, "f2", fast1.obj_val)
+    fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)
+    fast.solve_timed()
 
-print("results")
-print(results.sum(axis=0))
-print([results[:, i][results[:, i] == 0].shape[0] for i in range(4)])
+    fast1 = FastMeSolver(d, bme=True, nni=False, triangular_inequality=False, logs=False)
+    fast1.solve_timed()
+
+    fast2 = FastMeSolver(d, bme=True, nni=True, triangular_inequality=False, logs=False)
+    fast2.solve_timed()
+
+    fast3 = FastMeSolver(d, bme=True, nni=True, digits=17, triangular_inequality=True, logs=False)
+    fast3.solve_timed()
+
+    fast4 = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=True, logs=False)
+    fast4.solve_timed()
+
+    print(fast.time, fast1.time, fast2.time, fast3.time, fast4.time)
+    print(fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val, fast4.obj_val, "\n\n")
 

@@ -19,14 +19,23 @@ warnings.simplefilter("ignore")
 
 class FastMeSolver(Solver):
 
-    def __init__(self, d):
+    def __init__(self, d,
+                 bme=True, nni=True, digits=None, post_processing=False, init_topology=None,
+                 triangular_inequality=False, logs=False):
         super().__init__(d)
         self.path = 'FastME/fastme-2.1.6.4/'
+        self.init_topology = init_topology
         self.flags = ''
+        self.bme = bme
+        self.nni = nni
+        self.digits = digits
+        self.post_processing = post_processing
+        self.triangular_inequality = triangular_inequality
+        self.logs = logs
 
-    def solve(self, bme=True, nni=True, digits=None, triangular_inequality=False, logs=False):
+    def solve(self):
 
-        self.set_flags(bme, nni, digits, triangular_inequality, logs)
+        self.set_flags()
 
         # mettere tutte flag bene e controllare taxaaddbal
         d_string = ''
@@ -42,17 +51,17 @@ class FastMeSolver(Solver):
         with open(self.path + 'mat.mat', 'w', newline='') as csvfile:
             csvfile.write(d_string)
 
-        os.system(self.path + "src/fastme -i " + self.path + "mat.mat " + self.flags)
+        if self.init_topology is not None:
+            with open(self.path + 'init_topology.mat', 'w', newline='') as csvfile:
+                csvfile.write(str(self.init_topology))
+            os.system(self.path + "src/fastme -i " + self.path + "mat.mat " + self.flags + ' -u=init_topology.mat')
+        else:
+            os.system(self.path + "src/fastme -i " + self.path + "mat.mat " + self.flags)
 
         trees_parsed = Phylo.parse(self.path + 'mat.mat_fastme_tree.nwk', "newick")
         trees = [Phylo.to_networkx(t) for t in trees_parsed]
 
         tree = trees[0]
-
-        #os.system(self.path + "src/fastme -help")
-
-        # nx.draw(tree, with_labels=True)
-        # plt.show()
         tree.edges()
         adj_mat = nx.adjacency_matrix(tree).toarray()
         adj_mat[adj_mat != 0] = 1
@@ -68,15 +77,27 @@ class FastMeSolver(Solver):
         self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m].astype(int)
         self.obj_val = self.compute_obj()
 
-    def set_flags(self, bme, nni, digits, triangular_inequality, logs):
+    def set_flags(self):
 
-        if bme:
+        if self.bme:
             self.flags += " -m b "
-        if nni:
+        if self.nni:
             self.flags += " -n "
-        if triangular_inequality:
+        if self.post_processing:
+            self.flags += " -s "
+        if self.triangular_inequality:
             self.flags += " -q "
-        if digits is not None:
-            self.flags += " -f " + str(digits) + " "
-        if not logs:
+        if self.digits is not None:
+            self.flags += " -f " + str(self.digits) + " "
+        if not self.logs:
             self.flags += " > /dev/null"
+
+    def change_flags(self,
+                     bme=True, nni=True, digits=None, post_processing=False, triangular_inequality=False, logs=False):
+        self.flags = ''
+        self.bme = bme
+        self.nni = nni
+        self.digits = digits
+        self.post_processing = post_processing
+        self.triangular_inequality = triangular_inequality
+        self.logs = logs

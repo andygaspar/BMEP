@@ -1,44 +1,53 @@
 import time
 
+import Bio
+import networkx as nx
+from Bio import Phylo
+
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
+from FastME.fast_me import FastMeSolver
+from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 
 from Solvers.UCTSolver.utc_solver import UtcSolver
-from Solvers.PardiSolver.pardi_solver import PardiSolver
 from Solvers.SWA.swa_solver import SwaSolver
-from Solvers.solver import Solver
+from Data_.data_loader import DistanceData
+from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 
-funs = Solver()
-add_node = funs.add_node
-compute_obj_val = funs.compute_obj_val_from_adj_mat
+distances = DistanceData()
+distances.print_dataset_names()
 
-folder = 'GNN_TAU'
-file = '_3.622'
-data_folder = '6_taxa_0'
+data_set = distances.get_dataset(3)
+
+d = data_set.get_minor(6)
+
+swa = SwaSolver(d)
+swa.solve_timed()
+
+mcts_torch = UtcSolverTorch(d)
+mcts_torch.solve_timed(3)
 
 
+swa_torch = SwaSolverTorch(d)
+print(swa_torch.device)
+swa_torch.solve_timed()
 
 
-data_ = BMEP_Dataset(folder_name=data_folder)
+print(swa.time, swa_torch.time, mcts_torch.time)
+print(swa.obj_val, swa_torch.obj_val, mcts_torch.obj_val)
 
-d = data_.d_mats[0].to("cpu").numpy()
+fast = FastMeSolver(d)
+fast.solve()
 
 t = time.time()
 mcts_solver = UtcSolver(d)
-mcts_solver.solve(100)
+mcts_solver.solve(1)
 print('mcts ', time.time() - t)
 
-t = time.time()
-swa = SwaSolver(d)
-swa.solve()
-print('swa ', time.time() - t)
+p = mcts_solver.T
+# fast1 = FastMeSolver(d, init_topology=newick_tree)
+# fast1.solve()
 
-t = time.time()
-pardi = PardiSolver(d[:6, :6])
-pardi.solve()
-print('pardi ', time.time() - t)
 
-print(mcts_solver.obj_val)
-print(swa.obj_val)
-print(pardi.obj_val)
+
 
 

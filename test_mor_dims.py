@@ -3,19 +3,13 @@ import time
 import warnings
 from os import walk
 
-import networkx as nx
 import numpy as np
-from Bio import Phylo
-from Bio.Phylo.TreeConstruction import DistanceTreeConstructor, DistanceCalculator, DistanceMatrix
 
 from FastME.fast_me import FastMeSolver
-from Net.network_manager import NetworkManager
 from Solvers.NJ.nj_phylo import NjPhylo
 from Solvers.NJ.nj_solver import NjSolver
-from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearchDistribution
-from Solvers.SWA.swa_new import SwaSolverNew
+from Old.SWA_CPP.swa_new import SwaSolverNew
 from Solvers.SWA.swa_solver import SwaSolver
-from Solvers.UCTSolver.utc_solver import UtcSolver
 
 warnings.simplefilter("ignore")
 random.seed(0)

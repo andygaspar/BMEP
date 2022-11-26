@@ -21,8 +21,6 @@ class SwaSolver(Solver):
             min_val = 10 ** 5
             minor_idxs = [j for j in range(i + 1)] + [j for j in range(self.n_taxa, self.n_taxa + i - 1)]
             idxs_list = np.array(np.nonzero(np.triu(adj_mat))).T
-            # idxs_list[:, 1] += i
-            iii = 0
             for idxs in idxs_list:
                 sol = self.add_node(copy.deepcopy(adj_mat), idxs, i, self.n_taxa)
                 obj_val = self.compute_obj_val_from_adj_mat(sol[minor_idxs][:, minor_idxs], self.d[:i+1, :i+1], i+1)

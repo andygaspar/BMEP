@@ -1,23 +1,28 @@
 import numpy as np
 
 from Solvers.SWA.swa_solver import SwaSolver
+from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.UCTSolver.node import Node
 from Solvers.solver import Solver
 
 
 class UtcSolver(Solver):
 
-    def __init__(self, d: np.array):
+    def __init__(self, d: np.array, policy=SwaSolver):
         super(UtcSolver, self).__init__(d)
+        self.policy = policy
+        self.to_tensor = True if policy == SwaSolverTorch else False
 
-    def swa_policy(self, adj_mat: np.array, step: int):
-        swa_ = SwaSolver(self.d, sorted_d=True)
-        swa_.solve(start=step, adj_mat=adj_mat)
-        return swa_.obj_val, swa_.solution
+    def run_policy(self, adj_mat: np.array, step: int):
+        solver = self.policy(self.d, sorted_d=True)
+        solver.solve(start=step, adj_mat=adj_mat)
+        return solver.obj_val, solver.solution
 
-    def solve(self, n_iterations=100):
-        adj_mat = self.initial_adj_mat()
-        root = Node(adj_mat, self.n_taxa, self.add_node, self.swa_policy)
+    def solve(self, n_iterations=100, parallel=True):
+        adj_mat = self.initial_adj_mat().astype(np.int8) if not self.to_tensor else \
+            self.initial_adj_mat(device=self.device, n_problems=1)
+        add_node = self.add_node if not self.to_tensor else SwaSolverTorch.add_nodes
+        root = Node(adj_mat, self.n_taxa, add_node, self.run_policy, to_tensor = self.to_tensor)
         self.obj_val, self.solution = root.expand()
 
         for iter in range(n_iterations):
@@ -31,3 +36,4 @@ class UtcSolver(Solver):
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 
+        self.T = self.get_tau_(self.solution, self.n_taxa)

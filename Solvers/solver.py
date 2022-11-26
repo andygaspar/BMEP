@@ -1,4 +1,6 @@
 import copy
+import time
+from abc import abstractmethod
 
 import networkx as nx
 import numpy as np
@@ -15,11 +17,13 @@ class Solver:
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.powers = np.array([2**i for i in range(self.n_taxa)])
+        self.powers = np.array([2 ** i for i in range(self.n_taxa)]) if self.n_taxa is not None else None
 
         self.solution = None
         self.obj_val = None
         self.T = None
+
+        self.time = None
 
     @staticmethod
     def sort_d(d):
@@ -35,8 +39,8 @@ class Solver:
                 sorted_d[i, j] = d[order[i], order[j]]
         return sorted_d
 
-    def initial_adj_mat(self, device=None, n_problems=1):
-        if n_problems == 1:
+    def initial_adj_mat(self, device=None, n_problems=0):
+        if n_problems == 0:
             adj_mat = np.zeros((self.m, self.m)) if device is None else torch.zeros((self.m, self.m)).to(device)
             adj_mat[0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
             adj_mat[1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
@@ -48,6 +52,15 @@ class Solver:
             adj_mat[:, 2, self.n_taxa] = adj_mat[:, self.n_taxa, 2] = 1
             return adj_mat
         return adj_mat
+
+    @abstractmethod
+    def solve(self, *args):
+        pass
+
+    def solve_timed(self, *args):
+        self.time = time.time()
+        self.solve(*args)
+        self.time = time.time() - self.time
 
     @staticmethod
     def get_tau(adj_mat, device=None):
@@ -67,11 +80,12 @@ class Solver:
         return adj_mat
 
     def compute_obj(self):
-        return np.sum([self.d[i, j] / self.powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
+        return np.sum(
+            [self.d[i, j] / self.powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
 
     def compute_obj_val_from_adj_mat(self, adj_mat, d, n_taxa):
         A = np.full(adj_mat.shape, n_taxa)
-        A[adj_mat > 0] = adj_mat[adj_mat > 0]
+        A[adj_mat > 0] = 1
         np.fill_diagonal(A, 0)  # diagonal elements should be zero
         for i in range(adj_mat.shape[0]):
             # The second term has the same shape as A due to broadcasting
@@ -89,7 +103,3 @@ class Solver:
             # The second term has the same shape as T due to broadcasting
             T = np.minimum(T, T[i, :][np.newaxis, :] + T[:, i][:, np.newaxis])
         return T[:n_taxa, :n_taxa]
-
-
-
-
