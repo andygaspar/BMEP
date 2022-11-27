@@ -10,6 +10,7 @@ import sys
 
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
+from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorch_1
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -17,9 +18,9 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 20
+dim = 40
 
-runs = 10
+runs = 1
 
 results = np.zeros((runs, 4))
 
@@ -29,10 +30,13 @@ iterations = 0
 
 for run in range(runs):
     print(run)
-    d = data_set.generate_random(dim)
+    d = data_set.get_random_mat(dim)
 
-    mcts = UtcSolver(d, SwaSolverTorch)
-    mcts.solve_timed(20)
+
+
+    mcts = UtcSolverTorch(d)
+    mcts.solve_timed(10)
+    print(mcts.n_nodes)
 
     # swa_new = SwaSolver(d)
     # swa_new.solve_timed()
@@ -40,14 +44,19 @@ for run in range(runs):
     # nj_i = NjIlp(d)
     # nj_i.solve()
 
-    mcts_1 = UtcSolver(d)
-    mcts_1.solve_timed(30)
+    mcts_1 = UtcSolverTorch(d)
+    mcts_1.solve_timed(15)
+    print(mcts_1.n_nodes)
 
-    mcts_t = UtcSolverTorch(d)
-    mcts_t.solve_timed(20)
+    mcts_t = UtcSolverTorch_1(d)
+    mcts_t.solve_timed(10)
+    print(mcts_t.n_nodes)
 
-    mcts_t_1 = UtcSolverTorch(d)
-    mcts_t_1.solve_timed(30)
+    mcts_t_1 = UtcSolverTorch_1(d)
+    mcts_t_1.solve_timed(20)
+    print(mcts_t_1.n_nodes)
+
+
 
 
     print(mcts.time, mcts_1.time, mcts_t.time, mcts_t_1.time)

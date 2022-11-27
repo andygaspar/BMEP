@@ -13,7 +13,7 @@ def rollout_node(node):
     return node.rollout()
 
 
-class NodeTorch:
+class NodeTorch_1:
 
     def __init__(self, d, adj_mat, n_taxa, c=2 ** (1 / 2), step_i=3, parent=None, device=None):
         self._d = d
@@ -28,6 +28,7 @@ class NodeTorch:
         self._children = None
 
         self._device = device
+        self._average_obj_val = 0
 
     '''
     Return the best child node according to the UCT rule
@@ -37,8 +38,11 @@ class NodeTorch:
         return self._adj_mat
 
     def best_child(self):
-        scores = [child.value() + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
-                  for child in self._children]
+        normalisation = max([child.average() for child in self._children])
+        shift = min([child.average() for child in self._children])
+        scores = [
+            1 - (child.average() - shift) / normalisation + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
+            for child in self._children]
         best_child = np.argmax(scores)
         print(scores, best_child)
         return self._children[best_child]
@@ -47,6 +51,7 @@ class NodeTorch:
         return self._val
 
     def set_value(self, val):
+        self.update_average(val)
         self._val = val
 
     def n_visits(self):
@@ -55,6 +60,13 @@ class NodeTorch:
     def add_visit(self):
         self._n_visits += 1
 
+    def average(self):
+        return self._average_obj_val
+
+    def update_average(self, best_val):
+        self._average_obj_val = self._average_obj_val * (self._n_visits - 1) / self._n_visits \
+                                + best_val / self._n_visits
+
     '''
     Expand the current node by rolling out every child node and back-propagate information to parent nodes
     '''
@@ -62,9 +74,9 @@ class NodeTorch:
     def expand(self):
         self._init_children()
         best_val_adj = self.rollout()
-
-        self._val = -best_val_adj[0]
         self.add_visit()
+        self.set_value(best_val_adj[0])
+
         self._backprop()
 
         return best_val_adj
@@ -77,8 +89,9 @@ class NodeTorch:
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, adj_mats)
         for i, child in enumerate(self._children):
-            child.set_value(-obj_vals[i])
             child.add_visit()
+            child.set_value(obj_vals[i])
+
         idx = torch.argmin(obj_vals)
         return obj_vals[idx], sol_adj_mat[idx]
 
@@ -87,12 +100,11 @@ class NodeTorch:
     '''
 
     def _init_children(self):
-
         idxs = torch.nonzero(torch.triu(self._adj_mat), as_tuple=True)
         idxs = (torch.tensor(range(idxs[0].shape[0])).to(self._device), idxs[1], idxs[2])
         new_mats = self.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
                                   idxs, self._step_i, self._n_taxa)
-        self._children = [NodeTorch(self._d, mat.unsqueeze(0), self._n_taxa, self._c, self._step_i + 1, self)
+        self._children = [NodeTorch_1(self._d, mat.unsqueeze(0), self._n_taxa, self._c, self._step_i + 1, self)
                           for mat in new_mats]
 
     '''
@@ -112,6 +124,7 @@ class NodeTorch:
             if parent.value() < self.value():
                 parent._val = self._val
             parent.add_visit()
+            parent.update_average(self._val)
             parent = parent.parent()
 
     '''
@@ -143,7 +156,8 @@ class NodeTorch:
                                                   step + 1)
             obj_vals = torch.min(obj_vals.reshape(-1, repetitions), dim=-1)
             adj_mats = sol.unsqueeze(0).view(batch_size, repetitions,
-                                             adj_mats.shape[1], adj_mats.shape[2])[range(batch_size), obj_vals.indices, :, :]
+                                             adj_mats.shape[1], adj_mats.shape[2])[range(batch_size), obj_vals.indices,
+                       :, :]
 
         return obj_vals.values, adj_mats
 

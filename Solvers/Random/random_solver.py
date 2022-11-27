@@ -24,5 +24,6 @@ class RandomSolver(Solver):
 
         self.solution = adj_mat
         self.obj_val = self.compute_obj_val_from_adj_mat(adj_mat, self.d, self.n_taxa)
+        self.T = self.get_tau(self.solution)
 
 

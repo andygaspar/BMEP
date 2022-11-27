@@ -5,13 +5,14 @@ from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.UCTSolver.node import Node
 from Solvers.UCTSolver.node_torch import NodeTorch
+from Solvers.UCTSolver.node_torch_1 import NodeTorch_1
 from Solvers.solver import Solver
 
 
-class UtcSolverTorch(Solver):
+class UtcSolverTorch_1(Solver):
 
     def __init__(self, d: np.array):
-        super(UtcSolverTorch, self).__init__(d)
+        super(UtcSolverTorch_1, self).__init__(d)
         self.numpy_d = self.d
         self.d = torch.Tensor(self.d).to(self.device)
         self.adj_mat_sparse = None
@@ -20,9 +21,8 @@ class UtcSolverTorch(Solver):
 
     def solve(self, n_iterations=100):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
-        self.root = NodeTorch(self.d, adj_mat, self.n_taxa, device=self.device)
+        self.root = NodeTorch_1(self.d, adj_mat, self.n_taxa, device=self.device)
         self.obj_val, self.solution = self.root.expand()
-
 
         for iter in range(n_iterations):
             node = self.root
@@ -53,3 +53,4 @@ class UtcSolverTorch(Solver):
 
     def count_nodes(self):
         self.n_nodes = self.recursion_counter(self.root)
+
