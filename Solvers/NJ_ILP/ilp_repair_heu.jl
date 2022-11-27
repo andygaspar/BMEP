@@ -34,10 +34,10 @@ function write_sol(sol::Matrix{T}, filename::String) where T <: Real
 end
                 
 function evaluate_obj(dists::Matrix{T}, inst::Matrix{Float64}) where T <: Real
-    return sum(2^(-dists[i,j])*inst[i,j] for j in 1:size(inst)[1], i in 1:size(inst)[1])
+    return sum(2.0^(-dists[i,j])*inst[i,j] for j in 1:size(inst)[1], i in 1:size(inst)[1])
 end        
 
-
+ 
 #convertion between τ-matrix and graphs
 function phylo_to_graph(net)
     g = SimpleGraph()
@@ -166,6 +166,10 @@ function solve_model(inst::Matrix{Float64}, model::JuMP.Model, x::Array{JuMP.Var
         set_time_limit_sec(model, timelimit)
     end
     
+    invalid_sol = true
+    best_sol = zeros(Int, n, n)
+    best_sol_val = -1
+    
     function nj_heu_cb(cb_data)
         x_vals = callback_value.(cb_data, x)
         frac_dists = [sum(l*x_vals[i,j,l] for l in 1:n) for i in 1:n, j in 1:n]
@@ -173,6 +177,12 @@ function solve_model(inst::Matrix{Float64}, model::JuMP.Model, x::Array{JuMP.Var
         dists = dists_from_sol(frac_dists)
         #@show dists
         
+        cur_val = evaluate_obj(dists, inst)
+        if  invalid_sol || cur_val < best_sol_val-1e-8
+            invalid_sol = false
+            best_sol = dists
+            best_sol_val = cur_val
+        end
         if mod1(heu_cnt, 1000) == 1
             println("heu called")
         end
@@ -262,7 +272,7 @@ function solve_model(inst::Matrix{Float64}, model::JuMP.Model, x::Array{JuMP.Var
     
 
     @show num_triangular_cuts
-    return vars2dists(x)
+    return best_sol
 end
 
 function solve_inst(inst::Matrix{Float64};
@@ -298,6 +308,7 @@ function parse_commandline()
     return parse_args(s)
 
 end
+
 function main()
     parsed_args = parse_commandline()
     infile = parsed_args["infile"]
@@ -307,6 +318,7 @@ function main()
     inst = read_inst(infile)
     sol = solve_inst(inst, relax=false, triangular_inq=false, timelimit=timelimit)
 
+    @show evaluate_obj(sol, inst)
     if length(outfile) > 0
         write_sol(Int.(sol), outfile)
     else
