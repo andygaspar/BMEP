@@ -38,9 +38,11 @@ class NjIlp(Solver):
             csvfile.write(d_string)
 
         os.system('julia '+self.path + 'ilp_repair_heu.jl '
-                  + '--infile="Solvers/NJ_ILP/mat.mat"  --outfile="Solvers/NJ_ILP/tau.mat"  --timelimit='+str(time_limit) )
+                  + '--infile="Solvers/NJ_ILP/mat.mat"  --outfile="Solvers/NJ_ILP/tau.mat"  --timelimit='
+                  + str(time_limit))
 
-        self.T = np.loadtxt(self.path + "tau.mat")
+        self.T = np.loadtxt(self.path + "tau.mat", dtype=np.int)
+        self.obj_val = self.compute_obj()
 
 
 

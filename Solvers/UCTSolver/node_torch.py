@@ -37,10 +37,9 @@ class NodeTorch:
         return self._adj_mat
 
     def best_child(self):
-        scores = [child.value() + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
-                  for child in self._children]
-        best_child = np.argmax(scores)
-        print(scores, best_child)
+        scores = torch.tensor([child.value() + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
+                  for child in self._children])
+        best_child = torch.argmax(scores)
         return self._children[best_child]
 
     def value(self):

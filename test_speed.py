@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 from FastME.fast_me import FastMeSolver
+from Solvers.NJ_ILP.nj_ilp import NjIlp
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.UCTSolver.utc_solver import UtcSolver
@@ -18,9 +19,9 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 40
+dim = 35
 
-runs = 1
+runs = 3
 
 results = np.zeros((runs, 4))
 
@@ -32,7 +33,9 @@ for run in range(runs):
     print(run)
     d = data_set.get_random_mat(dim)
 
-
+    # nj_i = NjIlp(d)
+    # nj_i.solve(60)
+    # print(nj_i.obj_val)
 
     mcts = UtcSolverTorch(d)
     mcts.solve_timed(10)
@@ -41,11 +44,10 @@ for run in range(runs):
     # swa_new = SwaSolver(d)
     # swa_new.solve_timed()
 
-    # nj_i = NjIlp(d)
-    # nj_i.solve()
+
 
     mcts_1 = UtcSolverTorch(d)
-    mcts_1.solve_timed(15)
+    mcts_1.solve_timed(20)
     print(mcts_1.n_nodes)
 
     mcts_t = UtcSolverTorch_1(d)
@@ -53,7 +55,7 @@ for run in range(runs):
     print(mcts_t.n_nodes)
 
     mcts_t_1 = UtcSolverTorch_1(d)
-    mcts_t_1.solve_timed(20)
+    mcts_t_1.solve_timed(300)
     print(mcts_t_1.n_nodes)
 
 

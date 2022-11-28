@@ -40,11 +40,10 @@ class NodeTorch_1:
     def best_child(self):
         normalisation = max([child.average() for child in self._children])
         shift = min([child.average() for child in self._children])
-        scores = [
+        scores = torch.tensor([
             1 - (child.average() - shift) / normalisation + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
-            for child in self._children]
-        best_child = np.argmax(scores)
-        print(scores, best_child)
+            for child in self._children])
+        best_child = torch.argmax(scores)
         return self._children[best_child]
 
     def value(self):
