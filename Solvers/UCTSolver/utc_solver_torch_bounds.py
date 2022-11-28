@@ -1,28 +1,29 @@
 import numpy as np
 import torch
 
-from Solvers.SWA.swa_solver import SwaSolver
-from Solvers.SWA.swa_solver_torch import SwaSolverTorch
-from Solvers.UCTSolver.node import Node
-from Solvers.UCTSolver.node_torch import NodeTorch
-from Solvers.UCTSolver.node_torch_1 import NodeTorch_1
+from Solvers.UCTSolver.node_torch_bounds import NodeTorchBounds
 from Solvers.solver import Solver
 
 
-class UtcSolverTorch_1(Solver):
+class UtcSolverTorchBounds(Solver):
 
-    def __init__(self, d: np.array):
-        super(UtcSolverTorch_1, self).__init__(d)
+    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2)):
+        super(UtcSolverTorchBounds, self).__init__(d)
         self.numpy_d = self.d
         self.d = torch.Tensor(self.d).to(self.device)
+
+        self.rollout_ = rollout_
+        self.compute_scores = compute_scores
         self.adj_mat_sparse = None
         self.root = None
+        self.init_c = c_initial
         self.n_nodes = 0
 
     def solve(self, n_iterations=100):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
-        self.root = NodeTorch_1(self.d, adj_mat, self.n_taxa, device=self.device)
-        self.obj_val, self.solution = self.root.expand()
+        self.root = NodeTorchBounds(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
+                                rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
+        self.obj_val, self.solution = self.root.expand(0)
 
         for iter in range(n_iterations):
             node = self.root
@@ -31,7 +32,7 @@ class UtcSolverTorch_1(Solver):
 
             if node.is_terminal():
                 break
-            run_best = node.expand()
+            run_best = node.expand(iter)
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 
@@ -53,4 +54,3 @@ class UtcSolverTorch_1(Solver):
 
     def count_nodes(self):
         self.n_nodes = self.recursion_counter(self.root)
-

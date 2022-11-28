@@ -14,13 +14,14 @@ def rollout_node(node):
 
 
 class NodeTorch:
-
-    def __init__(self, d, adj_mat, n_taxa, c=2 ** (1 / 2), step_i=3, parent=None, device=None):
-        self._d = d
+    def __init__(self, adj_mat, step_i=3, d=None, n_taxa=None, c=None,  parent=None, rollout_=None,
+                 compute_scores=None, device=None):
         self._adj_mat = adj_mat
-        self._n_taxa = n_taxa
         self._step_i = step_i
-        self._c = c
+        self._n_taxa = n_taxa if n_taxa is not None else parent._n_taxa
+        self._d = d if d is not None else parent._d
+
+        self._c = c if c is not None else parent._c
         self._val = None
         self._n_visits = 0
 
@@ -28,6 +29,10 @@ class NodeTorch:
         self._children = None
 
         self._device = device
+        self._average_obj_val = 0
+
+        self._rollout_policy = rollout_ if rollout_ is not None else parent._rollout_policy
+        self.compute_scores = compute_scores if compute_scores is not None else parent.compute_scores
 
     '''
     Return the best child node according to the UCT rule
@@ -37,16 +42,15 @@ class NodeTorch:
         return self._adj_mat
 
     def best_child(self):
-        scores = [child.value() + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
-                  for child in self._children]
+        scores = self.compute_scores(self)
         best_child = np.argmax(scores)
-        print(scores, best_child)
         return self._children[best_child]
 
     def value(self):
         return self._val
 
     def set_value(self, val):
+        self.update_average(val)
         self._val = val
 
     def n_visits(self):
@@ -55,16 +59,23 @@ class NodeTorch:
     def add_visit(self):
         self._n_visits += 1
 
+    def average(self):
+        return self._average_obj_val
+
+    def update_average(self, best_val):
+        self._average_obj_val = self._average_obj_val * (self._n_visits - 1) / self._n_visits \
+                                + best_val / self._n_visits
+
     '''
     Expand the current node by rolling out every child node and back-propagate information to parent nodes
     '''
 
-    def expand(self):
+    def expand(self, iteration):
         self._init_children()
-        best_val_adj = self.rollout()
-
-        self._val = -best_val_adj[0]
+        best_val_adj = self.rollout(iteration)
         self.add_visit()
+        self.set_value(best_val_adj[0])
+
         self._backprop()
 
         return best_val_adj
@@ -73,12 +84,13 @@ class NodeTorch:
     Rollout this node using the given rollout policy and update node value
     '''
 
-    def rollout(self):
+    def rollout(self, iteration):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
-        obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, adj_mats)
+        obj_vals, sol_adj_mat = self._rollout_policy(self, self._step_i + 1, adj_mats, iteration)
         for i, child in enumerate(self._children):
-            child.set_value(-obj_vals[i])
             child.add_visit()
+            child.set_value(obj_vals[i])
+
         idx = torch.argmin(obj_vals)
         return obj_vals[idx], sol_adj_mat[idx]
 
@@ -87,12 +99,11 @@ class NodeTorch:
     '''
 
     def _init_children(self):
-
         idxs = torch.nonzero(torch.triu(self._adj_mat), as_tuple=True)
         idxs = (torch.tensor(range(idxs[0].shape[0])).to(self._device), idxs[1], idxs[2])
         new_mats = self.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
                                   idxs, self._step_i, self._n_taxa)
-        self._children = [NodeTorch(self._d, mat.unsqueeze(0), self._n_taxa, self._c, self._step_i + 1, self)
+        self._children = [NodeTorch(mat.unsqueeze(0), self._step_i + 1, parent=self)
                           for mat in new_mats]
 
     '''
@@ -112,6 +123,7 @@ class NodeTorch:
             if parent.value() < self.value():
                 parent._val = self._val
             parent.add_visit()
+            parent.update_average(self._val)
             parent = parent.parent()
 
     '''
@@ -123,29 +135,6 @@ class NodeTorch:
 
     def is_expanded(self):
         return self._children is not None
-
-    def _rollout_policy(self, start, adj_mats: torch.tensor = None):
-        batch_size = adj_mats.shape[0]
-        obj_vals = None
-        for step in range(start, self._n_taxa):
-            idxs_list = torch.nonzero(torch.triu(adj_mats), as_tuple=True)
-            idxs_list = (torch.tensor(range(idxs_list[0].shape[0])).to(self._device), idxs_list[1], idxs_list[2])
-            minor_idxs = torch.tensor([j for j in range(step + 1)]
-                                      + [j for j in range(self._n_taxa, self._n_taxa + step - 1)]).to(self._device)
-
-            repetitions = 3 + (step - 3) * 2
-
-            adj_mats = adj_mats.repeat_interleave(repetitions, dim=0)
-
-            sol = self.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=self._n_taxa)
-            obj_vals = self.compute_obj_val_batch(adj_mats[:, minor_idxs, :][:, :, minor_idxs],
-                                                  self._d[:step + +1, :step + 1].repeat(idxs_list[0].shape[0], 1, 1),
-                                                  step + 1)
-            obj_vals = torch.min(obj_vals.reshape(-1, repetitions), dim=-1)
-            adj_mats = sol.unsqueeze(0).view(batch_size, repetitions,
-                                             adj_mats.shape[1], adj_mats.shape[2])[range(batch_size), obj_vals.indices, :, :]
-
-        return obj_vals.values, adj_mats
 
     @staticmethod
     def add_nodes(adj_mat, idxs: torch.tensor, new_node_idx, n):
