@@ -5,6 +5,7 @@ import numpy as np
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_bounds import UtcSolverTorchBounds
+from Solvers.UCTSolver.utc_utils import nni_landscape
 from Solvers.UCTSolver.utils_rollout import swa_policy, random_policy, mixed_policy
 from Solvers.UCTSolver.utils_scores import average_score_normalised, max_score_normalised
 
@@ -32,7 +33,7 @@ for run in range(runs):
     # print(nj_i.obj_val)
 
     mcts_t_1 = UtcSolverTorchBounds(d, mixed_policy, max_score_normalised)
-    mcts_t_1.solve_timed(1000)
+    mcts_t_1.solve_timed(150)
     print(mcts_t_1.n_nodes)
 
     mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
@@ -42,8 +43,8 @@ for run in range(runs):
     # swa_new = SwaSolver(d)
     # swa_new.solve_timed()
 
-    mcts_1 = UtcSolverTorch(d, swa_policy, average_score_normalised)
-    mcts_1.solve_timed(15)
+    mcts_1 = UtcSolverTorch(d, swa_policy, mixed_policy)
+    mcts_1.solve_timed(20)
     print(mcts_1.n_nodes)
 
     mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)

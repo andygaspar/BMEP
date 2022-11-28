@@ -93,7 +93,8 @@ class NodeTorchBounds:
             child.set_value(obj_vals[i])
             bound = child.compute_bound()
             if bound > lb:
-                print(lb, bound)
+                print(lb, bound, self._step_i)
+                print("ééééééééééééééééééééééééééééééééééééééééééééééééé")
 
         idx = torch.argmin(obj_vals)
         return obj_vals[idx], sol_adj_mat[idx]
@@ -178,7 +179,8 @@ class NodeTorchBounds:
                                 + Tau[:, i].unsqueeze(1).repeat(1, adj_mat.shape[1]))
         d = self._d[: self._step_i, :self._step_i]
         first_term = (d * 2 ** (-(Tau[:self._step_i, :self._step_i] + self._n_taxa - self._step_i))).sum()
-        d = self._d[self._step_i:, :]
-        second_term = (d * 2 ** (-self._n_taxa + 1)).sum()
-        third_term = (self._d[: self._step_i:, self._step_i:] * 2 ** (-self._n_taxa + 1)).sum()
-        return first_term + second_term + third_term
+        tau_max_distance = 2**(-(torch.max(Tau) + self._n_taxa - self._step_i))
+        diag = torch.eye(self._d.shape[1])
+        min_lower_d = torch.min((self._d + diag)[self._step_i:, :], dim=-1)[0]
+        min_up_right_d = torch.min((self._d + diag)[: self._step_i:, self._step_i:], dim=-1)[0]
+        return first_term + (min_up_right_d.sum() + min_lower_d.sum())*tau_max_distance
