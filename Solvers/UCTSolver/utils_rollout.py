@@ -18,7 +18,7 @@ def swa_policy(node, start, adj_mats: torch.tensor, iteration=None):
 
         sol = node.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=node._n_taxa)
         obj_vals = node.compute_obj_val_batch(adj_mats[:, minor_idxs, :][:, :, minor_idxs],
-                                              node._d[:step + +1, :step + 1].repeat(idxs_list[0].shape[0], 1, 1),
+                                              node._d[:step + 1, :step + 1].repeat(idxs_list[0].shape[0], 1, 1),
                                               step + 1)
         obj_vals = torch.min(obj_vals.reshape(-1, repetitions), dim=-1)
         adj_mats = sol.unsqueeze(0).view(batch_size, repetitions, adj_mats.shape[1],
@@ -42,9 +42,9 @@ def random_policy(node, start, adj_mats, iteration=None):
 
 
 def mixed_policy(node, start, adj_mats, iteration):
-    if iteration == 0 or iteration == 1:
+    if iteration < 10:
         return swa_policy(node, start, adj_mats)
-    elif iteration & 100 != 0:
+    elif iteration % 20 != 0:
         return random_policy(node, start, adj_mats)
     else:
         return swa_policy(node, start, adj_mats)

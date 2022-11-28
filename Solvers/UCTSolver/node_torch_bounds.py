@@ -13,7 +13,7 @@ def rollout_node(node):
     return node.rollout()
 
 
-class NodeTorch_1:
+class NodeTorchBounds:
 
     def __init__(self, adj_mat, step_i=3, d=None, n_taxa=None, c=None,  parent=None, rollout_=None,
                  compute_scores=None, device=None):
@@ -91,6 +91,7 @@ class NodeTorch_1:
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
+            child.compute_bound()
 
         idx = torch.argmin(obj_vals)
         return obj_vals[idx], sol_adj_mat[idx]
@@ -104,7 +105,7 @@ class NodeTorch_1:
         idxs = (torch.tensor(range(idxs[0].shape[0])).to(self._device), idxs[1], idxs[2])
         new_mats = self.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
                                   idxs, self._step_i, self._n_taxa)
-        self._children = [NodeTorch_1(mat.unsqueeze(0), self._step_i + 1, parent=self)
+        self._children = [NodeTorchBounds(mat.unsqueeze(0), self._step_i + 1, parent=self)
                           for mat in new_mats]
 
     '''
@@ -160,3 +161,22 @@ class NodeTorch_1:
             Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
                                 + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
         return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
+
+    def compute_bound(self):
+        minor_idxs = torch.tensor([j for j in range(self._step_i)]
+                                  + [j for j in range(self._n_taxa, self._n_taxa + self._step_i - 2)]).to(self._device)
+        adj_mat = self._adj_mat[:, minor_idxs, :][:, :, minor_idxs].squeeze(0)
+        Tau = torch.full_like(adj_mat, self._step_i)
+        Tau[adj_mat > 0] = 1
+        diag = torch.eye(adj_mat.shape[1])
+        Tau[diag] = 0  # diagonal elements should be zero
+        for i in range(adj_mat.shape[1]):
+            # The second term has the same shape as Tau due to broadcasting
+            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
+                                + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
+            d = self._d[: self._step_i, :self._step_i]
+            first_term = d * 2 ** (-Tau[:, :self._step_i, :self._step_i] + self._n_taxa - self._step_i)
+            d = self._d[self._step_i:, :]
+            second_term = d * 2 ** (-self._n_taxa + 1)
+            third_term = self._d[: self._step_i:, self._step_i:] * 2 ** (-self._n_taxa + 1)
+        return 0

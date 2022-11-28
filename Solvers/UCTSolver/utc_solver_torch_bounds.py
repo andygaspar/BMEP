@@ -1,14 +1,14 @@
 import numpy as np
 import torch
 
-from Solvers.UCTSolver.node_torch_1 import NodeTorch_1
+from Solvers.UCTSolver.node_torch_bounds import NodeTorchBounds
 from Solvers.solver import Solver
 
 
-class UtcSolverTorch_1(Solver):
+class UtcSolverTorchBounds(Solver):
 
     def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2)):
-        super(UtcSolverTorch_1, self).__init__(d)
+        super(UtcSolverTorchBounds, self).__init__(d)
         self.numpy_d = self.d
         self.d = torch.Tensor(self.d).to(self.device)
 
@@ -21,7 +21,7 @@ class UtcSolverTorch_1(Solver):
 
     def solve(self, n_iterations=100):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
-        self.root = NodeTorch_1(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
+        self.root = NodeTorchBounds(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
                                 rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
         self.obj_val, self.solution = self.root.expand(0)
 
@@ -54,4 +54,3 @@ class UtcSolverTorch_1(Solver):
 
     def count_nodes(self):
         self.n_nodes = self.recursion_counter(self.root)
-
