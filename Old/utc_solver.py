@@ -3,7 +3,7 @@ import torch
 
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
-from Solvers.UCTSolver.node import Node
+from Old.node import Node
 from Solvers.solver import Solver
 
 

@@ -1,9 +1,6 @@
 import numpy as np
 import torch
 
-from Solvers.SWA.swa_solver import SwaSolver
-from Solvers.SWA.swa_solver_torch import SwaSolverTorch
-from Solvers.UCTSolver.node import Node
 from Solvers.UCTSolver.node_torch import NodeTorch
 from Solvers.solver import Solver
 

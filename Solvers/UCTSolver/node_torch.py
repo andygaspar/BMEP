@@ -40,7 +40,6 @@ class NodeTorch:
         scores = [child.value() + self._c * np.sqrt(np.log(self._n_visits) / child.n_visits())
                   for child in self._children]
         best_child = np.argmax(scores)
-        print(scores, best_child)
         return self._children[best_child]
 
     def value(self):

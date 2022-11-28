@@ -1,16 +1,12 @@
 import random
 
 import numpy as np
-from FastME.fast_me import FastMeSolver
-from Solvers.SWA.swa_solver import SwaSolver
-from Solvers.SWA.swa_solver_torch import SwaSolverTorch
-from Solvers.UCTSolver.utc_solver import UtcSolver
-
-import sys
 
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorch_1
+from Solvers.UCTSolver.utils_rollout import swa_policy, random_policy, mixed_policy
+from Solvers.UCTSolver.utils_scores import average_score_normalised, max_score_normalised
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -18,7 +14,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 40
+dim = 30
 
 runs = 1
 
@@ -31,8 +27,9 @@ iterations = 0
 for run in range(runs):
     print(run)
     d = data_set.get_random_mat(dim)
-
-
+    # nj_i = NjIlp(d)
+    # nj_i.solve(2)
+    # print(nj_i.obj_val)
 
     mcts = UtcSolverTorch(d)
     mcts.solve_timed(10)
@@ -41,23 +38,17 @@ for run in range(runs):
     # swa_new = SwaSolver(d)
     # swa_new.solve_timed()
 
-    # nj_i = NjIlp(d)
-    # nj_i.solve()
-
     mcts_1 = UtcSolverTorch(d)
     mcts_1.solve_timed(15)
     print(mcts_1.n_nodes)
 
-    mcts_t = UtcSolverTorch_1(d)
-    mcts_t.solve_timed(10)
+    mcts_t = UtcSolverTorch_1(d, swa_policy, average_score_normalised)
+    mcts_t.solve_timed(20)
     print(mcts_t.n_nodes)
 
-    mcts_t_1 = UtcSolverTorch_1(d)
-    mcts_t_1.solve_timed(20)
+    mcts_t_1 = UtcSolverTorch_1(d, mixed_policy, average_score_normalised)
+    mcts_t_1.solve_timed(150)
     print(mcts_t_1.n_nodes)
-
-
-
 
     print(mcts.time, mcts_1.time, mcts_t.time, mcts_t_1.time)
     print(mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val, mcts_t_1.obj_val,
