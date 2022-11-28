@@ -1,14 +1,9 @@
 import time
 
-import Bio
-import networkx as nx
-from Bio import Phylo
-
-from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from FastME.fast_me import FastMeSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 
-from Solvers.UCTSolver.utc_solver import UtcSolver
+from Old.utc_solver import UtcSolver
 from Solvers.SWA.swa_solver import SwaSolver
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
