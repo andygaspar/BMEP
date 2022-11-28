@@ -32,7 +32,7 @@ class UtcSolverTorchBounds(Solver):
 
             if node.is_terminal():
                 break
-            run_best = node.expand(iter)
+            run_best = node.expand(iter, self.obj_val)
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 

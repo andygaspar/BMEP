@@ -31,6 +31,10 @@ for run in range(runs):
     # nj_i.solve(2)
     # print(nj_i.obj_val)
 
+    mcts_t_1 = UtcSolverTorchBounds(d, mixed_policy, max_score_normalised)
+    mcts_t_1.solve_timed(1000)
+    print(mcts_t_1.n_nodes)
+
     mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
     mcts.solve_timed(10)
     print(mcts.n_nodes)
@@ -46,9 +50,7 @@ for run in range(runs):
     mcts_t.solve_timed(150)
     print(mcts_t.n_nodes)
 
-    mcts_t_1 = UtcSolverTorchBounds(d, mixed_policy, max_score_normalised)
-    mcts_t_1.solve_timed(1000)
-    print(mcts_t_1.n_nodes)
+
 
     print(mcts.time, mcts_1.time, mcts_t.time, mcts_t_1.time)
     print(mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val, mcts_t_1.obj_val,

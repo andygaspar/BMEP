@@ -71,9 +71,9 @@ class NodeTorchBounds:
     Expand the current node by rolling out every child node and back-propagate information to parent nodes
     '''
 
-    def expand(self, iteration):
+    def expand(self, iteration, lb=10**4):
         self._init_children()
-        best_val_adj = self.rollout(iteration)
+        best_val_adj = self.rollout(iteration, lb)
         self.add_visit()
         self.set_value(best_val_adj[0])
 
@@ -85,13 +85,15 @@ class NodeTorchBounds:
     Rollout this node using the given rollout policy and update node value
     '''
 
-    def rollout(self, iteration):
+    def rollout(self, iteration, lb):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         obj_vals, sol_adj_mat = self._rollout_policy(self, self._step_i + 1, adj_mats, iteration)
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
-            child.compute_bound()
+            bound = child.compute_bound()
+            if bound > lb:
+                print(lb, bound)
 
         idx = torch.argmin(obj_vals)
         return obj_vals[idx], sol_adj_mat[idx]
@@ -154,7 +156,7 @@ class NodeTorchBounds:
     def compute_obj_val_batch(adj_mat, d, n_taxa):
         Tau = torch.full_like(adj_mat, n_taxa)
         Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
+        diag = torch.eye(adj_mat.shape[1], dtype=torch.bool).repeat(adj_mat.shape[0], 1, 1)
         Tau[diag] = 0  # diagonal elements should be zero
         for i in range(adj_mat.shape[1]):
             # The second term has the same shape as Tau due to broadcasting
@@ -168,15 +170,15 @@ class NodeTorchBounds:
         adj_mat = self._adj_mat[:, minor_idxs, :][:, :, minor_idxs].squeeze(0)
         Tau = torch.full_like(adj_mat, self._step_i)
         Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1])
+        diag = torch.eye(adj_mat.shape[1], dtype=torch.bool)
         Tau[diag] = 0  # diagonal elements should be zero
         for i in range(adj_mat.shape[1]):
             # The second term has the same shape as Tau due to broadcasting
-            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
-                                + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
-            d = self._d[: self._step_i, :self._step_i]
-            first_term = d * 2 ** (-Tau[:, :self._step_i, :self._step_i] + self._n_taxa - self._step_i)
-            d = self._d[self._step_i:, :]
-            second_term = d * 2 ** (-self._n_taxa + 1)
-            third_term = self._d[: self._step_i:, self._step_i:] * 2 ** (-self._n_taxa + 1)
-        return 0
+            Tau = torch.minimum(Tau, Tau[i, :].unsqueeze(0).repeat(adj_mat.shape[1], 1)
+                                + Tau[:, i].unsqueeze(1).repeat(1, adj_mat.shape[1]))
+        d = self._d[: self._step_i, :self._step_i]
+        first_term = (d * 2 ** (-(Tau[:self._step_i, :self._step_i] + self._n_taxa - self._step_i))).sum()
+        d = self._d[self._step_i:, :]
+        second_term = (d * 2 ** (-self._n_taxa + 1)).sum()
+        third_term = (self._d[: self._step_i:, self._step_i:] * 2 ** (-self._n_taxa + 1)).sum()
+        return first_term + second_term + third_term
