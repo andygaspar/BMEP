@@ -25,14 +25,14 @@ class UtcSolverTorch(Solver):
                                 rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
         self.obj_val, self.solution = self.root.expand(0)
 
-        for iter in range(n_iterations):
+        for iteration in range(n_iterations):
             node = self.root
             while not node.is_terminal() and node.is_expanded():
                 node = node.best_child()
 
             if node.is_terminal():
                 break
-            run_best = node.expand(iter)
+            run_best = node.expand(iteration)
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 

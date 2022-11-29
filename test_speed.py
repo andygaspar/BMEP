@@ -1,7 +1,9 @@
 import random
 
 import numpy as np
+import torch
 
+from Solvers.UCTSolver.node_torch import NodeTorch
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_bounds import UtcSolverTorchBounds
@@ -32,10 +34,6 @@ for run in range(runs):
     # nj_i.solve(2)
     # print(nj_i.obj_val)
 
-    mcts_t_1 = UtcSolverTorchBounds(d, mixed_policy, max_score_normalised)
-    mcts_t_1.solve_timed(150)
-    print(mcts_t_1.n_nodes)
-
     mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
     mcts.solve_timed(10)
     print(mcts.n_nodes)
@@ -43,19 +41,32 @@ for run in range(runs):
     # swa_new = SwaSolver(d)
     # swa_new.solve_timed()
 
-    mcts_1 = UtcSolverTorch(d, swa_policy, mixed_policy)
+    mcts_1 = UtcSolverTorch(d, swa_policy, average_score_normalised)
     mcts_1.solve_timed(20)
     print(mcts_1.n_nodes)
 
     mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
-    mcts_t.solve_timed(150)
+    mcts_t.solve_timed(20)
     print(mcts_t.n_nodes)
+    sol = mcts_t.solution
+    obj_val = mcts.obj_val
+    for _ in range(5):
+        expl_trees = nni_landscape(sol, mcts.n_taxa, mcts.m)
+        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).to(mcts.device), mcts.n_taxa)
+        new_obj_val = torch.min(obj_vals).item()
+        sol = expl_trees[torch.argmin(obj_vals)]
+        if obj_val > new_obj_val:
+            obj_val = new_obj_val
+            print(obj_val)
+    print(obj_val)
 
-
+    mcts_t_1 = UtcSolverTorchBounds(d, swa_policy, average_score_normalised)
+    mcts_t_1.solve_timed(20)
+    print(mcts_t_1.n_nodes)
 
     print(mcts.time, mcts_1.time, mcts_t.time, mcts_t_1.time)
     print(mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val, mcts_t_1.obj_val,
-          np.argmin([mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val, mcts_t_1.obj_val]))
+          np.argmin([mcts_t_1.obj_val, mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val]))
     print('')
 
     # fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)

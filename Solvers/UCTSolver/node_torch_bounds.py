@@ -15,7 +15,7 @@ def rollout_node(node):
 
 class NodeTorchBounds:
 
-    def __init__(self, adj_mat, step_i=3, d=None, n_taxa=None, c=None,  parent=None, rollout_=None,
+    def __init__(self, id, adj_mat, step_i=3, d=None, n_taxa=None, c=None,  parent=None, rollout_=None,
                  compute_scores=None, device=None):
         self._adj_mat = adj_mat
         self._step_i = step_i
@@ -34,6 +34,7 @@ class NodeTorchBounds:
 
         self._rollout_policy = rollout_ if rollout_ is not None else parent._rollout_policy
         self.compute_scores = compute_scores if compute_scores is not None else parent.compute_scores
+        self.id = parent.id + (id,) if parent is not None else id
 
     '''
     Return the best child node according to the UCT rule
@@ -74,13 +75,13 @@ class NodeTorchBounds:
     def expand(self, iteration, lb=10**4):
         self._init_children()
         best_val_adj = self.rollout(iteration, lb)
-        self.add_visit()
-        self.set_value(best_val_adj[0])
-
-        self._backprop()
-
+        self.update_and_backprop(best_val_adj[0])
         return best_val_adj
 
+    def update_and_backprop(self, best_val):
+        self.add_visit()
+        self.set_value(best_val)
+        self._backprop()
     '''
     Rollout this node using the given rollout policy and update node value
     '''
@@ -91,10 +92,8 @@ class NodeTorchBounds:
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
-            bound = child.compute_bound()
-            if bound > lb:
-                print(lb, bound, self._step_i)
-                print("ééééééééééééééééééééééééééééééééééééééééééééééééé")
+            # bound = child.compute_bound()
+
 
         idx = torch.argmin(obj_vals)
         return obj_vals[idx], sol_adj_mat[idx]
@@ -108,15 +107,15 @@ class NodeTorchBounds:
         idxs = (torch.tensor(range(idxs[0].shape[0])).to(self._device), idxs[1], idxs[2])
         new_mats = self.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
                                   idxs, self._step_i, self._n_taxa)
-        self._children = [NodeTorchBounds(mat.unsqueeze(0), self._step_i + 1, parent=self)
-                          for mat in new_mats]
+        self._children = [NodeTorchBounds(i, mat.unsqueeze(0), self._step_i + 1, parent=self)
+                          for i, mat in enumerate(new_mats)]
 
     '''
     Checks if the current node corresponds to a terminal node 
     '''
 
     def is_terminal(self):
-        return self._step_i == self._n_taxa
+        return self._step_i == self._n_taxa - 1
 
     '''
     Back-propagate rollout information to parent nodes
@@ -183,4 +182,5 @@ class NodeTorchBounds:
         diag = torch.eye(self._d.shape[1])
         min_lower_d = torch.min((self._d + diag)[self._step_i:, :], dim=-1)[0]
         min_up_right_d = torch.min((self._d + diag)[: self._step_i:, self._step_i:], dim=-1)[0]
+
         return first_term + (min_up_right_d.sum() + min_lower_d.sum())*tau_max_distance

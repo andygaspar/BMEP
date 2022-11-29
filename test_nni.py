@@ -39,12 +39,20 @@ for run in range(runs):
     d = data_set.get_random_mat(dim)
 
     mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
-    mcts.solve(2)
+    mcts.solve(20)
     print(mcts.obj_val)
     t = time.time()
-    expl_trees = nni_landscape(mcts.solution, mcts.n_taxa, mcts.m)
-    obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).to(mcts.device), mcts.n_taxa)
-    print(torch.min(obj_vals),  'time', time.time() - t)
+    sol = mcts.solution
+    obj_val = mcts.obj_val
+    for _ in range(5):
+        expl_trees = nni_landscape(sol, mcts.n_taxa, mcts.m)
+        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).to(mcts.device), mcts.n_taxa)
+        new_obj_val = torch.min(obj_vals).item()
+        sol = expl_trees[torch.argmin(obj_vals)]
+        if obj_val > new_obj_val:
+            obj_val = new_obj_val
+            print(obj_val)
+    print(obj_val,  'time', time.time() - t)
 
     mcts_1 = UtcSolverTorch(d, swa_policy, max_score_normalised)
     mcts_1.solve(10)

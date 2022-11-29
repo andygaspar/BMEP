@@ -111,7 +111,7 @@ class NodeTorch:
     '''
 
     def is_terminal(self):
-        return self._step_i == self._n_taxa
+        return self._step_i == self._n_taxa - 1
 
     '''
     Back-propagate rollout information to parent nodes
