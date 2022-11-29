@@ -7,6 +7,7 @@ import concurrent.futures
 import torch
 
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
+from Solvers.UCTSolver.utc_utils import nni_landscape
 
 
 def rollout_node(node):
@@ -43,7 +44,7 @@ class NodeTorch:
 
     def best_child(self):
         scores = self.compute_scores(self)
-        best_child = np.argmax(scores)
+        best_child = np.argmax(torch.tensor(scores).numpy())
         return self._children[best_child]
 
     def value(self):
@@ -70,9 +71,19 @@ class NodeTorch:
     Expand the current node by rolling out every child node and back-propagate information to parent nodes
     '''
 
-    def expand(self, iteration):
+    def expand(self, iteration, nni=0):
         self._init_children()
-        best_val_adj = self.rollout(iteration)
+        best_val_adj = self.rollout(iteration, nni)
+
+        #perform nni local search
+        if nni == 1 or nni == 3:
+            for _ in range(5):
+                expl_trees = nni_landscape(best_val_adj[1], self._n_taxa, len(best_val_adj[1]))
+                obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, self._d, self._n_taxa)
+                min_val = torch.min(obj_vals)
+                if min_val < best_val_adj[0]:
+                    best_val_adj = min_val, expl_trees[torch.argmin(obj_vals)]
+
         self.add_visit()
         self.set_value(best_val_adj[0])
 
@@ -84,11 +95,18 @@ class NodeTorch:
     Rollout this node using the given rollout policy and update node value
     '''
 
-    def rollout(self, iteration):
+    def rollout(self, iteration, nni):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         obj_vals, sol_adj_mat = self._rollout_policy(self, self._step_i + 1, adj_mats, iteration)
         for i, child in enumerate(self._children):
             child.add_visit()
+            if nni == 2 or nni == 3:
+                for _ in range(5):
+                    expl_trees = nni_landscape(sol_adj_mat[i], self._n_taxa, len(sol_adj_mat[i]))
+                    obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, self._d, self._n_taxa)
+                    min_val = torch.min(obj_vals)
+                    if min_val < obj_vals[i]:
+                        obj_vals[i], sol_adj_mat[i] = min_val, expl_trees[torch.argmin(obj_vals)]
             child.set_value(obj_vals[i])
 
         idx = torch.argmin(obj_vals)

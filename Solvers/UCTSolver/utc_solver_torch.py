@@ -7,7 +7,7 @@ from Solvers.solver import Solver
 
 class UtcSolverTorch(Solver):
 
-    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2)):
+    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2), nni=0):
         super(UtcSolverTorch, self).__init__(d)
         self.numpy_d = self.d
         self.d = torch.Tensor(self.d).to(self.device)
@@ -18,6 +18,8 @@ class UtcSolverTorch(Solver):
         self.root = None
         self.init_c = c_initial
         self.n_nodes = 0
+
+        self._nni = nni
 
     def solve(self, n_iterations=100):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
@@ -32,7 +34,7 @@ class UtcSolverTorch(Solver):
 
             if node.is_terminal():
                 break
-            run_best = node.expand(iter)
+            run_best = node.expand(iter, self._nni)
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 
