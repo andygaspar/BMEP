@@ -1,5 +1,7 @@
 import torch
 
+from Solvers.UCTSolver.node_torch import NodeTorch
+
 
 def nni_landscape(adj_mat, n_taxa, mat_size):
     mask = torch.triu(torch.ones_like(adj_mat))
@@ -27,3 +29,19 @@ def nni_landscape(adj_mat, n_taxa, mat_size):
     new_trees[(idxs, to_remove[:, 1], to_remove[:, 0])] = 0
 
     return new_trees
+
+
+def run_nni_search(iterations, best_solution, best_val, d, n_taxa, m, device):
+    sol = best_solution
+    improved = False
+    for _ in range(iterations):
+        expl_trees = nni_landscape(sol, n_taxa, m)
+        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, d, n_taxa)
+        new_obj_val = torch.min(obj_vals)
+        idx = torch.argmin(obj_vals)
+        sol = expl_trees[idx]
+        if best_val > new_obj_val:
+            best_val, best_solution = new_obj_val, sol
+            improved = True
+
+    return improved, best_val, best_solution
