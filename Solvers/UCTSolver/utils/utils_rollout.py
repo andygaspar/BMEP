@@ -42,9 +42,7 @@ def random_policy(node, start, adj_mats, iteration=None):
 
 
 def mixed_policy(node, start, adj_mats, iteration):
-    if iteration < 10:
+    if iteration < 300:
         return swa_policy(node, start, adj_mats)
-    elif iteration % 20 != 0:
-        return random_policy(node, start, adj_mats)
     else:
-        return swa_policy(node, start, adj_mats)
+        return random_policy(node, start, adj_mats)

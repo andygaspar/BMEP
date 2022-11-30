@@ -73,12 +73,13 @@ class NodeTorch:
     def expand(self, iteration):
         self._init_children()
         best_val_adj = self.rollout(iteration)
-        self.add_visit()
-        self.set_value(best_val_adj[0])
-
-        self._backprop()
-
+        self.update_and_backprop(best_val_adj[0])
         return best_val_adj
+
+    def update_and_backprop(self, best_val):
+        self.add_visit()
+        self.set_value(best_val)
+        self._backprop()
 
     '''
     Rollout this node using the given rollout policy and update node value

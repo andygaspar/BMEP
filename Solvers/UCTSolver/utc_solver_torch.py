@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from Solvers.UCTSolver.node_torch import NodeTorch
+from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.solver import Solver
 
 
@@ -36,6 +37,10 @@ class UtcSolverTorch(Solver):
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 
+        improved, best_val, best_solution = \
+            run_nni_search(10, self.solution, self.obj_val, self.d, self.n_taxa, self.m, self.device)
+        if improved:
+            self.solution = best_solution
         self.obj_val = self.obj_val.item()
         self.T = self.get_tau(self.solution.to('cpu').numpy()).astype(np.int8)
         self.d = self.numpy_d
@@ -43,6 +48,7 @@ class UtcSolverTorch(Solver):
         self.adj_mat_sparse = torch.nonzero(torch.triu(self.solution))
 
         self.count_nodes()
+        print(self.n_nodes)
 
     def recursion_counter(self, node):
         if node._children is None:

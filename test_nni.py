@@ -4,19 +4,13 @@ import time
 import numpy as np
 import torch
 
-from FastME.fast_me import FastMeSolver
-from Solvers.SWA.swa_solver import SwaSolver
-from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.UCTSolver.node_torch import NodeTorch
 
-import sys
-
-from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
-from Solvers.UCTSolver.utc_utils import nni_landscape
-from Solvers.UCTSolver.utils_rollout import swa_policy
-from Solvers.UCTSolver.utils_scores import max_score_normalised
+from Solvers.UCTSolver.utils.utc_utils import nni_landscape
+from Solvers.UCTSolver.utils.utils_rollout import swa_policy
+from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
 
 distances = DistanceData()
 distances.print_dataset_names()

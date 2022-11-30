@@ -1,17 +1,16 @@
 import random
 import pandas as pd
 import numpy as np
+
 from FastME.fast_me import FastMeSolver
 from Solvers.NJ_ILP.nj_ilp import NjIlp
-from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
-from Solvers.UCTSolver.utc_solver import UtcSolver
 
-import sys
-
-from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
-from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorch_1
+from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorch_
+
+from Solvers.UCTSolver.utils.utils_rollout import swa_policy
+from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -21,9 +20,10 @@ results, sizes, data_ = [], [], []
 
 random.seed(0)
 np.random.seed(0)
-iterations = 0
+iterations = 250
 
 dims = [20, 25, 30, 35]
+obj_val = None
 
 for key in distances.data_sets.keys():
 
@@ -36,14 +36,16 @@ for key in distances.data_sets.keys():
         sizes.append(dim)
         d = data_set.get_minor(dim)
 
+        mcts = UtcSolverTorch_(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.05)
+        mcts.solve_timed(iterations)
+        print(mcts.time)
+
         nj_i = NjIlp(d)
-        nj_i.solve(60)
+        nj_i.solve(int(np.ceil(mcts.time)))
+        print(mcts.obj_val, nj_i.obj_val)
 
         swa = SwaSolverTorch(d)
         swa.solve_timed()
-
-        mcts_t_1 = UtcSolverTorch_1(d)
-        mcts_t_1.solve_timed(300)
 
         fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)
         fast.solve_timed()
@@ -59,15 +61,18 @@ for key in distances.data_sets.keys():
         #
         fast4 = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=True, logs=False)
         fast4.solve_timed()
+        res = [swa.obj_val, nj_i.obj_val, mcts.obj_val, fast.obj_val, fast4.obj_val]
+        print("mcts", mcts.obj_val)
+        print(res)
 
-        results.append([swa.obj_val, nj_i.obj_val, mcts_t_1.obj_val, fast.obj_val, fast4.obj_val])
+        results.append(res)
 
     # print(fast.time, fast1.time, fast2.time, fast3.time, fast4.time)
     # print(fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val, fast4.obj_val, "\n\n")
 results = np.array(results)
 df = pd.DataFrame({'data_set': data_, 'dim': sizes, 'swa': results[:, 0], 'ni_ip': results[:, 1],
                    'mcts': results[:, 2], 'fast_1': results[:, 3], 'fast_2': results[:, 4]})
-df.to_csv("test_results", index_label=False, index=False)
+df.to_csv("test_results.csv", index_label=False, index=False)
 
 import pandas as pd
-df = pd.read_csv("test_results.csv")
+p = pd.read_csv('test_results.csv')
