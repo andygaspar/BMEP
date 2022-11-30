@@ -3,13 +3,13 @@ import random
 import numpy as np
 import torch
 
+from Solvers.UCTSolver.node_torch import NodeTorch
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
-from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
 from Solvers.UCTSolver.utc_solver_torch_bounds import UtcSolverTorchBounds
-from Solvers.UCTSolver.utils.utc_utils import run_nni_search
-from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy
-from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
+from Solvers.UCTSolver.utc_utils import nni_landscape
+from Solvers.UCTSolver.utils_rollout import swa_policy, random_policy, mixed_policy
+from Solvers.UCTSolver.utils_scores import average_score_normalised, max_score_normalised
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -17,7 +17,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 35
+dim = 30
 
 runs = 1
 
@@ -25,7 +25,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 250
+iterations = 0
 
 for run in range(runs):
     print(run)
@@ -34,22 +34,40 @@ for run in range(runs):
     # nj_i.solve(2)
     # print(nj_i.obj_val)
 
-    mcts = UtcSolverTorchBounds(d, swa_policy, average_score_normalised, nni_iteration=10)
-    # mcts.solve_timed(iterations)
-    print(mcts.n_nodes, mcts.obj_val)
+    mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
+    mcts.solve_timed(10)
+    print(mcts.n_nodes)
 
-    mcts_ = UtcSolverTorchBackTrack(d, mixed_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
-    mcts_.solve_timed(iterations)
-    print(mcts_.obj_val)
-    improved, nni_val, nni_sol = \
-        run_nni_search(100, mcts_.solution, mcts_.obj_val, torch.tensor(mcts_.d).to(mcts_.device), mcts_.n_taxa, mcts_.m, mcts_.device)
-    print("mmm ", nni_val)
+    # swa_new = SwaSolver(d)
+    # swa_new.solve_timed()
+
+    mcts_1 = UtcSolverTorch(d, swa_policy, average_score_normalised)
+    mcts_1.solve_timed(20)
+    print(mcts_1.n_nodes)
 
     mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
-    mcts_t.solve_timed(iterations)
+    mcts_t.solve_timed(20)
+    print(mcts_t.n_nodes)
+    sol = mcts_t.solution
+    obj_val = mcts.obj_val
+    for _ in range(10):
+        expl_trees = nni_landscape(sol, mcts.n_taxa, mcts.m)
+        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).to(mcts.device), mcts.n_taxa)
+        new_obj_val = torch.min(obj_vals).item()
+        sol = expl_trees[torch.argmin(obj_vals)]
+        if obj_val > new_obj_val:
+            obj_val = new_obj_val
+            print(obj_val)
+    print(obj_val)
 
-    print(mcts.time, mcts_.time, mcts_t.time)
-    print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val)
+    mcts_t_1 = UtcSolverTorchBounds(d, swa_policy, average_score_normalised)
+    mcts_t_1.solve_timed(20)
+    print(mcts_t_1.n_nodes)
+
+    print(mcts.time, mcts_1.time, mcts_t.time, mcts_t_1.time)
+    print(mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val, mcts_t_1.obj_val,
+          np.argmin([mcts_t_1.obj_val, mcts.obj_val, mcts_1.obj_val, mcts_t.obj_val]))
+    print('')
 
     # fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)
     # fast.solve_timed()
