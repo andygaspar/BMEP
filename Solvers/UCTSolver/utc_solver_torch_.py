@@ -11,7 +11,6 @@ class UtcSolverTorchBackTrack(Solver):
     def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2), nni_iterations=10, nni_tol=0.02):
         super(UtcSolverTorchBackTrack, self).__init__(d)
         self.numpy_d = self.d
-        self.d = torch.Tensor(self.d).to(self.device)
 
         self.rollout_ = rollout_
         self.compute_scores = compute_scores
@@ -24,6 +23,8 @@ class UtcSolverTorchBackTrack(Solver):
         self.nni_tol = 1 + nni_tol
 
     def solve(self, n_iterations=100):
+        # with torch.no_grad():
+        self.d = torch.tensor(self.d, requires_grad=False).to(self.device)
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
         self.root = NodeTorch(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
                                 rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)

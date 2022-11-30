@@ -76,3 +76,5 @@ df.to_csv("test_results.csv", index_label=False, index=False)
 
 import pandas as pd
 p = pd.read_csv('test_results.csv')
+
+p["mcts%ni_ip"] = p.mcts/p.ni_ip

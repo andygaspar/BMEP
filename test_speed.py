@@ -6,9 +6,8 @@ import torch
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
-from Solvers.UCTSolver.utc_solver_torch_bounds import UtcSolverTorchBounds
 from Solvers.UCTSolver.utils.utc_utils import run_nni_search
-from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy
+from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, random_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
 
 distances = DistanceData()
@@ -25,7 +24,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 250
+iterations = 100
 
 for run in range(runs):
     print(run)
@@ -33,23 +32,24 @@ for run in range(runs):
     # nj_i = NjIlp(d)
     # nj_i.solve(2)
     # print(nj_i.obj_val)
-
-    mcts = UtcSolverTorchBounds(d, swa_policy, average_score_normalised, nni_iteration=10)
-    # mcts.solve_timed(iterations)
-    print(mcts.n_nodes, mcts.obj_val)
+#0.26646004352783204
+    mcts = UtcSolverTorchBackTrack(d, mixed_policy, average_score_normalised, nni_iterations=10, nni_tol=0.02)
+    mcts.solve_timed(iterations)
+    print(mcts.time, mcts.obj_val)
 
     mcts_ = UtcSolverTorchBackTrack(d, mixed_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
-    mcts_.solve_timed(iterations)
-    print(mcts_.obj_val)
-    improved, nni_val, nni_sol = \
-        run_nni_search(100, mcts_.solution, mcts_.obj_val, torch.tensor(mcts_.d).to(mcts_.device), mcts_.n_taxa, mcts_.m, mcts_.device)
-    print("mmm ", nni_val)
+    # mcts_.solve_timed(iterations)
+    # print(mcts_.obj_val)
+    # improved, nni_val, nni_sol = \
+    #     run_nni_search(100, mcts_.solution, mcts_.obj_val, torch.tensor(mcts_.d).to(mcts_.device), mcts_.n_taxa,
+    #                    mcts_.m, mcts_.device)
+    # print("mmm ", nni_val)
 
     mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
-    mcts_t.solve_timed(iterations)
-
-    print(mcts.time, mcts_.time, mcts_t.time)
-    print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val)
+    # mcts_t.solve_timed(iterations)
+    #
+    # print(mcts.time, mcts_.time, mcts_t.time)
+    # print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val)
 
     # fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)
     # fast.solve_timed()
