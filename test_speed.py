@@ -3,6 +3,8 @@ import random
 import numpy as np
 import torch
 
+from Solvers.SWA.swa_solver_torch import SwaSolverTorch
+from Solvers.SWA.swa_solver_torch_nni import SwaSolverTorchNni
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
@@ -24,7 +26,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 100
+iterations = 10
 
 for run in range(runs):
     print(run)
@@ -33,11 +35,21 @@ for run in range(runs):
     # nj_i.solve(2)
     # print(nj_i.obj_val)
 #0.26646004352783204
+    swa = SwaSolverTorch(d)
+    swa.solve_timed()
+    print(swa.time, swa.obj_val)
+
+    swa_nni = SwaSolverTorchNni(d)
+    swa_nni.solve_timed(3, None, 10, 20,  5, 20)
+    print(swa_nni.time, swa_nni.obj_val)
+
     mcts = UtcSolverTorchBackTrack(d, mixed_policy, average_score_normalised, nni_iterations=10, nni_tol=0.02)
     mcts.solve_timed(iterations)
     print(mcts.time, mcts.obj_val)
 
     mcts_ = UtcSolverTorchBackTrack(d, mixed_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
+    mcts_.solve_timed(iterations*2)
+    print(mcts_.time, mcts_.obj_val)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
     # improved, nni_val, nni_sol = \

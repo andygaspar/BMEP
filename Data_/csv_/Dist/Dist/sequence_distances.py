@@ -8,6 +8,9 @@ import scipy
 from Bio.Seq import Seq
 import dask.dataframe as dd
 
+from pyspark.sql.types import *
+import pyspark
+
 
 def compute_alignment(seq1, seq2, k):
     seq_1 = Seq(seq1)
@@ -73,16 +76,18 @@ def get_words(seq_str, k):
 
 df = pd.read_csv("Data_/csv_/Dist/Dist/Covid19_sequences.csv")
 ddf = dd.from_pandas(df, npartitions=4)
-dask_series = ddf['sequence'].apply(get_words, args=(8,))
+dask_series = ddf['sequence'].apply(get_words, args=(8,), meta=('x', 'int'))
 ddf['word_set'] = dask_series
 
 dff = ddf.compute()
 all_words_set = set().union(*dff.word_set.to_list())
+#
+# ddf = dd.from_pandas(dff, npartitions=4)
+# for i, word in enumerate(all_words_set):
+#     print(i)
+#     dask_series = ddf['sequence'].apply(count_words, args=(word,), axis=1, meta=pd.Series(dtype="int"))
+#     ddf[word] = dask_series
+#
+# final_df = ddf.compute()
 
-ddf = dd.from_pandas(dff, npartitions=4)
-for i, word in enumerate(all_words_set):
-    print(i)
-    dask_series = ddf['sequence'].apply(count_words, args=(word,), axis=1, meta=pd.Series(dtype="int"))
-    ddf[word] = dask_series
-
-final_df = ddf.compute()
+sc
