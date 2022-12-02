@@ -71,9 +71,9 @@ class NodeTorch:
     Expand the current node by rolling out every child node and back-propagate information to parent nodes
     '''
 
-    def expand(self, iteration, nni=0):
+    def expand(self, iteration, best_val, nni=0):
         self._init_children()
-        best_val_adj = self.rollout(iteration, nni)
+        best_val_adj = self.rollout(iteration, nni, best_val)
 
         #perform nni local search
         if nni == 1 or nni == 3:
@@ -95,12 +95,12 @@ class NodeTorch:
     Rollout this node using the given rollout policy and update node value
     '''
 
-    def rollout(self, iteration, nni):
+    def rollout(self, iteration, nni, best_val):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         obj_vals, sol_adj_mat = self._rollout_policy(self, self._step_i + 1, adj_mats, iteration)
         for i, child in enumerate(self._children):
             child.add_visit()
-            if nni == 2 or nni == 3:
+            if obj_vals[i] < best_val*1.02 and (nni == 2 or nni == 3):
                 for _ in range(5):
                     expl_trees = nni_landscape(sol_adj_mat[i], self._n_taxa, len(sol_adj_mat[i]))
                     obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, self._d, self._n_taxa)

@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 import torch
-
+import time
 from FastME.fast_me import FastMeSolver
 from Solvers.SWA.swa_solver import SwaSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
@@ -22,7 +22,7 @@ print(distances.get_dataset_names())
 data_set = distances.get_dataset(3)
 
 
-dim = 30
+dim = 50
 
 runs = 9
 
@@ -36,9 +36,11 @@ for run in range(runs):
     print(f'Run on dataset {run}')
     d = data_set.get_random_mat(dim)
 
-    mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
-    mcts.solve(10)
-    print(f'mcts: {mcts.obj_val}')
+    mcts = UtcSolverTorch(d, swa_policy, max_score_normalised, nni=3)
+    tic = time.time()
+    mcts.solve(10, use_obj_val=True)
+    toc = time.time()
+    print(f'mcts: {mcts.obj_val}, took {toc-tic}')
     expl_trees = nni_landscape(mcts.solution, mcts.n_taxa, mcts.m)
     obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).cuda(), mcts.n_taxa)
     print(f'nni 1: {torch.min(obj_vals)}')
@@ -55,9 +57,12 @@ for run in range(runs):
     obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).cuda(), mcts.n_taxa)
     print(f'nni 5: {torch.min(obj_vals)}')
 
+
     mcts = UtcSolverTorch(d, swa_policy, max_score_normalised, nni=3)
+    tic = time.time()
     mcts.solve(10)
-    print(f'mcts w/nni: {mcts.obj_val}')
+    toc = time.time()
+    print(f'mcts w/nni: {mcts.obj_val}, took {toc - tic}')
     expl_trees = nni_landscape(mcts.solution, mcts.n_taxa, mcts.m)
     obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, torch.from_numpy(mcts.d).cuda(), mcts.n_taxa)
     print(f'nni 1: {torch.min(obj_vals)}')
