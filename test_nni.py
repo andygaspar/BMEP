@@ -22,7 +22,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 21
+dim = 9
 
 runs = 1
 
