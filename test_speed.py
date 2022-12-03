@@ -22,7 +22,7 @@ data_set = distances.get_dataset(3)
 
 dim = 20
 
-runs = 1
+runs = 3
 
 results = np.zeros((runs, 4))
 
@@ -66,25 +66,13 @@ for run in range(runs):
     mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
     # mcts_t.solve_timed(iterations)
     #
-    # print(mcts.time, mcts_.time, mcts_t.time)
-    # print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val)
 
-    fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)
+    #
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
     fast.solve_timed()
+    print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val, fast.obj_val)
+    print(mcts.time, mcts_.time, mcts_t.time, fast.time, '\n')
 
-    #
-    # fast1 = FastMeSolver(d, bme=True, nni=False, triangular_inequality=False, logs=False)
-    # fast1.solve_timed()
-    #
-    # fast2 = FastMeSolver(d, bme=True, nni=True, triangular_inequality=False, logs=False)
-    # fast2.solve_timed()
-    #
-    fast3 = FastMeSolver(d, bme=True, nni=True, digits=17, triangular_inequality=True, logs=False)
-    fast3.solve_timed()
-    print(fast.obj_val, "fast")
-    # fast4 = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=True, logs=False)
-    # fast4.solve_timed()
-
-    # print(fast.time, fast1.time, fast2.time, fast3.time, fast4.time)
+    # print(mcts.time, mcts_.time, mcts_t.time)
     # print(fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val, fast4.obj_val, "\n\n")
 
