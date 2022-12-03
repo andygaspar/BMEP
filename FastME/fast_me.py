@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from Solvers.solver import Solver
+from pharser_newik.newwik_handler import get_adj_from_nwk
 
 warnings.simplefilter("ignore")
 
@@ -40,8 +41,6 @@ class FastMeSolver(Solver):
         # mettere tutte flag bene e controllare taxaaddbal
         d_string = ''
         for i, row in enumerate(self.d):
-            # row_ = map(lambda x: str(round(x, 21)), row)
-            # line = str(i) + ' ' + ' '.join(row_)
             row_string = ['{:.19f}'.format(el) for el in row]
             line = str(i) + ' ' + ' '.join(row_string)
             d_string += line + '\n'
@@ -58,21 +57,9 @@ class FastMeSolver(Solver):
         else:
             os.system(self.path + "src/fastme -i " + self.path + "mat.mat " + self.flags)
 
-        trees_parsed = Phylo.parse(self.path + 'mat.mat_fastme_tree.nwk', "newick")
-        trees = [Phylo.to_networkx(t) for t in trees_parsed]
+        adj_mat = get_adj_from_nwk(self.path + 'mat.mat_fastme_tree.nwk')
 
-        tree = trees[0]
-        tree.edges()
-        adj_mat = nx.adjacency_matrix(tree).toarray()
-        adj_mat[adj_mat != 0] = 1
-        adj_mat = adj_mat.astype(int)
-
-        nodes = []
-        for n in tree.nodes:
-            nodes.append(str(n))
-        idx = np.argsort(nodes)
-
-        self.solution = adj_mat[idx][:, idx]
+        self.solution = adj_mat
         g = nx.from_numpy_matrix(self.solution)
         self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m].astype(int)
         self.obj_val = self.compute_obj()

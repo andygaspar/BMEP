@@ -81,6 +81,8 @@ class NodeTorch:
         self.set_value(best_val)
         self._backprop()
 
+    def nni_expand(self, iteration):
+        pass
     '''
     Rollout this node using the given rollout policy and update node value
     '''

@@ -22,7 +22,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 9
+dim = 40
 
 runs = 1
 
@@ -70,7 +70,7 @@ for run in range(runs):
     #0.24363763723876952 0.2436069687878418
     new_mat = torch.cat([torch.tensor(swa.solution).unsqueeze(0), torch.tensor(swa_nni.solution).unsqueeze(0)], dim=0)
 
-    run_nni_search_batch(2, new_mat, 3, swa.d, swa.n_taxa, swa.m,swa.device)
+    run_nni_search_batch(2, new_mat, 3, swa.d, swa.n_taxa, swa.m, swa.device)
 
     # mcts = UtcSolverTorch(d, swa_policy, max_score_normalised)
     # mcts.solve(20)
