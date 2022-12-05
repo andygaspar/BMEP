@@ -34,7 +34,6 @@ def nni_landscape(adj_mat, n_taxa, mat_size):
 def run_nni_search(iterations, best_solution, best_val, d, n_taxa, m, device):
     sol = best_solution
     improved = False
-
     for _ in range(iterations):
         expl_trees = nni_landscape(sol, n_taxa, m)
         obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, d, n_taxa)
@@ -44,4 +43,5 @@ def run_nni_search(iterations, best_solution, best_val, d, n_taxa, m, device):
         if best_val > new_obj_val:
             best_val, best_solution = new_obj_val, sol
             improved = True
+
     return improved, best_val, best_solution

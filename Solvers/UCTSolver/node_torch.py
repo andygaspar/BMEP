@@ -72,6 +72,7 @@ class NodeTorch:
 
     def expand(self, iteration):
         self._init_children()
+        # print("n children", len(self._children))
         best_val_adj = self.rollout(iteration)
         self.update_and_backprop(best_val_adj[0])
         return best_val_adj
