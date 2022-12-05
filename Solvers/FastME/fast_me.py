@@ -18,7 +18,7 @@ class FastMeSolver(Solver):
                  bme=True, nni=True, digits=None, post_processing=False, init_topology=None,
                  triangular_inequality=False, logs=False):
         super().__init__(d)
-        self.path = 'FastME/fastme-2.1.6.4/'
+        self.path = 'Solvers/FastME/fastme-2.1.6.4/'
         self.init_topology = init_topology
         self.flags = ''
         self.bme = bme

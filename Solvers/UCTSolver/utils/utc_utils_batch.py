@@ -32,17 +32,18 @@ def nni_landscape_batch(adj_mat, n_taxa, mat_size):
     return new_trees.view((batch_size, 2*step, mat_size, mat_size))
 
 
-def run_nni_search_batch(iterations, best_solution, best_val, d, n_taxa, m, device):
-    sol = best_solution
-    improved = False
+def run_nni_search_batch(iterations, current_adj, best_val, d, n_taxa, m, device):
+    sol = current_adj
+    batch_size = current_adj.shape[0]
+    improved = torch.zeros(size=(batch_size,), dtype=torch.bool, device=device)
 
     for _ in range(iterations):
         expl_trees = nni_landscape_batch(sol, n_taxa, m)
-        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees, d, n_taxa)
-        new_obj_val = torch.min(obj_vals)
-        idx = torch.argmin(obj_vals)
-        sol = expl_trees[idx]
-        if best_val > new_obj_val:
-            best_val, best_solution = new_obj_val, sol
-            improved = True
-    return improved, best_val, best_solution
+        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, n_taxa)
+        new_obj_val = torch.min(obj_vals.view(batch_size, -1), dim=-1)
+        sol = expl_trees[range(batch_size), new_obj_val[1]]
+        idxs = torch.argwhere(best_val > new_obj_val.values).squeeze(1)
+        current_adj[idxs] =  sol[idxs]
+        best_val[idxs] = new_obj_val.values[idxs]
+        improved[idxs] = True
+    return improved, best_val, current_adj

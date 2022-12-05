@@ -113,13 +113,13 @@ class UtcSolverTorchBackTrack2(Solver):
 
     @staticmethod
     def permute(adj_mats, step, idx):
-        adj_mats[:, step, :] += adj_mats[:, idx, :]
-        adj_mats[:, idx, :] = adj_mats[:, step, :] - adj_mats[:, idx, :]
-        adj_mats[:, step, :] -= adj_mats[:, idx, :]
+        adj_mats[:, :, step, :] += adj_mats[:, :, idx, :]
+        adj_mats[:, :, idx, :] = adj_mats[:, :, step, :] - adj_mats[:, :, idx, :]
+        adj_mats[:, :, step, :] -= adj_mats[:, :, idx, :]
 
-        adj_mats[:, :, step] += adj_mats[:, :, idx]
-        adj_mats[:, :, idx] = adj_mats[:, :, step] - adj_mats[:, :, idx]
-        adj_mats[:, :, step] -= adj_mats[:, :, idx]
+        adj_mats[:, :, :, step] += adj_mats[:, :, :, idx]
+        adj_mats[:, :, :, idx] = adj_mats[:, :, :, step] - adj_mats[:, :, :, idx]
+        adj_mats[:, :, :, step] -= adj_mats[:, :, :, idx]
         return adj_mats
 
     def get_lower_node_in_trajectory(self, trajectory_id):

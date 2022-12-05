@@ -19,6 +19,7 @@ class NodeTorch:
         self._adj_mat = adj_mat
         self._step_i = step_i
         self._n_taxa = n_taxa if n_taxa is not None else parent._n_taxa
+        self._m = n_taxa*2 - 2 if n_taxa is not None else parent._m
         self._d = d if d is not None else parent._d
 
         self._c = c if c is not None else parent._c
