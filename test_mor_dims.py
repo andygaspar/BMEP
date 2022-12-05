@@ -5,7 +5,7 @@ from os import walk
 
 import numpy as np
 
-from FastME.fast_me import FastMeSolver
+from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.NJ.nj_phylo import NjPhylo
 from Solvers.NJ.nj_solver import NjSolver
 from Old.SWA_CPP.swa_new import SwaSolverNew

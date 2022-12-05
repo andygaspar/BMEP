@@ -1,10 +1,7 @@
-import numpy as np
 import torch
 import torch.nn as nn
-import torch.autograd as autograd
 import torch.nn.functional as F
-from Net.network import Network
-from itertools import permutations
+from ML.Net.network import Network
 
 
 def init_weights_(m):

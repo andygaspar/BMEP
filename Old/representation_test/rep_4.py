@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.autograd as autograd
 import torch.nn.functional as F
 
-from Net.network import Network
+from ML.Net.network import Network
 
 
 # USE_CUDA = torch.cuda.is_available()

@@ -2,12 +2,12 @@ import random
 import pandas as pd
 import numpy as np
 
-from FastME.fast_me import FastMeSolver
+from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.NJ_ILP.nj_ilp import NjIlp
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 
 from Data_.data_loader import DistanceData
-from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorch_
+from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
 
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy
 from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
@@ -36,7 +36,7 @@ for key in distances.data_sets.keys():
         sizes.append(dim)
         d = data_set.get_minor(dim)
 
-        mcts = UtcSolverTorch_(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.05)
+        mcts = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.05)
         mcts.solve_timed(iterations)
         print(mcts.time)
 
@@ -47,7 +47,7 @@ for key in distances.data_sets.keys():
         swa = SwaSolverTorch(d)
         swa.solve_timed()
 
-        fast = FastMeSolver(d, bme=False, nni=False, triangular_inequality=False, logs=False)
+        fast = FastMeSolver(d, bme=True, nni=True, triangular_inequality=False, logs=False)
         fast.solve_timed()
         #
         # fast1 = FastMeSolver(d, bme=True, nni=False, triangular_inequality=False, logs=False)

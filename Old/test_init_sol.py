@@ -7,7 +7,7 @@ from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
 from torch.utils.data import DataLoader
 
-from Net.network_manager import NetworkManager
+from ML.Net.network_manager import NetworkManager
 from Solvers.IpSolver.ip_solver import IPSolver
 from Solvers.NJ.nj_solver import NjSolver
 from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearch

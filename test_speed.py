@@ -2,17 +2,15 @@ import random
 
 import numpy as np
 import pandas as pd
-import torch
 
-from FastME.fast_me import FastMeSolver
-from Solvers.PardiSolver.pardi_solver_parallel import PardiSolverParallel
+from Solvers.FastME.fast_me import FastMeSolver
+from Solvers.NJ_ILP.nj_ilp import NjIlp
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.SWA.swa_solver_torch_nni import SwaSolverTorchNni
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
-from Solvers.UCTSolver.utils.utc_utils import run_nni_search
-from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, random_policy
+from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
 
 distances = DistanceData()
@@ -52,12 +50,16 @@ for run in range(runs):
     swa_nni.solve_timed(3, None, 10, 20,  5, 20)
     print(swa_nni.time, swa_nni.obj_val)
 
-    mcts = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=-1, nni_tol=0.02)
+    mcts = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
     mcts.solve_timed(iterations)
     print(mcts.time, mcts.obj_val)
 
+    nj_i = NjIlp(d)
+    nj_i.solve(int(np.ceil(mcts.time)))
+    print(mcts.obj_val, nj_i.obj_val)
+
     mcts_ = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
-    mcts_.solve_timed(iterations)
+    mcts_.solve_timed(iterations*2)
     print(mcts_.time, mcts_.obj_val)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
@@ -76,16 +78,16 @@ for run in range(runs):
     print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val, fast.obj_val)
     print(mcts.time, mcts_.time, mcts_t.time, fast.time, '\n')
 
-    results.append([mcts.obj_val, fast.obj_val])
+    results.append([mcts_.obj_val, nj_i, fast.obj_val])
 
     # print(mcts.time, mcts_.time, mcts_t.time)
     # print(fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val, fast4.obj_val, "\n\n")
 
 results = np.array(results)
-df = pd.DataFrame({"mcts": results[:, 0], "fast": results[:, 1], 'result': results[:, 0]/results[:, 1]})
-df.to_csv("testino20.csv", index_label=False, index=False)
+df = pd.DataFrame({"mcts": results[:, 0], "lp_nj": results[:, 1], "fast": results[:, 2]})
+df.to_csv("test_new.csv", index_label=False, index=False)
 
 
-import pandas as pd
-
-df = pd.read_csv("testino20.csv")
+# import pandas as pd
+#
+# df = pd.read_csv("testino20.csv")

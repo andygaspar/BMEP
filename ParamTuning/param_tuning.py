@@ -1,6 +1,6 @@
 import GPyOpt
 
-from Net.Nets.Supervised.GNN1.gnn_1 import GNN_1
+from ML.Net.Nets.Supervised.GNN1.gnn_1 import GNN_1
 from ParamTuning.net_trainer import NetTrainer
 
 configs = {

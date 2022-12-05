@@ -1,6 +1,6 @@
 import time
 
-from FastME.fast_me import FastMeSolver
+from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 
 from Old.utc_solver import UtcSolver

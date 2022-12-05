@@ -5,8 +5,8 @@ import numpy as np
 
 from Data_.Datasets.bmep_dataset import BMEP_Dataset
 
-from FastME.fast_me import FastMeSolver
-from Net.network_manager import NetworkManager
+from Solvers.FastME.fast_me import FastMeSolver
+from ML.Net.network_manager import NetworkManager
 from Solvers.NetSolvers.heuristic_search_distribution import HeuristicSearchDistribution
 from Solvers.NetSolvers.heuristic_search_dropout import HeuristicSearchDropOut
 from Solvers.NetSolvers.net_solver import NetSolver
