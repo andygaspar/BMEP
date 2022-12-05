@@ -73,8 +73,3 @@ results = np.array(results)
 df = pd.DataFrame({'data_set': data_, 'dim': sizes, 'swa': results[:, 0], 'ni_ip': results[:, 1],
                    'mcts': results[:, 2], 'fast_1': results[:, 3], 'fast_2': results[:, 4]})
 df.to_csv("test_results.csv", index_label=False, index=False)
-
-import pandas as pd
-p = pd.read_csv('test_results.csv')
-
-p["mcts%ni_ip"] = p.mcts/p.ni_ip
