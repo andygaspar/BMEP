@@ -44,7 +44,6 @@ class SwaSolverTorchNni(Solver):
                                    self.device)
 
                 if improved:
-                    print(step)
                     adj_mat = self.adjust_matrix(best_solution, step)
 
         improved, best_val, best_solution = \

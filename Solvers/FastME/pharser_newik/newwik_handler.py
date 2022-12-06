@@ -57,8 +57,32 @@ def get_adj_from_nwk(file):
     return adj_mats[0]
 
 
-def update_distance(self, leaf, matched):
-    self.T[matched.col] -= 1
-    self.T[:, matched.col] -= 1
-    self.T[leaf.col] = -1
-    self.T[:, leaf.col] = -1
+def update_distance(T, a, b, n_taxa):
+    T[a, :] -= 1
+    T[:, a] -= 1
+    T[b, :] = T[:, b] = n_taxa + 1
+    return T
+
+
+def compute_newick(T):
+    n_taxa = T.shape[0]
+    taxa = range(n_taxa)
+    taxa_dict = dict(zip(taxa, [str(t) for t in taxa]))
+    T = np.copy(T)
+    over, newick = False, None
+    while not over:
+        cherries = np.asarray(T==2).nonzero()
+        if cherries[0].shape[0] == np.unique(cherries[0]).shape[0]:
+            a, b = cherries[0][0], cherries[1][0]
+            new_term = '(' + taxa_dict[a] + ',' + taxa_dict[b] + ')'
+            taxa_dict[a] = new_term
+            T = update_distance(T, a, b, n_taxa)
+        else:
+            a, b, c = cherries[0][0], cherries[1][0], cherries[1][1]
+            over = True
+            newick = '(' + taxa_dict[a] + ',' + taxa_dict[b] + ',' + taxa_dict[c] + ');'
+
+    return newick
+
+
+

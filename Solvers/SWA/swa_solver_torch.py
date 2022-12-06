@@ -37,6 +37,7 @@ class SwaSolverTorch(Solver):
 
         self.solution = adj_mat.squeeze(0)
         self.obj_val = torch.min(obj_vals).item()
+        self.T = self.get_tau(self.solution.to('cpu').numpy())[:self.n_taxa, :self.n_taxa]
 
     @staticmethod
     def add_nodes(adj_mat, idxs: torch.tensor, new_node_idx, n):

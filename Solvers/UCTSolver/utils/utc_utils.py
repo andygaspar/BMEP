@@ -40,7 +40,6 @@ def run_nni_search(iterations, best_solution, best_val, d, n_taxa, m, device):
         new_obj_val = torch.min(obj_vals)
         idx = torch.argmin(obj_vals)
         sol = expl_trees[idx]
-        print(new_obj_val.item())
         if best_val > new_obj_val:
             best_val, best_solution = new_obj_val, sol
             improved = True

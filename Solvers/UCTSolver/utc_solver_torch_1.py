@@ -41,7 +41,7 @@ class UtcSolverTorchBackTrack2(Solver):
                 break
             run_val, run_sol = node.expand(iteration)
             mixed_run_val, mixed_run_sol = node.second_expand(swa_nni_policy)
-            print(run_val, torch.min(mixed_run_val))
+            # print(run_val, torch.min(mixed_run_val))
 
             if run_val < self.obj_val * self.nni_tol:
                 improved, nni_val, nni_sol = \
