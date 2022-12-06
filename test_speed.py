@@ -2,8 +2,10 @@ import random
 
 import numpy as np
 import pandas as pd
+import torch
 
 from Solvers.FastME.fast_me import FastMeSolver
+from Solvers.FastME.pharser_newik.newwik_handler import get_adj_from_nwk
 from Solvers.NJ_ILP.nj_ilp import NjIlp
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.SWA.swa_solver_torch_nni import SwaSolverTorchNni
@@ -11,6 +13,7 @@ from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
 from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorchBackTrack2
+from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
 
@@ -20,7 +23,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 10
+dim = 20
 
 runs = 1
 
@@ -28,7 +31,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 10
+iterations = 1
 
 results = []
 
@@ -51,7 +54,7 @@ for run in range(runs):
     swa_nni.solve_timed(3, None, 10, 20,  5, 20)
     print(swa_nni.time, swa_nni.obj_val)
 
-    mcts = UtcSolverTorchBackTrack2(d, swa_nni_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
+    mcts = UtcSolverTorchBackTrack2(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
     mcts.solve_timed(iterations)
     print(mcts.time, mcts.obj_val)
 
@@ -59,8 +62,8 @@ for run in range(runs):
     # nj_i.solve(int(np.ceil(mcts.time)))
     # print(mcts.obj_val, nj_i.obj_val)
 
-    mcts_ = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
-    mcts_.solve_timed(iterations)
+    mcts_ = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=20, nni_tol=0.02)
+    mcts_.solve_timed(2)
     print(mcts_.time, mcts_.obj_val)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
@@ -79,13 +82,20 @@ for run in range(runs):
     print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val, fast.obj_val)
     print(mcts.time, mcts_.time, mcts_t.time, fast.time, '\n')
 
+    fast = FastMeSolver(d, bme=True, nni=False, digits=17, post_processing=False, triangular_inequality=False, logs=False)
+    fast.solve_timed()
+    adj_mat = torch.tensor(fast.solution, dtype=torch.float64).to(fast.device)
+    dd = torch.from_numpy(fast.d).to(fast.device)
+
+    res = run_nni_search(10, adj_mat, fast.obj_val, dd, fast.n_taxa, fast.m, fast.device)
+
     results.append([mcts_.obj_val, fast.obj_val])
 
     # print(mcts.time, mcts_.time, mcts_t.time)
     # print(fast.obj_val, fast1.obj_val, fast2.obj_val, fast3.obj_val, fast4.obj_val, "\n\n")
 
-results = np.array(results)
-df = pd.DataFrame({"mcts": results[:, 0], "lp_nj": results[:, 1], "fast": results[:, 2]})
+# results = np.array(results)
+# df = pd.DataFrame({"mcts": results[:, 0], "lp_nj": results[:, 1], "fast": results[:, 2]})
 # df.to_csv("test_new.csv", index_label=False, index=False)
 
 

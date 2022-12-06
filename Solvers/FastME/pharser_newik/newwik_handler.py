@@ -55,3 +55,10 @@ def get_adj_from_nwk(file):
         last_inserted_taxa -= 1
 
     return adj_mats[0]
+
+
+def update_distance(self, leaf, matched):
+    self.T[matched.col] -= 1
+    self.T[:, matched.col] -= 1
+    self.T[leaf.col] = -1
+    self.T[:, leaf.col] = -1

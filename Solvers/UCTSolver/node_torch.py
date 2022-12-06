@@ -78,6 +78,10 @@ class NodeTorch:
         self.update_and_backprop(best_val_adj[0])
         return best_val_adj
 
+    def second_expand(self, swa_nni_policy):
+        adj_mats = torch.cat([child.get_mat() for child in self._children])
+        return swa_nni_policy(self, self._step_i + 1, adj_mats)
+
     def update_and_backprop(self, best_val):
         self.add_visit()
         self.set_value(best_val)
