@@ -70,7 +70,7 @@ class FastMeSolver(Solver):
         if self.digits is not None:
             self.flags += " -f " + str(self.digits) + " "
         if self.init_topology is not None:
-            self.flags += ' -u ' + self.path + 'init_topology.nwk '
+            self.flags += ' -u ' + self.path + 'init_topology.nwk'
         if not self.logs:
             self.flags += " > /dev/null"
 

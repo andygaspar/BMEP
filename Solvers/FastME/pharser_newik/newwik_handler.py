@@ -74,7 +74,7 @@ def compute_newick(T):
         cherries = np.asarray(T==2).nonzero()
         if cherries[0].shape[0] == np.unique(cherries[0]).shape[0]:
             a, b = cherries[0][0], cherries[1][0]
-            new_term = '(' + taxa_dict[a] + ',' + taxa_dict[b] + ')'
+            new_term = '(' + taxa_dict[a] + ',' + taxa_dict[b] + '):1'
             taxa_dict[a] = new_term
             T = update_distance(T, a, b, n_taxa)
         else:

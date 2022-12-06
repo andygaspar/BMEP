@@ -23,15 +23,15 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 10
+dim = 30
 
-runs = 1
+runs = 10
 
 results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 1
+iterations = 20
 
 results = []
 
@@ -48,27 +48,28 @@ for run in range(runs):
 
     swa = SwaSolverTorch(d)
     swa.solve_timed()
-    print(swa.time, swa.obj_val)
 
-    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=swa.T, triangular_inequality=False, logs=True)
-    fast.solve_timed()
-    print(fast.obj_val, 'fast')
 
     swa_nni = SwaSolverTorchNni(d)
     swa_nni.solve_timed(3, None, 10, 20,  5, 20)
-    print(swa_nni.time, swa_nni.obj_val)
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=swa_nni.T,
+                        triangular_inequality=False, logs=False)
+    fast.solve_timed()
+    swa_nni.obj_val = fast.obj_val
 
     mcts = UtcSolverTorchBackTrack2(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
     mcts.solve_timed(iterations)
-    print(mcts.time, mcts.obj_val)
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=mcts.T,
+                        triangular_inequality=False, logs=False)
+    fast.solve_timed()
+    mcts.obj_val = fast.obj_val
 
     # nj_i = NjIlp(d)
     # nj_i.solve(int(np.ceil(mcts.time)))
     # print(mcts.obj_val, nj_i.obj_val)
 
     mcts_ = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=20, nni_tol=0.02)
-    mcts_.solve_timed(2)
-    print(mcts_.time, mcts_.obj_val)
+    # mcts_.solve_timed(2)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
     # improved, nni_val, nni_sol = \
@@ -81,10 +82,10 @@ for run in range(runs):
     #
 
     #
-    # fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
-    # fast.solve_timed()
-    # print(mcts.obj_val, mcts_.obj_val, mcts_t.obj_val, fast.obj_val)
-    # print(mcts.time, mcts_.time, mcts_t.time, fast.time, '\n')
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
+    fast.solve_timed()
+    print(swa.obj_val, swa_nni.obj_val, mcts.obj_val, fast.obj_val)
+    print(mcts.time, mcts_.time, mcts_t.time, fast.time, '\n')
     #
     # fast = FastMeSolver(d, bme=True, nni=False, digits=17, post_processing=False, triangular_inequality=False, logs=False)
     # fast.solve_timed()
