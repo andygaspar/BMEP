@@ -36,7 +36,6 @@ def run_nni_search_batch(iterations, current_adj, best_val, d, n_taxa, m, device
     sol = current_adj
     batch_size = current_adj.shape[0]
     improved = torch.zeros(size=(batch_size,), dtype=torch.bool, device=device)
-
     for _ in range(iterations):
         expl_trees = nni_landscape_batch(sol, n_taxa, m)
         obj_vals = NodeTorch.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, n_taxa)

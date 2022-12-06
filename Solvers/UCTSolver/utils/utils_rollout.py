@@ -74,11 +74,11 @@ def swa_nni_policy(node, start=3, adj_mats: torch.tensor = None, every=10, after
                                          adj_mats.shape[2])[range(batch_size), obj_vals.indices, :, :]
 
         # if step > after and (step - 3) % every == 0:
-        if step > 6:
-
+        if step > 7:
+            print(adj_mats[0])
             improved, best_val, best_solution = \
                 run_nni_search_batch(n_iter, adj_mats, obj_vals.values, node._d, node._n_taxa, node._m, node._device)
-
+            print(best_solution[0])
             if torch.any(improved):
                 print(step)
                 adj_mat = adjust_matrices(best_solution[improved], step, n_internals, node._n_taxa)
@@ -93,18 +93,23 @@ def swa_nni_policy(node, start=3, adj_mats: torch.tensor = None, every=10, after
 
 
 def adjust_matrices(adj_mat, last_inserted_taxa, n_internals, n_taxa):
-    adj_mat = adj_mat.unsqueeze(0).repeat(1, 2, 1, 1)
+    adj_mat = adj_mat.unsqueeze(1).repeat(1, 2, 1, 1)
 
     # reorder matrix according to Pardi
     for step in range(last_inserted_taxa + n_internals, n_taxa, -1):
         print(adj_mat[:, 1, step, last_inserted_taxa])
-        a = torch.nonzero(adj_mat[:, 1, step, last_inserted_taxa])
-        idxs = torch.argwhere(adj_mat[:, 1, step, last_inserted_taxa]).squeeze(1)
-        adj_mat = permute(adj_mat, step, idxs)
+        in_position = torch.argwhere(adj_mat[:, 1, step, last_inserted_taxa] == 0).squeeze(1)
+        if len(in_position)>0:
+            idxs = torch.argwhere(adj_mat[in_position, 1, last_inserted_taxa, :] == 1)
+            adj_mat = permute(adj_mat, step, idxs)
 
         adj_mat[:, 1, :, last_inserted_taxa] = adj_mat[:, 1, last_inserted_taxa, :] = 0
-        idxs = torch.nonzero(adj_mat[:, :, 1, step])
-        adj_mat[:, 1, idxs[0], idxs[1]] = adj_mat[:, 1, idxs[1], idxs[0]] = 1
+
+        a = adj_mat[:, 1, step, :]
+        idxs = torch.nonzero(adj_mat[:, 1, step, :])
+        idxs = idxs.T[1].reshape(2, -1)
+        batch_idxs = range(adj_mat.shape[0])
+        adj_mat[batch_idxs, 1, idxs[0], idxs[1]] = adj_mat[batch_idxs, 1, idxs[1], idxs[0]] = 1
         adj_mat[:, 1, :, step] = adj_mat[:, 1, step, :] = 0
 
         last_inserted_taxa -= 1
