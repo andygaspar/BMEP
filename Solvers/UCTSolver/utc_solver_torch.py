@@ -42,7 +42,7 @@ class UtcSolverTorch(Solver):
         if improved:
             self.solution = best_solution
         self.obj_val = self.obj_val.item()
-        self.T = self.get_tau(self.solution.to('cpu').numpy()).astype(np.int8)
+        self.T = self.get_tau(self.solution.to('cpu').numpy()).astype(np.int8)[:self.n_taxa, :self.n_taxa]
         self.d = self.numpy_d
         self.obj_val = self.compute_obj()
         self.adj_mat_sparse = torch.nonzero(torch.triu(self.solution))
