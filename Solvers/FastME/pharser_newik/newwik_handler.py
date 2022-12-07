@@ -65,6 +65,7 @@ def update_distance(T, a, b, n_taxa):
 
 
 def compute_newick(T):
+    T = T if type(T) == np.ndarray else T.to('cpu').numpy()
     n_taxa = T.shape[0]
     taxa = range(n_taxa)
     taxa_dict = dict(zip(taxa, [str(t) for t in taxa]))

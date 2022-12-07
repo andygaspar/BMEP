@@ -74,10 +74,15 @@ class NodeTorch:
     def expand(self, iteration):
         self._init_children()
         # print("n children", len(self._children))
-        best_val_adj = self.rollout(iteration)
-        self.update_and_backprop(best_val_adj[0])
-        return best_val_adj
+        obj_vals, sol_adj_mat = self.rollout(iteration)
+        idx = torch.argmin(obj_vals)
+        self.update_and_backprop(obj_vals[idx])
+        return obj_vals[idx], sol_adj_mat[idx]
 
+    def expand_full(self, iteration):
+        self._init_children()
+        # print("n children", len(self._children))
+        return self.rollout(iteration)
     def second_expand(self, swa_nni_policy):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         return swa_nni_policy(self, self._step_i + 1, adj_mats)
@@ -99,9 +104,7 @@ class NodeTorch:
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
-
-        idx = torch.argmin(obj_vals)
-        return obj_vals[idx], sol_adj_mat[idx]
+        return obj_vals, sol_adj_mat
 
     '''
     From the given adj_mat extrapolate possible actions

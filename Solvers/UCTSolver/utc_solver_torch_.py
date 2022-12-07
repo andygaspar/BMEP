@@ -1,6 +1,9 @@
+import time
+
 import numpy as np
 import torch
 
+from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.UCTSolver.node_torch import NodeTorch
 from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy
@@ -8,10 +11,10 @@ from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
 from Solvers.solver import Solver
 
 
-class UtcSolverTorchBackTrack(Solver):
+class UtcSolverTorchSingleBackTrack(Solver):
 
-    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2), nni_iterations=10, nni_tol=0.02):
-        super(UtcSolverTorchBackTrack, self).__init__(d)
+    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2), nni_tol=0.02):
+        super(UtcSolverTorchSingleBackTrack, self).__init__(d)
         self.numpy_d = self.d
 
         self.rollout_ = rollout_
@@ -21,8 +24,11 @@ class UtcSolverTorchBackTrack(Solver):
         self.init_c = c_initial
         self.n_nodes = 0
 
-        self.nni_iterations = nni_iterations
+        self.fast_me = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True,
+                                    triangular_inequality=False, logs=False)
         self.nni_tol = 1 + nni_tol
+
+        self.backtracking_time = 0
 
     def solve(self, n_iterations=100):
         # with torch.no_grad():
@@ -41,17 +47,19 @@ class UtcSolverTorchBackTrack(Solver):
                 break
             run_val, run_sol = node.expand(iteration)
 
-            if run_val < self.obj_val * self.nni_tol:
-                improved, nni_val, nni_sol = \
-                    run_nni_search(self.nni_iterations, run_sol, self.obj_val, self.d, self.n_taxa, self.m, self.device)
-                if improved:
-                    run_val, run_sol = nni_val, nni_sol
-                    trajectory_id = self.tree_climb(run_sol)
-                    node_climbed = self.get_lower_node_in_trajectory(trajectory_id)
-                    node_climbed.update_and_backprop(run_val)
+            t = time.time()
+            Tau = self.get_tau_tensor(run_sol, self.n_taxa)
+            self.fast_me.update_topology(Tau)
+            self.fast_me.solve()
+            if self.fast_me.obj_val < run_val:
+                run_val, run_sol = self.fast_me.obj_val, torch.tensor(self.fast_me.solution)
+                trajectory_id = self.tree_climb(run_sol)
+                node_climbed = self.get_lower_node_in_trajectory(trajectory_id)
+                node_climbed.update_and_backprop(run_val)
 
-                if run_val < self.obj_val:
-                    self.obj_val, self.solution = run_val, run_sol
+            self.backtracking_time += time.time() - t
+            if run_val < self.obj_val:
+                self.obj_val, self.solution = run_val, run_sol
 
         self.obj_val = self.obj_val.item()
         self.T = self.get_tau(self.solution.to('cpu').numpy()).astype(np.int8)[:self.n_taxa, :self.n_taxa]

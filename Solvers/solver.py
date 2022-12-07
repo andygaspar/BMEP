@@ -121,11 +121,13 @@ class Solver:
         return np.sum([d[i, j] / self.powers[T[i, j]] for i in r for j in r])
 
     @staticmethod
-    def get_tau_(adj_mat, n_taxa):
-        T = np.full(adj_mat.shape, n_taxa)
-        T[adj_mat > 0] = adj_mat[adj_mat > 0]
-        np.fill_diagonal(T, 0)  # diagonal elements should be zero
-        for i in range(adj_mat.shape[0]):
-            # The second term has the same shape as T due to broadcasting
-            T = np.minimum(T, T[i, :][np.newaxis, :] + T[:, i][:, np.newaxis])
-        return T[:n_taxa, :n_taxa]
+    def get_tau_tensor(adj_mat, n_taxa):
+        Tau = torch.full_like(adj_mat, n_taxa)
+        Tau[adj_mat > 0] = 1
+        diag = torch.eye(adj_mat.shape[1]).bool()
+        Tau[diag] = 0  # diagonal elements should be zero
+        for i in range(adj_mat.shape[1]):
+            # The second term has the same shape as Tau due to broadcasting
+            Tau = torch.minimum(Tau, Tau[ i, :].unsqueeze(0)
+                                + Tau[:, i].unsqueeze(1))
+        return Tau[:n_taxa, :n_taxa]
