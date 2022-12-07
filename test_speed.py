@@ -7,6 +7,7 @@ import torch
 from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.FastME.pharser_newik.newwik_handler import get_adj_from_nwk, compute_newick
 from Solvers.NJ_ILP.nj_ilp import NjIlp
+from Solvers.RandomNni.random_nni import RandomNni
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.SWA.swa_solver_torch_nni import SwaSolverTorchNni
 from Solvers.UCTSolver.utc_solver_torch import UtcSolverTorch
@@ -14,7 +15,7 @@ from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
 from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorchBackTrack2
 from Solvers.UCTSolver.utils.utc_utils import run_nni_search
-from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy
+from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy, random_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
 
 distances = DistanceData()
@@ -49,6 +50,10 @@ for run in range(runs):
     swa = SwaSolverTorch(d)
     swa.solve_timed()
 
+    rand_nni = RandomNni(d)
+    rand_nni.solve_timed(100)
+    print("rand", rand_nni.time, rand_nni.obj_val)
+
 
     swa_nni = SwaSolverTorchNni(d)
     swa_nni.solve_timed(3, None, 10, 20,  5, 20)
@@ -68,8 +73,8 @@ for run in range(runs):
     # nj_i.solve(int(np.ceil(mcts.time)))
     # print(mcts.obj_val, nj_i.obj_val)
 
-    mcts_ = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=20, nni_tol=0.02)
-    # mcts_.solve_timed(2)
+    mcts_ = UtcSolverTorchBackTrack(d, random_policy, max_score_normalised, nni_iterations=20, nni_tol=0.02)
+    mcts_.solve_timed(2)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
     # improved, nni_val, nni_sol = \

@@ -62,13 +62,15 @@ class Solver:
         self.solve(*args)
         self.time = time.time() - self.time
 
-    @staticmethod
-    def get_tau(adj_mat, device=None):
-        # DA SISTEMARE CON OTTIMIZZAZIONE
-        g = nx.from_numpy_matrix(adj_mat)
-        tau = nx.floyd_warshall_numpy(g)
-        tau[np.isinf(tau)] = 0
-        return tau if device is None else torch.tensor(tau).to(torch.float).to(device)
+    def get_tau(self, adj_mat):
+        T = np.full(adj_mat.shape, self.n_taxa)
+        T[adj_mat > 0] = 1
+        np.fill_diagonal(T, 0)  # diagonal elements should be zero
+        for i in range(adj_mat.shape[0]):
+            # The second term has the same shape as T due to broadcasting
+            T = np.minimum(T, T[i, :][np.newaxis, :] + T[:, i][:, np.newaxis])
+        T = T[:self.n_taxa, :self.n_taxa]
+        return T
 
     @staticmethod
     def add_node(adj_mat, idxs, new_node_idx, n):
@@ -108,15 +110,15 @@ class Solver:
             [self.d[i, j] / self.powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
 
     def compute_obj_val_from_adj_mat(self, adj_mat, d, n_taxa):
-        A = np.full(adj_mat.shape, n_taxa)
-        A[adj_mat > 0] = 1
-        np.fill_diagonal(A, 0)  # diagonal elements should be zero
+        T = np.full(adj_mat.shape, n_taxa)
+        T[adj_mat > 0] = 1
+        np.fill_diagonal(T, 0)  # diagonal elements should be zero
         for i in range(adj_mat.shape[0]):
-            # The second term has the same shape as A due to broadcasting
-            A = np.minimum(A, A[i, :][np.newaxis, :] + A[:, i][:, np.newaxis])
-        A = A[:n_taxa, :n_taxa]
+            # The second term has the same shape as T due to broadcasting
+            T = np.minimum(T, T[i, :][np.newaxis, :] + T[:, i][:, np.newaxis])
+        T = T[:n_taxa, :n_taxa]
         r = range(n_taxa)
-        return np.sum([d[i, j] / self.powers[A[i, j]] for i in r for j in r])
+        return np.sum([d[i, j] / self.powers[T[i, j]] for i in r for j in r])
 
     @staticmethod
     def get_tau_(adj_mat, n_taxa):

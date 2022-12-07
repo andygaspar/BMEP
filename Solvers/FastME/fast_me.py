@@ -51,10 +51,8 @@ class FastMeSolver(Solver):
         os.system(self.path + "src/fastme -i " + self.path + "mat.mat " + self.flags)
 
         adj_mat = get_adj_from_nwk(self.path + 'mat.mat_fastme_tree.nwk')
-        # self.check_mat(adj_mat)
         self.solution = adj_mat
-        g = nx.from_numpy_matrix(self.solution)
-        self.T = nx.floyd_warshall_numpy(g)[:self.m, :self.m].astype(int)
+        self.T = self.get_tau(self.solution)
         self.obj_val = self.compute_obj()
 
     def set_flags(self):
@@ -74,6 +72,9 @@ class FastMeSolver(Solver):
         if not self.logs:
             self.flags += " > /dev/null"
 
+    def update_topology(self, init_topology):
+        self.init_topology = init_topology
+        self.set_flags()
 
     def change_flags(self,
                      bme=True, nni=True, digits=None, post_processing=False, triangular_inequality=False, logs=False):
