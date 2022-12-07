@@ -14,7 +14,7 @@ from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchBackTrack
 from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorchBackTrack2
 from Solvers.UCTSolver.utils.utc_utils import run_nni_search
-from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy
+from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy, random_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
 
 distances = DistanceData()
@@ -31,7 +31,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 20
+iterations = 50
 
 results = []
 
@@ -52,13 +52,15 @@ for run in range(runs):
 
     swa_nni = SwaSolverTorchNni(d)
     swa_nni.solve_timed(3, None, 10, 20,  5, 20)
+    print(swa_nni.obj_val)
     fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=swa_nni.T,
                         triangular_inequality=False, logs=False)
     fast.solve_timed()
     swa_nni.obj_val = fast.obj_val
 
-    mcts = UtcSolverTorchBackTrack2(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
+    mcts = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=10, nni_tol=0.02)
     mcts.solve_timed(iterations)
+    print(mcts.obj_val)
     fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=mcts.T,
                         triangular_inequality=False, logs=False)
     fast.solve_timed()
@@ -68,8 +70,13 @@ for run in range(runs):
     # nj_i.solve(int(np.ceil(mcts.time)))
     # print(mcts.obj_val, nj_i.obj_val)
 
-    mcts_ = UtcSolverTorchBackTrack(d, swa_policy, max_score_normalised, nni_iterations=20, nni_tol=0.02)
-    # mcts_.solve_timed(2)
+    mcts_ = UtcSolverTorch(d, swa_policy, max_score_normalised)
+    mcts_.solve_timed(iterations)
+    print(mcts_.obj_val)
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=mcts_.T,
+                        triangular_inequality=False, logs=False)
+    fast.solve_timed()
+    mcts_.obj_val = fast.obj_val
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
     # improved, nni_val, nni_sol = \
@@ -77,15 +84,20 @@ for run in range(runs):
     #                    mcts_.m, mcts_.device)
     # print("mmm ", nni_val)
 
-    mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
-    # mcts_t.solve_timed(iterations)
+    mcts_t = UtcSolverTorch(d, random_policy, average_score_normalised)
+    mcts_t.solve_timed(iterations*10)
+    print(mcts_t.obj_val)
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=mcts_t.T,
+                        triangular_inequality=False, logs=False)
+    fast.solve_timed()
+    mcts_t.obj_val = fast.obj_val
     #
 
     #
     fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
     fast.solve_timed()
-    print(swa.obj_val, swa_nni.obj_val, mcts.obj_val, fast.obj_val)
-    print(mcts.time, mcts_.time, mcts_t.time, fast.time, '\n')
+    print(swa.obj_val, swa_nni.obj_val, mcts.obj_val, mcts_.obj_val, mcts_t.obj_val, fast.obj_val)
+    print(swa_nni.time, mcts.time, mcts_.time, mcts_t.time,fast.time, '\n')
     #
     # fast = FastMeSolver(d, bme=True, nni=False, digits=17, post_processing=False, triangular_inequality=False, logs=False)
     # fast.solve_timed()
