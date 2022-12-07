@@ -17,6 +17,7 @@ from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorchBackTrack2
 from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy, random_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
+from check_nni import cn
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -24,7 +25,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 30
+dim = 40
 
 runs = 10
 
@@ -32,7 +33,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 20
+iterations = 400
 
 results = []
 
@@ -50,8 +51,12 @@ for run in range(runs):
     swa = SwaSolverTorch(d)
     swa.solve_timed()
 
+    A = cn(d)
+    print(swa.obj_val, "initial")
+    # A.check_nni(swa.solution)
+
     rand_nni = RandomNni(d)
-    rand_nni.solve_timed(100)
+    rand_nni.solve_timed(800)
     print("rand", rand_nni.time, rand_nni.obj_val)
 
 
@@ -63,7 +68,7 @@ for run in range(runs):
     swa_nni.obj_val = fast.obj_val
 
     mcts_fast = UtcSolverTorchSingleBackTrack(d, swa_policy, max_score_normalised, nni_tol=0.02)
-    mcts_fast.solve_timed(iterations)
+    # mcts_fast.solve_timed(10)
     print(mcts_fast.time, mcts_fast.backtracking_time)
 
     # nj_i = NjIlp(d)
@@ -71,7 +76,7 @@ for run in range(runs):
     # print(mcts.obj_val, nj_i.obj_val)
 
     mcts_random = UtcSolverTorchSingleBackTrack(d, random_policy, max_score_normalised, nni_tol=0.02)
-    mcts_random.solve_timed(100)
+    mcts_random.solve_timed(iterations)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
     # improved, nni_val, nni_sol = \
