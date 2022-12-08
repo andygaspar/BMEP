@@ -16,6 +16,7 @@ def nni_landscape(adj_mat, n_taxa, mat_size):
     nni_switches = torch.nonzero(nni_switches[(internal_branches[:, 0], internal_branches[:, 1])])
     nni_switches[:, 0] = torch.repeat_interleave(internal_branches[:, 1], repeats=2)
     nni_switches = nni_switches.reshape((-1, 8))
+    nni_switches[:, 3] = nni_switches[:, 1]
     to_remove = nni_switches[:, [0, 1, 4, 5, 2, 3, 6, 7]].reshape((-1, 2))
     nni_switches = nni_switches[:, [0, 5, 4, 1, 2, 7, 6, 3]].reshape((-1, 2))
     idxs = torch.arange(len(nni_switches)) // 2
