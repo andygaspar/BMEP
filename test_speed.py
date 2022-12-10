@@ -75,7 +75,7 @@ for run in range(runs):
     swa_nni.obj_val = fast.obj_val
 
     mcts_fast = UtcSolverTorchSingleBackTrack(d, swa_policy, max_score_normalised, nni_tol=0.02)
-    # mcts_fast.solve_timed(10)
+    mcts_fast.solve_timed(iterations)
     print(mcts_fast.time, mcts_fast.backtracking_time)
 
     # nj_i = NjIlp(d)

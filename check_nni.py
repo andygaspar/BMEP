@@ -19,12 +19,13 @@ class cn(Solver):
         t = time.time()
         mats = nni_landscape(adj_in, self.n_taxa, self.m)
         print(time.time() - t, "time nni old")
-        adj = adj_in.numpy()
+        adj = adj_in.to('cpu').numpy()
         o = np.nonzero(np.triu(adj[self.n_taxa:, self.n_taxa:]))
         o = o[0] + self.n_taxa, o[1] + self.n_taxa
         k = []
+        d = torch.tensor(self.d, device=self.device)
         for mat in mats:
-            k.append(self.compute_obj_val_from_adj_mat(mat.numpy(), self.d,self.n_taxa))
+            k.append(self.compute_obj_val_batch(mat.unsqueeze(0), d,self.n_taxa))
 
         print(min(k))
 
@@ -100,7 +101,6 @@ class cn(Solver):
             Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mats.shape[1], 1)
                                 + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mats.shape[1]))
 
-        d = torch.tensor(self.d)
         results =  (d * 2 ** (-Tau[:, :self.n_taxa, :self.n_taxa])).reshape(adj_mats.shape[0], -1).sum(dim=-1)
         print(torch.min(results).item())
         # for r in results:

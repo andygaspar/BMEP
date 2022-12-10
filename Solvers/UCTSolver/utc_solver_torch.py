@@ -24,7 +24,7 @@ class UtcSolverTorch(Solver):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
         self.root = NodeTorch(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
                                 rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
-        self.obj_val, self.solution = self.root.expand(0)
+        self.obj_val, self.solution = self.root.expand()
 
         for iteration in range(n_iterations):
             node = self.root
@@ -33,12 +33,12 @@ class UtcSolverTorch(Solver):
 
             if node.is_terminal():
                 break
-            run_best = node.expand(iteration)
+            run_best = node.expand()
             if run_best[0] < self.obj_val:
                 self.obj_val, self.solution = run_best
 
         improved, best_val, best_solution = \
-            run_nni_search(10, self.solution, self.obj_val, self.d, self.n_taxa, self.m, self.device)
+            run_nni_search(self.solution, self.obj_val, self.d, self.n_taxa, self.m)
         if improved:
             self.solution = best_solution
         self.obj_val = self.obj_val.item()

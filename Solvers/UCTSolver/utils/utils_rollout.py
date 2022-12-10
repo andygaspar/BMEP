@@ -7,22 +7,22 @@ from Solvers.UCTSolver.utils.utc_utils_batch import run_nni_search_batch
 from Solvers.solver import Solver
 
 
-def swa_policy(node, start, adj_mats: torch.tensor, iteration=None):
+def swa_policy(start, d, adj_mats: torch.tensor, n_taxa, device='cpu'):
     batch_size = adj_mats.shape[0]
     obj_vals = None
-    for step in range(start, node._n_taxa):
+    for step in range(start, n_taxa):
         idxs_list = torch.nonzero(torch.triu(adj_mats), as_tuple=True)
-        idxs_list = (torch.tensor(range(idxs_list[0].shape[0])).to(node._device), idxs_list[1], idxs_list[2])
+        idxs_list = (torch.tensor(range(idxs_list[0].shape[0])).to(device), idxs_list[1], idxs_list[2])
         minor_idxs = torch.tensor([j for j in range(step + 1)]
-                                  + [j for j in range(node._n_taxa, node._n_taxa + step - 1)]).to(node._device)
+                                  + [j for j in range(n_taxa, n_taxa + step - 1)]).to(device)
 
         repetitions = 3 + (step - 3) * 2
 
         adj_mats = adj_mats.repeat_interleave(repetitions, dim=0)
 
-        sol = node.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=node._n_taxa)
-        obj_vals = node.compute_obj_val_batch(adj_mats[:, minor_idxs, :][:, :, minor_idxs],
-                                              node._d[:step + 1, :step + 1].repeat(idxs_list[0].shape[0], 1, 1),
+        sol = Solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=n_taxa)
+        obj_vals = Solver.compute_obj_val_batch(adj_mats[:, minor_idxs, :][:, :, minor_idxs],
+                                              d[:step + 1, :step + 1].repeat(idxs_list[0].shape[0], 1, 1),
                                               step + 1)
         obj_vals = torch.min(obj_vals.reshape(-1, repetitions), dim=-1)
         adj_mats = sol.unsqueeze(0).view(batch_size, repetitions, adj_mats.shape[1],

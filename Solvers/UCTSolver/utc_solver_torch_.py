@@ -36,7 +36,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
         self.root = NodeTorch(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
                               rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
-        self.obj_val, self.solution = self.root.expand(0)
+        self.obj_val, self.solution = self.root.expand()
 
         for iteration in range(n_iterations):
             node = self.root
@@ -45,7 +45,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
 
             if node.is_terminal():
                 break
-            run_val, run_sol = node.expand(iteration)
+            run_val, run_sol = node.expand()
 
             t = time.time()
             Tau = self.get_tau_tensor(run_sol, self.n_taxa)

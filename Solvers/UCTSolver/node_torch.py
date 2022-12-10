@@ -72,18 +72,18 @@ class NodeTorch:
     Expand the current node by rolling out every child node and back-propagate information to parent nodes
     '''
 
-    def expand(self, iteration):
+    def expand(self):
         self._init_children()
         # print("n children", len(self._children))
-        obj_vals, sol_adj_mat = self.rollout(iteration)
+        obj_vals, sol_adj_mat = self.rollout()
         idx = torch.argmin(obj_vals)
         self.update_and_backprop(obj_vals[idx])
         return obj_vals[idx], sol_adj_mat[idx]
 
-    def expand_full(self, iteration):
+    def expand_full(self):
         self._init_children()
         # print("n children", len(self._children))
-        return self.rollout(iteration)
+        return self.rollout()
     def second_expand(self, swa_nni_policy):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         return swa_nni_policy(self, self._step_i + 1, adj_mats)
@@ -93,15 +93,15 @@ class NodeTorch:
         self.set_value(best_val)
         self._backprop()
 
-    def nni_expand(self, iteration):
+    def nni_expand(self):
         pass
     '''
     Rollout this node using the given rollout policy and update node value
     '''
 
-    def rollout(self, iteration):
+    def rollout(self):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
-        obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, self._d, adj_mats, self._n_taxa, iteration)
+        obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, self._d, adj_mats, self._n_taxa)
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
