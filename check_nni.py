@@ -16,12 +16,17 @@ class cn(Solver):
     def solve(self):
         pass
     def check_nni(self, adj_in:torch.Tensor):
+        t = time.time()
         mats = nni_landscape(adj_in, self.n_taxa, self.m)
+        print(time.time() - t, "time nni old")
         adj = adj_in.numpy()
         o = np.nonzero(np.triu(adj[self.n_taxa:, self.n_taxa:]))
         o = o[0] + self.n_taxa, o[1] + self.n_taxa
-        # for mat in mats:
-        #     print(self.compute_obj_val_from_adj_mat(mat.numpy(), self.d,self.n_taxa))
+        k = []
+        for mat in mats:
+            k.append(self.compute_obj_val_from_adj_mat(mat.numpy(), self.d,self.n_taxa))
+
+        print(min(k))
 
         for i in range(o[0].shape[0]):
             a, b = o[0][i], o[1][i]
@@ -97,7 +102,7 @@ class cn(Solver):
 
         d = torch.tensor(self.d)
         results =  (d * 2 ** (-Tau[:, :self.n_taxa, :self.n_taxa])).reshape(adj_mats.shape[0], -1).sum(dim=-1)
-        print(torch.min(results))
+        print(torch.min(results).item())
         # for r in results:
         #     print(r.item())
 

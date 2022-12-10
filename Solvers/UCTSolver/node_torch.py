@@ -7,6 +7,7 @@ import concurrent.futures
 import torch
 
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
+from Solvers.solver import Solver
 
 
 def rollout_node(node):
@@ -100,7 +101,7 @@ class NodeTorch:
 
     def rollout(self, iteration):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
-        obj_vals, sol_adj_mat = self._rollout_policy(self, self._step_i + 1, adj_mats, iteration)
+        obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, self._d, adj_mats, self._n_taxa, iteration)
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
@@ -113,7 +114,7 @@ class NodeTorch:
     def _init_children(self):
         idxs = torch.nonzero(torch.triu(self._adj_mat), as_tuple=True)
         idxs = (torch.tensor(range(idxs[0].shape[0])).to(self._device), idxs[1], idxs[2])
-        new_mats = self.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
+        new_mats = Solver.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
                                   idxs, self._step_i, self._n_taxa)
         self._children = [NodeTorch(mat.unsqueeze(0), self._step_i + 1, parent=self)
                           for mat in new_mats]
@@ -148,26 +149,5 @@ class NodeTorch:
     def is_expanded(self):
         return self._children is not None
 
-    @staticmethod
-    def add_nodes(adj_mat, idxs: torch.tensor, new_node_idx, n):
-        adj_mat[idxs] = adj_mat[idxs[0], idxs[2], idxs[1]] = 0  # detach selected
-        adj_mat[idxs[0], idxs[1], n + new_node_idx - 2] = adj_mat[
-            idxs[0], n + new_node_idx - 2, idxs[1]] = 1  # reattach selected to new
-        adj_mat[idxs[0], idxs[2], n + new_node_idx - 2] = adj_mat[
-            idxs[0], n + new_node_idx - 2, idxs[2]] = 1  # reattach selected to new
-        adj_mat[idxs[0], new_node_idx, n + new_node_idx - 2] = adj_mat[
-            idxs[0], n + new_node_idx - 2, new_node_idx] = 1  # attach new
 
-        return adj_mat
 
-    @staticmethod
-    def compute_obj_val_batch(adj_mat, d, n_taxa):
-        Tau = torch.full_like(adj_mat, n_taxa)
-        Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
-        Tau[diag] = 0  # diagonal elements should be zero
-        for i in range(adj_mat.shape[1]):
-            # The second term has the same shape as Tau due to broadcasting
-            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
-                                + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
-        return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)

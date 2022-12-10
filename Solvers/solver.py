@@ -73,6 +73,18 @@ class Solver:
         return T
 
     @staticmethod
+    def get_tau_tensor(adj_mat, n_taxa):
+        Tau = torch.full_like(adj_mat, n_taxa)
+        Tau[adj_mat > 0] = 1
+        diag = torch.eye(adj_mat.shape[1]).bool()
+        Tau[diag] = 0  # diagonal elements should be zero
+        for i in range(adj_mat.shape[1]):
+            # The second term has the same shape as Tau due to broadcasting
+            Tau = torch.minimum(Tau, Tau[ i, :].unsqueeze(0)
+                                + Tau[:, i].unsqueeze(1))
+        return Tau[:n_taxa, :n_taxa]
+
+    @staticmethod
     def add_node(adj_mat, idxs, new_node_idx, n):
         adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
         adj_mat[idxs[0], n + new_node_idx - 2] = adj_mat[n + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
@@ -93,18 +105,6 @@ class Solver:
 
         return adj_mat
 
-    @staticmethod
-    def compute_obj_val_batch(adj_mat, d, n_taxa):
-        Tau = torch.full_like(adj_mat, n_taxa)
-        Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
-        Tau[diag] = 0  # diagonal elements should be zero
-        for i in range(adj_mat.shape[1]):
-            # The second term has the same shape as Tau due to broadcasting
-            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
-                                + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
-        return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
-
     def compute_obj(self):
         return np.sum(
             [self.d[i, j] / self.powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
@@ -121,13 +121,17 @@ class Solver:
         return np.sum([d[i, j] / self.powers[T[i, j]] for i in r for j in r])
 
     @staticmethod
-    def get_tau_tensor(adj_mat, n_taxa):
+    def compute_obj_val_batch(adj_mat, d, n_taxa):
         Tau = torch.full_like(adj_mat, n_taxa)
         Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1]).bool()
+        diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
         Tau[diag] = 0  # diagonal elements should be zero
         for i in range(adj_mat.shape[1]):
             # The second term has the same shape as Tau due to broadcasting
-            Tau = torch.minimum(Tau, Tau[ i, :].unsqueeze(0)
-                                + Tau[:, i].unsqueeze(1))
-        return Tau[:n_taxa, :n_taxa]
+            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
+                                + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
+        return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
+
+
+
+

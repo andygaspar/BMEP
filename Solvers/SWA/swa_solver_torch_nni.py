@@ -40,15 +40,13 @@ class SwaSolverTorchNni(Solver):
             if step > after and (step - 3) % every == 0:
 
                 improved, best_val, best_solution = \
-                    run_nni_search(n_iter, adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m,
-                                   self.device)
+                    run_nni_search(adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m)
 
                 if improved:
                     adj_mat = self.adjust_matrix(best_solution, step)
 
         improved, best_val, best_solution = \
-            run_nni_search(5, adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m,
-                           self.device)
+            run_nni_search(adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m)
 
         if improved:
             adj_mat = self.adjust_matrix(best_solution, self.n_taxa - 1)

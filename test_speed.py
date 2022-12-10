@@ -27,13 +27,13 @@ data_set = distances.get_dataset(3)
 
 dim = 40
 
-runs = 10
+runs = 1
 
 results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 400
+iterations = 20
 
 results = []
 
@@ -51,13 +51,20 @@ for run in range(runs):
     swa = SwaSolverTorch(d)
     swa.solve_timed()
 
+
+
     A = cn(d)
     print(swa.obj_val, "initial")
-    # A.check_nni(swa.solution)
+    A.check_nni(swa.solution)
 
     rand_nni = RandomNni(d)
-    rand_nni.solve_timed(800)
+    rand_nni.solve_timed(iterations)
     print("rand", rand_nni.time, rand_nni.obj_val)
+
+    rand_nni1 = RandomNni(d, parallel=True)
+    rand_nni1.solve_timed(iterations)
+    print("rand parallel", rand_nni1.time, rand_nni1.obj_val)
+    print(np.array_equal(rand_nni.solution, rand_nni1.solution))
 
 
     swa_nni = SwaSolverTorchNni(d)

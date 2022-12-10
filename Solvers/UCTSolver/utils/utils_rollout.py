@@ -4,6 +4,7 @@ import torch
 
 from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.UCTSolver.utils.utc_utils_batch import run_nni_search_batch
+from Solvers.solver import Solver
 
 
 def swa_policy(node, start, adj_mats: torch.tensor, iteration=None):
@@ -30,17 +31,17 @@ def swa_policy(node, start, adj_mats: torch.tensor, iteration=None):
     return obj_vals.values, adj_mats
 
 
-def random_policy(node, start, adj_mats, iteration=None):
+def random_policy(start, d, adj_mats, n_taxa,  iteration=None):
     batch_size = adj_mats.shape[0]
-    for step in range(start, node._n_taxa):
+    for step in range(start, n_taxa):
         choices = 3 + (step - 3) * 2
         idxs_list = torch.nonzero(torch.triu(adj_mats)).reshape(batch_size, -1, 3)
         rand_idxs = random.choices(range(choices), k=batch_size)
         idxs_list = idxs_list[[range(batch_size)], rand_idxs, :]
         idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
-        adj_mats = node.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=node._n_taxa)
+        adj_mats = Solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=n_taxa)
 
-    obj_vals = node.compute_obj_val_batch(adj_mats, node._d.repeat(batch_size, 1, 1), node._n_taxa)
+    obj_vals = Solver.compute_obj_val_batch(adj_mats, d, n_taxa)
     return obj_vals, adj_mats
 
 

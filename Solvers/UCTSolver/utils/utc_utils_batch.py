@@ -1,6 +1,7 @@
 import torch
 
 from Solvers.UCTSolver.node_torch import NodeTorch
+from Solvers.solver import Solver
 
 
 def nni_landscape_batch(adj_mat, n_taxa, mat_size):
@@ -19,6 +20,7 @@ def nni_landscape_batch(adj_mat, n_taxa, mat_size):
     nni_switches = torch.nonzero(nni_switches[(internal_branches[:, 0], internal_branches[:, 1])])
     nni_switches[:, 0] = torch.repeat_interleave(internal_branches[:, 1], repeats=2)
     nni_switches = nni_switches.reshape((-1, 8))
+    nni_switches[:, 3] = nni_switches[:, 1]
     to_remove = nni_switches[:, [0, 1, 4, 5, 2, 3, 6, 7]].reshape((-1, 2))
     nni_switches = nni_switches[:, [0, 5, 4, 1, 2, 7, 6, 3]].reshape((-1, 2))
     idxs = torch.arange(len(nni_switches)) // 2
@@ -32,13 +34,14 @@ def nni_landscape_batch(adj_mat, n_taxa, mat_size):
     return new_trees.view((batch_size, 2*step, mat_size, mat_size))
 
 
-def run_nni_search_batch(iterations, current_adj, best_val, d, n_taxa, m, device):
+def run_nni_search_batch(current_adj, best_val, d, n_taxa, m, device):
     sol = current_adj
     batch_size = current_adj.shape[0]
-    improved = torch.zeros(size=(batch_size,), dtype=torch.bool, device=device)
-    for _ in range(iterations):
+    improved = torch.ones(size=(batch_size,), dtype=torch.bool, device=device)
+    while torch.any(improved):
+        improved[:] = False
         expl_trees = nni_landscape_batch(sol, n_taxa, m)
-        obj_vals = NodeTorch.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, n_taxa)
+        obj_vals = Solver.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, n_taxa)
         new_obj_val = torch.min(obj_vals.view(batch_size, -1), dim=-1)
         sol = expl_trees[range(batch_size), new_obj_val[1]]
         idxs = torch.argwhere(best_val > new_obj_val.values).squeeze(1)
