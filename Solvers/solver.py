@@ -6,6 +6,7 @@ import networkx as nx
 import numpy as np
 import torch
 
+pippo = 0
 
 class Solver:
 
@@ -122,6 +123,7 @@ class Solver:
 
     @staticmethod
     def compute_obj_val_batch(adj_mat, d, n_taxa):
+        t = time.time()
         Tau = torch.full_like(adj_mat, n_taxa)
         Tau[adj_mat > 0] = 1
         diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
@@ -130,7 +132,8 @@ class Solver:
             # The second term has the same shape as Tau due to broadcasting
             Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
                                 + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
-        return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
+        t = time.time() - t
+        return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1), t
 
 
 

@@ -36,7 +36,7 @@ class RandomNni(Solver):
         obj_vals, adj_mats = random_policy(3, d, adj_mats, self.n_taxa)
         print("here")
         improved, best_val, current_adj = \
-            run_nni_search_batch(adj_mats, obj_vals, d, self.n_taxa, self.m, self.device)
+            run_nni_search_batch(adj_mats, obj_vals[0], d, self.n_taxa, self.m, self.device)
         idx = torch.argmin(best_val)
         self.obj_val = best_val[idx].item()
         self.solution = current_adj[idx].to('cpu').numpy()

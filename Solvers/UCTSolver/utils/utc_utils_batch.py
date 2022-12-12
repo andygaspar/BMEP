@@ -1,3 +1,5 @@
+import time
+
 import torch
 
 from Solvers.UCTSolver.node_torch import NodeTorch
@@ -36,22 +38,28 @@ def nni_landscape_batch(adj_mat, n_taxa, mat_size):
 
 def run_nni_search_batch(current_adj, best_val, d, n_taxa, m, device):
     sol = current_adj
-    batch_size = current_adj.shape[0]
+    batch_size =  size = current_adj.shape[0]
     improved = torch.ones(size=(batch_size,), dtype=torch.bool, device=device)
     idxs = range(batch_size)
-    all_idxs = torch.tensor([idxs, idxs], device=device)
-    while torch.any(improved):
+    all_idxs = torch.tensor([idxs, idxs], device=device).T
+    t = 0
+    t_tau = 0
+    while sol.shape[0] > 0:
         improved[:] = False
         expl_trees = nni_landscape_batch(sol, n_taxa, m)
         batch_size = expl_trees.shape[0]
-        obj_vals = Solver.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, n_taxa)
+        tt = time.time()
+        obj_vals, j = Solver.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, n_taxa)
+        t += time.time() - tt
+        t_tau += j
         new_obj_val = torch.min(obj_vals.view(batch_size, -1), dim=-1)
         sol = expl_trees[range(batch_size), new_obj_val[1]]
-        idxs = torch.argwhere(best_val[all_idxs[idxs][:, 1]] > new_obj_val.values).squeeze(1)
-        current_adj[all_idxs[idxs][:, 1]] =  sol[idxs]
+        idxs = torch.argwhere(best_val[all_idxs[:, 1]] > new_obj_val.values).squeeze(1)
+        current_adj[all_idxs[idxs, 1]] =  sol[idxs]
         best_val[all_idxs[idxs][:, 1]] = new_obj_val.values[idxs]
-        improved[idxs] = True
-        if improved.sum() < 20:
-            print(improved.sum())
-        sol = sol[improved]
+        if idxs.shape[0] < size:
+            size = idxs.shape[0]
+        sol = sol[idxs]
+        all_idxs = torch.tensor([range(idxs.shape[0]), all_idxs[idxs, 1]], device=device).T
+    print("comp time", t, t_tau)
     return improved, best_val, current_adj

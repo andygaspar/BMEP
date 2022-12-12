@@ -53,18 +53,18 @@ for run in range(runs):
 
 
 
-    A = cn(d)
-    print(swa.obj_val, "initial")
-    A.check_nni(swa.solution)
-
-    rand_nni = RandomNni(d)
-    rand_nni.solve_timed(iterations)
-    print("rand", rand_nni.time, rand_nni.obj_val)
+    # A = cn(d)
+    # print(swa.obj_val, "initial")
+    # A.check_nni(swa.solution)
+    #
+    # rand_nni = RandomNni(d)
+    # rand_nni.solve_timed(iterations)
+    # print("rand", rand_nni.time, rand_nni.obj_val)
 
     rand_nni1 = RandomNni(d, parallel=True)
     rand_nni1.solve_timed(iterations)
     print("rand parallel", rand_nni1.time, rand_nni1.obj_val)
-    print(np.array_equal(rand_nni.solution, rand_nni1.solution))
+    # print(np.array_equal(rand_nni.solution, rand_nni1.solution))
 
 
     swa_nni = SwaSolverTorchNni(d)
@@ -96,7 +96,7 @@ for run in range(runs):
     #
 
     #
-    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=False, triangular_inequality=False, logs=False)
     fast.solve_timed()
     print(swa.obj_val, swa_nni.obj_val, mcts_random.obj_val, mcts_fast.obj_val, fast.obj_val)
     print(swa.time, swa_nni.time, mcts_random.time, mcts_fast.time, fast.time, '\n')
