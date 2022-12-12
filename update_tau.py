@@ -26,7 +26,7 @@ def get_tau_tensor(adj_mat, n_taxa):
     sub_adj = adj_mat[n_taxa:, n_taxa:]
     Tau = torch.full_like(sub_adj, n_taxa)
     Tau[sub_adj > 0] = 1
-    diag = torch.eye(sub_adj.shape[1]).bool()
+    diag = torch.eye(sub_adj.shape[1], device='cuda:0').bool()
     Tau[diag] = 0  # diagonal elements should be zero
     for i in range(sub_adj.shape[1]):
         # The second term has the same shape as Tau due to broadcasting
@@ -56,19 +56,19 @@ solver = RandomSolver(d)
 T = torch.zeros((8,8))
 a = torch.zeros(8)
 b = torch.zeros(8)
-adj_mat = torch.tensor(solver.initial_adj_mat())
+adj_mat = torch.tensor(solver.initial_adj_mat()).to('cuda:0')
 for i in range(3, solver.n_taxa):
     idxs_list = torch.nonzero(torch.triu(adj_mat))
     idxs = random.choice(idxs_list)
     adj_mat = solver.add_node(adj_mat, idxs, i, solver.n_taxa)
-    T = adj_mat[dim:, dim:]
-    for _ in range(2, i):
-        g= torch.nonzero(T[i - 2])
-        a[g] = 1
-        T[i - 2, g] = 0
-        g= torch.nonzero(T[i - 2])
-        b[g] = 1
-        T[i - 2, g] = 0
+    # T = adj_mat[dim:, dim:]
+    # for _ in range(2, i):
+    #     g= torch.nonzero(T[i - 2])
+    #     a[g] = 1
+    #     T[i - 2, g] = 0
+    #     g= torch.nonzero(T[i - 2])
+    #     b[g] = 1
+    #     T[i - 2, g] = 0
 
 
 
@@ -77,7 +77,10 @@ r = time.time()
 t = get_tau_tensor(adj_mat, solver.n_taxa)
 idxs = torch.nonzero(adj_mat[:solver.n_taxa])[:, 1]
 a = torch.cartesian_prod(idxs, idxs) - solver.n_taxa
+b = torch.vstack([idxs.repeat_interleave(solver.n_taxa), idxs.repeat(solver.n_taxa)]) - solver.n_taxa
+tau_ = (t[b[0], b[1]] + 2).reshape(solver.n_taxa, solver.n_taxa)
 tau = (t[a[:, 0], a[:, 1]] + 2).reshape(solver.n_taxa, solver.n_taxa)
+print(torch.equal(tau, tau_))
 tau[range(solver.n_taxa), range(solver.n_taxa)] = 0
 print(time.time() - r)
 
@@ -94,6 +97,13 @@ print(time.time() - r)
 
 print(torch.equal(tau, tau_tens))
 
+import torch
 
 
+g = torch.rand(8)
+g
 
+idd = torch.randint(0,4,(4,4))
+g[idd]
+idd
+g
