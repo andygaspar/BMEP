@@ -7,7 +7,7 @@ from Solvers.UCTSolver.utils.utc_utils_batch import run_nni_search_batch
 from Solvers.solver import Solver
 
 
-def swa_policy(start, d, adj_mats: torch.tensor, n_taxa, device='cpu'):
+def swa_policy(start, d, adj_mats: torch.tensor, n_taxa, powers, device):
     batch_size = adj_mats.shape[0]
     obj_vals = None
     for step in range(start, n_taxa):
@@ -23,7 +23,7 @@ def swa_policy(start, d, adj_mats: torch.tensor, n_taxa, device='cpu'):
         sol = Solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=n_taxa)
         obj_vals = Solver.compute_obj_val_batch(adj_mats[:, minor_idxs, :][:, :, minor_idxs],
                                               d[:step + 1, :step + 1].repeat(idxs_list[0].shape[0], 1, 1),
-                                              step + 1)
+                                              n_taxa=step + 1, powers=powers, device=device)
         obj_vals = torch.min(obj_vals.reshape(-1, repetitions), dim=-1)
         adj_mats = sol.unsqueeze(0).view(batch_size, repetitions, adj_mats.shape[1],
                                          adj_mats.shape[2])[range(batch_size), obj_vals.indices, :, :]
@@ -31,7 +31,7 @@ def swa_policy(start, d, adj_mats: torch.tensor, n_taxa, device='cpu'):
     return obj_vals.values, adj_mats
 
 
-def random_policy(start, d, adj_mats, n_taxa,  iteration=None):
+def random_policy(start, d, adj_mats, n_taxa,  powers, device, iteration=None):
     batch_size = adj_mats.shape[0]
     for step in range(start, n_taxa):
         choices = 3 + (step - 3) * 2
@@ -41,7 +41,7 @@ def random_policy(start, d, adj_mats, n_taxa,  iteration=None):
         idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
         adj_mats = Solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=n_taxa)
 
-    obj_vals = Solver.compute_obj_val_batch(adj_mats, d, n_taxa)
+    obj_vals = Solver.compute_obj_val_batch(adj_mats, d, powers, n_taxa, device)
     return obj_vals, adj_mats
 
 

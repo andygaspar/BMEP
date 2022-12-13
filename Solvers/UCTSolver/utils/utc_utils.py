@@ -35,13 +35,13 @@ def nni_landscape(adj_mat, n_taxa, mat_size):
     return new_trees
 
 
-def run_nni_search(best_solution, best_val, d, n_taxa, m):
+def run_nni_search(best_solution, best_val, d, n_taxa, m, powers, device):
     sol = best_solution
     improved = True
     while improved:
         improved = False
         expl_trees = nni_landscape(sol, n_taxa, m)
-        obj_vals = Solver.compute_obj_val_batch(expl_trees, d, n_taxa)
+        obj_vals = Solver.compute_obj_val_batch(expl_trees, d, powers=powers, n_taxa=n_taxa, device=device)
         new_obj_val = torch.min(obj_vals)
         idx = torch.argmin(obj_vals)
         sol = expl_trees[idx]

@@ -18,7 +18,14 @@ class Solver:
         self.n_taxa = d.shape[0] if d is not None else None
         self.m = self.n_taxa * 2 - 2 if d is not None else None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.powers = np.array([2 ** (-i) for i in range(self.n_taxa)]) if self.n_taxa is not None else None
+        self.np_powers = np.array([2 ** (-i) for i in range(self.n_taxa)]) if self.n_taxa is not None else None
+        if self.n_taxa is not None:
+            if self.device == torch.device("cuda:0"):
+                exponents = torch.tensor([-i for i in range(self.n_taxa)], dtype=torch.float64, device=self.device)
+                self.powers = torch.pow(torch.tensor([2], dtype=torch.float64, device=self.device), exponents)
+            else:
+                self.powers = self.np_powers
+
 
         self.solution = None
         self.obj_val = None
@@ -42,7 +49,7 @@ class Solver:
 
     def initial_adj_mat(self, device=None, n_problems=0):
         if n_problems == 0:
-            adj_mat = np.zeros((self.m, self.m)) if device is None else torch.zeros((self.m, self.m)).to(device)
+            adj_mat = np.zeros((self.m, self.m)) if device is None else torch.zeros((self.m, self.m), dtype=torch.short).to(device)
             adj_mat[0, self.n_taxa] = adj_mat[self.n_taxa, 0] = 1
             adj_mat[1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
             adj_mat[2, self.n_taxa] = adj_mat[self.n_taxa, 2] = 1
@@ -108,7 +115,7 @@ class Solver:
 
     def compute_obj(self):
         return np.sum(
-            [self.d[i, j] / self.powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
+            [self.d[i, j] * self.np_powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
 
     def compute_obj_val_from_adj_mat(self, adj_mat, d, n_taxa):
         T = np.full(adj_mat.shape, n_taxa)
@@ -122,28 +129,17 @@ class Solver:
         return np.sum([d[i, j] / self.powers[T[i, j]] for i in r for j in r])
 
     @staticmethod
-    def compute_obj_val_batch(adj_mat, d, n_taxa):
-        vals = torch.tensor([2**(-i) for i in range(n_taxa)], device='cuda:0')
-        t = time.time()
+    def compute_obj_val_batch(adj_mat, d, powers, n_taxa, device):
         Tau = torch.full_like(adj_mat, n_taxa)
         Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1], device='cuda:0').repeat(adj_mat.shape[0], 1, 1).bool()
+        diag = torch.eye(adj_mat.shape[1], device=device).repeat(adj_mat.shape[0], 1, 1).bool()
         Tau[diag] = 0  # diagonal elements should be zero
         for i in range(adj_mat.shape[1]):
             # The second term has the same shape as Tau due to broadcasting
             Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
                                 + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
-        t = time.time() - t
-        tt = time.time()
-        val = (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
-        tt = time.time() - tt
-
         Tau = Tau.to(torch.long)
-        ttt = time.time()
-        val2 = (d * vals[Tau[:, :n_taxa, :n_taxa]]).reshape(adj_mat.shape[0], -1).sum(dim=-1)
-        ttt = time.time() - ttt
-        print("vvv",t, tt, ttt)
-        return val, t, tt, ttt
+        return (d * powers[Tau[:, :n_taxa, :n_taxa]]).reshape(adj_mat.shape[0], -1).sum(dim=-1)
     @staticmethod
     def compute_obj_val_batch_2(adj_mat, d, n_taxa):
         sub_adj = adj_mat[n_taxa:, n_taxa:]

@@ -26,13 +26,16 @@ def get_tau_tensor(adj_mat, n_taxa):
     sub_adj = adj_mat[n_taxa:, n_taxa:]
     Tau = torch.full_like(sub_adj, n_taxa)
     Tau[sub_adj > 0] = 1
-    diag = torch.eye(sub_adj.shape[1], device='cuda:0').bool()
-    Tau[diag] = 0  # diagonal elements should be zero
+    Tau.fill_diagonal_(0)  # diagonal elements should be zero
     for i in range(sub_adj.shape[1]):
         # The second term has the same shape as Tau due to broadcasting
         Tau = torch.minimum(Tau, Tau[i, :].unsqueeze(0)
                             + Tau[:, i].unsqueeze(1))
-    return Tau[:n_taxa, :n_taxa]
+
+    idxs = torch.nonzero(adj_mat[:n_taxa])[:, 1]
+    a = torch.cartesian_prod(idxs, idxs) - n_taxa
+    Tau = (Tau[a[:, 0], a[:, 1]] + 2).reshape(n_taxa, n_taxa)
+    return Tau.fill_diagonal_(0)
 
 
 distances = DistanceData()
@@ -40,7 +43,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 10
+dim = 50
 
 runs = 1
 
@@ -74,14 +77,7 @@ for i in range(3, solver.n_taxa):
 
 
 r = time.time()
-t = get_tau_tensor(adj_mat, solver.n_taxa)
-idxs = torch.nonzero(adj_mat[:solver.n_taxa])[:, 1]
-a = torch.cartesian_prod(idxs, idxs) - solver.n_taxa
-b = torch.vstack([idxs.repeat_interleave(solver.n_taxa), idxs.repeat(solver.n_taxa)]) - solver.n_taxa
-tau_ = (t[b[0], b[1]] + 2).reshape(solver.n_taxa, solver.n_taxa)
-tau = (t[a[:, 0], a[:, 1]] + 2).reshape(solver.n_taxa, solver.n_taxa)
-print(torch.equal(tau, tau_))
-tau[range(solver.n_taxa), range(solver.n_taxa)] = 0
+tau = get_tau_tensor(adj_mat, solver.n_taxa)
 print(time.time() - r)
 
 
@@ -92,18 +88,9 @@ tau_tens = solver.get_tau_tensor(adj_mat, solver.n_taxa)
 print(time.time() - r)
 
 
-
+# b = torch.vstack([idxs.repeat_interleave(solver.n_taxa), idxs.repeat(solver.n_taxa)]) - solver.n_taxa
+# tau_ = (t[b[0], b[1]] + 2).reshape(solver.n_taxa, solver.n_taxa)
 
 
 print(torch.equal(tau, tau_tens))
 
-import torch
-
-
-g = torch.rand(8)
-g
-
-idd = torch.randint(0,4,(4,4))
-g[idd]
-idd
-g

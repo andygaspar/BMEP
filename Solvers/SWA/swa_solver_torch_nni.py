@@ -33,20 +33,20 @@ class SwaSolverTorchNni(Solver):
             sol = self.add_nodes(adj_mat, idxs_list, new_node_idx=step, n=self.n_taxa)
             obj_vals = self.compute_obj_val_batch(adj_mat[:, minor_idxs, :][:, :, minor_idxs],
                                                   self.d[:step + +1, :step + 1].repeat((idxs_list[0].shape[0], 1, 1)),
-                                                  step + 1)
+                                                  powers=self.powers, n_taxa=step + 1, device=self.device)
 
             best_idx = torch.argmin(obj_vals)
             adj_mat = sol[best_idx].unsqueeze(0)
-            if step > after and (step - 3) % every == 0:
-
-                improved, best_val, best_solution = \
-                    run_nni_search(adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m)
-
-                if improved:
-                    adj_mat = self.adjust_matrix(best_solution, step)
+            # if step > after and (step - 3) % every == 0:
+            #
+            #     improved, best_val, best_solution = \
+            #         run_nni_search(adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m, self.powers, self.device)
+            #
+            #     if improved:
+            #         adj_mat = self.adjust_matrix(best_solution, step)
 
         improved, best_val, best_solution = \
-            run_nni_search(adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m)
+            run_nni_search(adj_mat.squeeze(0), obj_vals[best_idx], self.d, self.n_taxa, self.m, powers=self.powers, device=self.device)
 
         if improved:
             adj_mat = self.adjust_matrix(best_solution, self.n_taxa - 1)
@@ -65,16 +65,16 @@ class SwaSolverTorchNni(Solver):
 
         return adj_mat
 
-    def compute_obj_val_batch(self, adj_mat, d, n_taxa):
-        A = torch.full_like(adj_mat, n_taxa)
-        A[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
-        A[diag] = 0  # diagonal elements should be zero
-        for i in range(adj_mat.shape[1]):
-            # The second term has the same shape as A due to broadcasting
-            A = torch.minimum(A, A[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
-                              + A[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
-        return (d * 2**(-A[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
+    # def compute_obj_val_batch(self, adj_mat, d, n_taxa):
+    #     A = torch.full_like(adj_mat, n_taxa)
+    #     A[adj_mat > 0] = 1
+    #     diag = torch.eye(adj_mat.shape[1]).repeat(adj_mat.shape[0], 1, 1).bool()
+    #     A[diag] = 0  # diagonal elements should be zero
+    #     for i in range(adj_mat.shape[1]):
+    #         # The second term has the same shape as A due to broadcasting
+    #         A = torch.minimum(A, A[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
+    #                           + A[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
+    #     return (d * 2**(-A[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
 
     def adjust_matrix(self, adj_mat, last_inserted_taxa):
         adj_mat = adj_mat.unsqueeze(0).repeat(2, 1, 1)

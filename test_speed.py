@@ -27,7 +27,7 @@ data_set = distances.get_dataset(3)
 
 dim = 40
 
-runs = 1
+runs = 10
 
 results = np.zeros((runs, 4))
 
@@ -96,7 +96,7 @@ for run in range(runs):
     #
 
     #
-    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=False, triangular_inequality=False, logs=False)
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
     fast.solve_timed()
     print(swa.obj_val, swa_nni.obj_val, mcts_random.obj_val, mcts_fast.obj_val, fast.obj_val)
     print(swa.time, swa_nni.time, mcts_random.time, mcts_fast.time, fast.time, '\n')

@@ -16,7 +16,7 @@ def rollout_node(node):
 
 class NodeTorch:
     def __init__(self, adj_mat, step_i=3, d=None, n_taxa=None, c=None,  parent=None, rollout_=None,
-                 compute_scores=None, device=None):
+                 compute_scores=None, powers= None, device=None):
         self._adj_mat = adj_mat
         self._step_i = step_i
         self._n_taxa = n_taxa if n_taxa is not None else parent._n_taxa
@@ -30,7 +30,9 @@ class NodeTorch:
         self._parent = parent
         self._children = None
 
-        self._device = device
+        self.powers = powers if powers is not None else parent.powers
+
+        self.device = device if device is not None else parent.device
         self._average_obj_val = 0
 
         self._rollout_policy = rollout_ if rollout_ is not None else parent._rollout_policy
@@ -101,7 +103,8 @@ class NodeTorch:
 
     def rollout(self):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
-        obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, self._d, adj_mats, self._n_taxa)
+        obj_vals, sol_adj_mat = self._rollout_policy(self._step_i + 1, self._d, adj_mats, self._n_taxa, self.powers,
+                                                     self.device)
         for i, child in enumerate(self._children):
             child.add_visit()
             child.set_value(obj_vals[i])
@@ -113,7 +116,7 @@ class NodeTorch:
 
     def _init_children(self):
         idxs = torch.nonzero(torch.triu(self._adj_mat), as_tuple=True)
-        idxs = (torch.tensor(range(idxs[0].shape[0])).to(self._device), idxs[1], idxs[2])
+        idxs = (torch.tensor(range(idxs[0].shape[0])).to(self.device), idxs[1], idxs[2])
         new_mats = Solver.add_nodes(copy.deepcopy(self._adj_mat.repeat((idxs[0].shape[0], 1, 1))),
                                   idxs, self._step_i, self._n_taxa)
         self._children = [NodeTorch(mat.unsqueeze(0), self._step_i + 1, parent=self)
