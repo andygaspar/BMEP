@@ -54,7 +54,7 @@ class Solver:
             adj_mat[1, self.n_taxa] = adj_mat[self.n_taxa, 1] = 1
             adj_mat[2, self.n_taxa] = adj_mat[self.n_taxa, 2] = 1
         else:
-            adj_mat = torch.zeros((n_problems, self.m, self.m)).to(self.device)
+            adj_mat = torch.zeros((n_problems, self.m, self.m), dtype=torch.short).to(self.device)
             adj_mat[:, 0, self.n_taxa] = adj_mat[:, self.n_taxa, 0] = 1
             adj_mat[:, 1, self.n_taxa] = adj_mat[:, self.n_taxa, 1] = 1
             adj_mat[:, 2, self.n_taxa] = adj_mat[:, self.n_taxa, 2] = 1

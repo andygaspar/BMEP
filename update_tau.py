@@ -22,21 +22,37 @@ from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_s
 from check_nni import cn
 
 
-def get_tau_tensor(adj_mat, n_taxa):
-    sub_adj = adj_mat[n_taxa:, n_taxa:]
+def get_tau_tensor(adj_mat, n_taxa, device):
+    sub_adj = adj_mat[:, n_taxa:, n_taxa:]
     Tau = torch.full_like(sub_adj, n_taxa)
     Tau[sub_adj > 0] = 1
-    Tau.fill_diagonal_(0)  # diagonal elements should be zero
+    diag_idx = torch.tensor(range(n_taxa), device=device)
+    Tau[:, diag_idx[:-2], diag_idx[:-2]] = 0  # diagonal elements should be zero
     for i in range(sub_adj.shape[1]):
         # The second term has the same shape as Tau due to broadcasting
-        Tau = torch.minimum(Tau, Tau[i, :].unsqueeze(0)
-                            + Tau[:, i].unsqueeze(1))
+        Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1)
+                            + Tau[:, :, i].unsqueeze(2))
 
-    idxs = torch.nonzero(adj_mat[:n_taxa])[:, 1]
-    a = torch.cartesian_prod(idxs, idxs) - n_taxa
-    Tau = (Tau[a[:, 0], a[:, 1]] + 2).reshape(n_taxa, n_taxa)
-    return Tau.fill_diagonal_(0)
+    idxs = torch.nonzero(adj_mat[:, :n_taxa])[:, [0, 2]]
+    k = idxs[:, 1].reshape(batch_size, n_taxa).repeat(1, n_taxa).flatten()
+    idxs = idxs.repeat_interleave(solver.n_taxa, 0)
+    b = torch.column_stack((idxs, k))
+    b[:, [1, 2]] -= n_taxa
+    Tau = (Tau[b[:, 0], b[:, 1], b[:, 2]] + 2).reshape(batch_size, n_taxa, n_taxa)
+    Tau[:, diag_idx, diag_idx] = 0
+    return Tau
 
+
+def compute_ttaus(adj_mat, n_taxa, device):
+    Tau = torch.full_like(adj_mat, n_taxa)
+    Tau[adj_mat > 0] = 1
+    diag = torch.eye(adj_mat.shape[1], device=device).repeat(adj_mat.shape[0], 1, 1).bool()
+    Tau[diag] = 0  # diagonal elements should be zero
+    for i in range(adj_mat.shape[1]):
+        # The second term has the same shape as Tau due to broadcasting
+        Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
+                            + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
+    return  Tau[:, :n_taxa, :n_taxa]
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -59,11 +75,15 @@ solver = RandomSolver(d)
 T = torch.zeros((8,8))
 a = torch.zeros(8)
 b = torch.zeros(8)
-adj_mat = torch.tensor(solver.initial_adj_mat()).to('cuda:0')
-for i in range(3, solver.n_taxa):
-    idxs_list = torch.nonzero(torch.triu(adj_mat))
-    idxs = random.choice(idxs_list)
-    adj_mat = solver.add_node(adj_mat, idxs, i, solver.n_taxa)
+batch_size = 40
+adj_mats = torch.tensor(solver.initial_adj_mat(n_problems=batch_size)).to('cpu')
+for step in range(3, dim):
+    choices = 3 + (step - 3) * 2
+    idxs_list = torch.nonzero(torch.triu(adj_mats)).reshape(batch_size, -1, 3)
+    rand_idxs = random.choices(range(choices), k=batch_size)
+    idxs_list = idxs_list[[range(batch_size)], rand_idxs, :]
+    idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
+    adj_mats = solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=dim)
     # T = adj_mat[dim:, dim:]
     # for _ in range(2, i):
     #     g= torch.nonzero(T[i - 2])
@@ -74,17 +94,18 @@ for i in range(3, solver.n_taxa):
     #     T[i - 2, g] = 0
 
 
+device = 'cpu'
 
 
 r = time.time()
-tau = get_tau_tensor(adj_mat, solver.n_taxa)
+tau = get_tau_tensor(adj_mats, solver.n_taxa, device)
 print(time.time() - r)
 
 
 
 
 r = time.time()
-tau_tens = solver.get_tau_tensor(adj_mat, solver.n_taxa)
+tau_tens = compute_ttaus(adj_mats, solver.n_taxa, device)
 print(time.time() - r)
 
 
