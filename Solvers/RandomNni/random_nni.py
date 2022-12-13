@@ -34,7 +34,6 @@ class RandomNni(Solver):
         d = torch.tensor(self.d, device=self.device)
         adj_mats = self.initial_adj_mat(self.device, iterations)
         obj_vals, adj_mats = random_policy(3, d, adj_mats, self.n_taxa, self.powers, self.device)
-        print("here")
         improved, best_val, current_adj = \
             run_nni_search_batch(adj_mats, obj_vals, d, self.n_taxa, self.m, self.powers, self.device)
         idx = torch.argmin(best_val)

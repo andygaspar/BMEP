@@ -130,14 +130,23 @@ class Solver:
 
     @staticmethod
     def compute_obj_val_batch(adj_mat, d, powers, n_taxa, device):
-        Tau = torch.full_like(adj_mat, n_taxa)
-        Tau[adj_mat > 0] = 1
-        diag = torch.eye(adj_mat.shape[1], device=device).repeat(adj_mat.shape[0], 1, 1).bool()
-        Tau[diag] = 0  # diagonal elements should be zero
-        for i in range(adj_mat.shape[1]):
+        sub_adj = adj_mat[:, n_taxa:, n_taxa:]
+        Tau = torch.full_like(sub_adj, n_taxa)
+        Tau[sub_adj > 0] = 1
+        diag_idx = torch.tensor(range(n_taxa), device=device)
+        Tau[:, diag_idx[:-2], diag_idx[:-2]] = 0  # diagonal elements should be zero
+        for i in range(sub_adj.shape[1]):
             # The second term has the same shape as Tau due to broadcasting
-            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1).repeat(1, adj_mat.shape[1], 1)
-                                + Tau[:, :, i].unsqueeze(2).repeat(1, 1, adj_mat.shape[1]))
+            Tau = torch.minimum(Tau, Tau[:, i, :].unsqueeze(1)
+                                + Tau[:, :, i].unsqueeze(2))
+
+        idxs = torch.nonzero(adj_mat[:, :n_taxa])[:, [0, 2]]
+        k = idxs[:, 1].reshape(adj_mat.shape[0], n_taxa).repeat(1, n_taxa).flatten()
+        idxs = idxs.repeat_interleave(n_taxa, 0)
+        b = torch.column_stack((idxs, k))
+        b[:, [1, 2]] -= n_taxa
+        Tau = (Tau[b[:, 0], b[:, 1], b[:, 2]] + 2).reshape(adj_mat.shape[0], n_taxa, n_taxa)
+        Tau[:, diag_idx, diag_idx] = 0
         Tau = Tau.to(torch.long)
         return (d * powers[Tau[:, :n_taxa, :n_taxa]]).reshape(adj_mat.shape[0], -1).sum(dim=-1)
     @staticmethod

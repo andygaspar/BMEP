@@ -50,12 +50,7 @@ def run_nni_search_batch(current_adj, best_val, d, n_taxa, m, powers, device):
         improved[:] = False
         expl_trees = nni_landscape_batch(sol, n_taxa, m)
         batch_size = expl_trees.shape[0]
-        torch.cuda.synchronize()
-        t = time.time()
         obj_vals= Solver.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, powers, n_taxa, device)
-        torch.cuda.synchronize()
-        t = time.time() - t
-        comp_total += t
 
         new_obj_val = torch.min(obj_vals.view(batch_size, -1), dim=-1)
         sol = expl_trees[range(batch_size), new_obj_val[1]]

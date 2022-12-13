@@ -33,7 +33,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 20
+iterations = 500
 
 results = []
 
@@ -61,7 +61,7 @@ for run in range(runs):
     # rand_nni.solve_timed(iterations)
     # print("rand", rand_nni.time, rand_nni.obj_val)
 
-    rand_nni1 = RandomNni(d, parallel=True)
+    rand_nni1 = RandomNni(d, parallel=False)
     rand_nni1.solve_timed(iterations)
     print("rand parallel", rand_nni1.time, rand_nni1.obj_val)
     # print(np.array_equal(rand_nni.solution, rand_nni1.solution))
@@ -75,8 +75,8 @@ for run in range(runs):
     swa_nni.obj_val = fast.obj_val
 
     mcts_fast = UtcSolverTorchSingleBackTrack(d, swa_policy, max_score_normalised, nni_tol=0.02)
-    mcts_fast.solve_timed(iterations)
-    print(mcts_fast.time, mcts_fast.backtracking_time)
+    # mcts_fast.solve_timed(iterations)
+    # print(mcts_fast.time, mcts_fast.backtracking_time)
 
     # nj_i = NjIlp(d)
     # nj_i.solve(int(np.ceil(mcts.time)))
@@ -84,6 +84,7 @@ for run in range(runs):
 
     mcts_random = UtcSolverTorchSingleBackTrack(d, random_policy, max_score_normalised, nni_tol=0.02)
     mcts_random.solve_timed(iterations)
+    print(mcts_random.max_depth)
     # mcts_.solve_timed(iterations)
     # print(mcts_.obj_val)
     # improved, nni_val, nni_sol = \

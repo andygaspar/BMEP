@@ -29,6 +29,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
         self.nni_tol = 1 + nni_tol
 
         self.backtracking_time = 0
+        self.max_depth = 0
 
     def solve(self, n_iterations=100):
         # with torch.no_grad():
@@ -41,9 +42,11 @@ class UtcSolverTorchSingleBackTrack(Solver):
 
         for iteration in range(n_iterations):
             node = self.root
+            max_depth = 0
             while not node.is_terminal() and node.is_expanded():
                 node = node.best_child()
-
+                max_depth += 1
+            self.max_depth = max_depth if  max_depth > self.max_depth else self.max_depth
             if node.is_terminal():
                 break
             run_val, run_sol = node.expand()
