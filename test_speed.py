@@ -25,7 +25,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 40
+dim = 150
 
 runs = 10
 
@@ -33,7 +33,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 500
+iterations = 20
 
 results = []
 
@@ -49,7 +49,7 @@ for run in range(runs):
     # print(pardi.obj_val, "enumeration")
 
     swa = SwaSolverTorch(d)
-    swa.solve_timed()
+    # swa.solve_timed()
 
 
 
@@ -68,10 +68,10 @@ for run in range(runs):
 
 
     swa_nni = SwaSolverTorchNni(d)
-    swa_nni.solve_timed(3, None, 10, 20,  5, 20)
+    # swa_nni.solve_timed(3, None, 10, 20,  5, 20)
     fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=swa_nni.T,
                         triangular_inequality=False, logs=False)
-    fast.solve_timed()
+    # fast.solve_timed()
     swa_nni.obj_val = fast.obj_val
 
     mcts_fast = UtcSolverTorchSingleBackTrack(d, swa_policy, max_score_normalised, nni_tol=0.02)

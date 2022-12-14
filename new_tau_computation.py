@@ -1,4 +1,3 @@
-import copy
 import random
 import time
 
@@ -60,20 +59,22 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 20
+dim = 50
 
 runs = 1
 
 results = np.zeros((runs, 4))
 
-# random.seed(0)
-# np.random.seed(0)
+random.seed(0)
+np.random.seed(0)
 iterations = 20
 
 d = data_set.get_random_mat(dim)
 solver = RandomSolver(d)
 
-
+T = torch.zeros((8,8))
+a = torch.zeros(8)
+b = torch.zeros(8)
 batch_size = 1
 adj_mats = torch.tensor(solver.initial_adj_mat(n_problems=batch_size)).to('cpu')
 for step in range(3, dim):
@@ -100,31 +101,17 @@ r = time.time()
 tau = get_tau_tensor(adj_mats, solver.n_taxa, device)
 print(time.time() - r)
 
-adj_mat = adj_mats.squeeze(0)
 
-ad_int = copy.deepcopy(adj_mat[dim:, dim:])
 
-i = random.choices(range(dim-2))[0]
-ii = i
 
-a = torch.zeros(dim - 2)
-b = torch.ones(dim - 2)
-b[i] = 0
+r = time.time()
+tau_tens = compute_ttaus(adj_mats, solver.n_taxa, device)
+print(time.time() - r)
 
-g= torch.nonzero(ad_int[i], as_tuple=True)[-1]
-a[g[0]] = 1
-idx = g[0]
-ad_int[ii, :] = ad_int[:, ii] = 0
-ii = idx
-for _ in range(dim - 3):
-    idx = torch.nonzero(ad_int[idx]).T[-1]
-    a[idx] = 1
-    ad_int[ii, :] = ad_int[:, ii] = 0
-    ii = idx
 
-b -= a
-print("split", i)
-print(adj_mat[dim:, dim:])
+# b = torch.vstack([idxs.repeat_interleave(solver.n_taxa), idxs.repeat(solver.n_taxa)]) - solver.n_taxa
+# tau_ = (t[b[0], b[1]] + 2).reshape(solver.n_taxa, solver.n_taxa)
 
-print(a, '\n', b)
+
+print(torch.equal(tau, tau_tens))
 
