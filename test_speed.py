@@ -25,15 +25,15 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 150
+dim = 80
 
-runs = 10
+runs = 20
 
 results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 20
+iterations = 30
 
 results = []
 
@@ -61,9 +61,7 @@ for run in range(runs):
     # rand_nni.solve_timed(iterations)
     # print("rand", rand_nni.time, rand_nni.obj_val)
 
-    rand_nni1 = RandomNni(d, parallel=False)
-    rand_nni1.solve_timed(iterations)
-    print("rand parallel", rand_nni1.time, rand_nni1.obj_val)
+
     # print(np.array_equal(rand_nni.solution, rand_nni1.solution))
 
 
@@ -91,6 +89,9 @@ for run in range(runs):
     #     run_nni_search(100, mcts_.solution, mcts_.obj_val, torch.tensor(mcts_.d).to(mcts_.device), mcts_.n_taxa,
     #                    mcts_.m, mcts_.device)
     # print("mmm ", nni_val)
+    rand_nni1 = RandomNni(d, parallel=False)
+    rand_nni1.solve_timed(mcts_random.n_nodes)
+    print("rand parallel", mcts_random.n_nodes, rand_nni1.time, rand_nni1.obj_val)
 
     # mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
     # mcts_t.solve_timed(iterations)
@@ -98,9 +99,9 @@ for run in range(runs):
 
     #
     fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
-    fast.solve_timed()
+    fast.solve()
     print(swa.obj_val, swa_nni.obj_val, mcts_random.obj_val, mcts_fast.obj_val, fast.obj_val)
-    print(swa.time, swa_nni.time, mcts_random.time, mcts_fast.time, fast.time, '\n')
+    print(swa.time, swa_nni.time, mcts_random.time, mcts_fast.time, fast.method, '\n')
     #
     # fast = FastMeSolver(d, bme=True, nni=False, digits=17, post_processing=False, triangular_inequality=False, logs=False)
     # fast.solve_timed()

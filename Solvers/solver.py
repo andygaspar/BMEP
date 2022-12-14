@@ -126,7 +126,7 @@ class Solver:
             T = np.minimum(T, T[i, :][np.newaxis, :] + T[:, i][:, np.newaxis])
         T = T[:n_taxa, :n_taxa]
         r = range(n_taxa)
-        return np.sum([d[i, j] / self.powers[T[i, j]] for i in r for j in r])
+        return np.sum([d[i, j] / self.np_powers[T[i, j]] for i in r for j in r])
 
     @staticmethod
     def compute_obj_val_batch(adj_mat, d, powers, n_taxa, device):

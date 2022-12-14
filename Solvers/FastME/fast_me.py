@@ -21,7 +21,7 @@ class FastMeSolver(Solver):
         self.path = 'Solvers/FastME/fastme-2.1.6.4/'
         self.init_topology = init_topology
         self.flags = ''
-        self.bme = bme
+        self.method = 'b' if bme else None
         self.nni = nni
         self.digits = digits
         self.post_processing = post_processing
@@ -56,9 +56,9 @@ class FastMeSolver(Solver):
         self.obj_val = self.compute_obj()
 
     def set_flags(self):
-
-        if self.bme:
-            self.flags += " -m b "
+        self.flags = ''
+        if self.method is not None:
+            self.flags += " -m " + self.method + ' '
         if self.nni:
             self.flags += " -n "
         if self.post_processing:
@@ -79,7 +79,7 @@ class FastMeSolver(Solver):
     def change_flags(self,
                      bme=True, nni=True, digits=None, post_processing=False, triangular_inequality=False, logs=False):
         self.flags = ''
-        self.bme = bme
+        self.method = 'b' if bme else None
         self.nni = nni
         self.digits = digits
         self.post_processing = post_processing
@@ -97,5 +97,16 @@ class FastMeSolver(Solver):
         plt.show()
         return taxa*internals
 
+    def solve_all_flags(self):
+        best_val, best_sol, best_method = 100, None, None
+        for method in ['b', 'o', 'i', 'n', 'u']:
+            self.method = method
+            self.solve()
+            # print(method, self.obj_val)
+            if self.obj_val < best_val:
+                best_val, best_sol, best_method = self.obj_val, self.solution, method
 
-
+        self.obj_val = best_val
+        self.solution = best_sol
+        self.method = best_method
+        self.T = self.get_tau(self.solution)

@@ -22,7 +22,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
         self.adj_mat_sparse = None
         self.root = None
         self.init_c = c_initial
-        self.n_nodes = 0
+        self.n_nodes = 4
 
         self.fast_me = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True,
                                     triangular_inequality=False, logs=False)
@@ -50,6 +50,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
             if node.is_terminal():
                 break
             run_val, run_sol = node.expand()
+            self.n_nodes += len(node._children)
 
             t = time.time()
             Tau = self.get_tau_tensor(run_sol, self.n_taxa)
