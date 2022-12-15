@@ -84,8 +84,10 @@ class NodeTorch:
 
     def expand_full(self):
         self._init_children()
-        # print("n children", len(self._children))
-        return self.rollout()
+        obj_vals, sol_adj_mat = self.rollout()
+        idx = torch.argmin(obj_vals)
+        self.update_and_backprop(obj_vals[idx])
+        return obj_vals[idx], sol_adj_mat[idx], obj_vals, sol_adj_mat
     def second_expand(self, swa_nni_policy):
         adj_mats = torch.cat([child.get_mat() for child in self._children])
         return swa_nni_policy(self, self._step_i + 1, adj_mats)

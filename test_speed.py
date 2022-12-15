@@ -18,6 +18,7 @@ from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy, mixed_policy, swa_nni_policy, random_policy
 from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_score_normalised
 from check_nni import cn
+from shape_test import ShapeSolver
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -25,7 +26,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 80
+dim = 40
 
 runs = 20
 
@@ -33,7 +34,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 30
+iterations = 2
 
 results = []
 
@@ -92,6 +93,10 @@ for run in range(runs):
     rand_nni1 = RandomNni(d, parallel=False)
     rand_nni1.solve_timed(mcts_random.n_nodes)
     print("rand parallel", mcts_random.n_nodes, rand_nni1.time, rand_nni1.obj_val)
+
+    reshaper = ShapeSolver(d, rand_nni1.solution, rand_nni1.T)
+    reshaper.solve()
+    print("reshaped", reshaper.obj_val)
 
     # mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
     # mcts_t.solve_timed(iterations)

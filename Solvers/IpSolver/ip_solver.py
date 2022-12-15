@@ -13,6 +13,7 @@ class IPSolver(Solver):
     def __init__(self, d, relaxation=False):
         super(IPSolver, self).__init__(d)
 
+
         self.bmep = gb.Model()
         self.bmep.modelSense = gb.GRB.MINIMIZE
 

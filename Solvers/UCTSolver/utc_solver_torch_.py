@@ -49,18 +49,23 @@ class UtcSolverTorchSingleBackTrack(Solver):
             self.max_depth = max_depth if  max_depth > self.max_depth else self.max_depth
             if node.is_terminal():
                 break
-            run_val, run_sol = node.expand()
+            run_val, run_sol, all_vals, all_sols = node.expand_full()
             self.n_nodes += len(node._children)
 
             t = time.time()
-            Tau = self.get_tau_tensor(run_sol, self.n_taxa)
-            self.fast_me.update_topology(Tau)
-            self.fast_me.solve()
-            if self.fast_me.obj_val < run_val:
-                run_val, run_sol = self.fast_me.obj_val, torch.tensor(self.fast_me.solution)
-                trajectory_id = self.tree_climb(run_sol)
+            for k, sol in enumerate(all_sols):
+                Tau = self.get_tau_tensor(sol, self.n_taxa)
+                self.fast_me.update_topology(Tau)
+                self.fast_me.solve()
+
+                fast_val, fast_sol = self.fast_me.obj_val, torch.tensor(self.fast_me.solution, device=self.device)
+                trajectory_id = self.tree_climb(fast_sol)
                 node_climbed = self.get_lower_node_in_trajectory(trajectory_id)
-                node_climbed.update_and_backprop(run_val)
+                if fast_val < node_climbed._val:
+                    node_climbed.update_and_backprop(fast_val)
+                    if fast_val < run_val:
+                        run_val = fast_val
+                        run_sol = fast_sol
 
             self.backtracking_time += time.time() - t
             if run_val < self.obj_val:

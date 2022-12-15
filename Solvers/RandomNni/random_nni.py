@@ -29,6 +29,7 @@ class RandomNni(Solver):
 
         self.solution = best_sol
         self.obj_val = best_val
+        self.T = self.get_tau(self.solution)
 
     def solve_parallel(self, iterations):
         d = torch.tensor(self.d, device=self.device)
