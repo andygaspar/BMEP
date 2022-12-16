@@ -2,6 +2,7 @@ import torch
 
 from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.Random.random_solver import RandomSolver
+from Solvers.UCTSolver.utils.utc_utils import run_nni_search
 from Solvers.UCTSolver.utils.utc_utils_batch import run_nni_search_batch
 from Solvers.UCTSolver.utils.utils_rollout import random_policy
 from Solvers.solver import Solver
@@ -10,7 +11,7 @@ from Solvers.solver import Solver
 class RandomNni(Solver):
     def __init__(self, d, parallel=False):
         super().__init__(d)
-        self.fast_me = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True,
+        self.fast_me = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=False,
                         triangular_inequality=False, logs=False)
         self.random_solver = RandomSolver(d)
         self.parallel = parallel
@@ -22,8 +23,14 @@ class RandomNni(Solver):
         best_val, best_sol = 10**5, None
         for i in range(iterations):
             self.random_solver.solve()
+            improved, best_val, best_sol = \
+                run_nni_search(torch.tensor(self.random_solver.solution), self.random_solver.obj_val,
+                                     torch.tensor(self.d), self.n_taxa, self.m, self.powers, self.device)
+
+            print("init", self.random_solver.obj_val, best_val.item())
             self.fast_me.update_topology(self.random_solver.T)
             self.fast_me.solve()
+            print(self.fast_me.obj_val, "FAST")
             if self.fast_me.obj_val < best_val:
                 best_val, best_sol= self.fast_me.obj_val, self.fast_me.solution
 

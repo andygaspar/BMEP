@@ -53,6 +53,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
             self.n_nodes += len(node._children)
 
             t = time.time()
+            trajectories = []
             for k, sol in enumerate(all_sols):
                 Tau = self.get_tau_tensor(sol, self.n_taxa)
                 self.fast_me.update_topology(Tau)
@@ -60,6 +61,7 @@ class UtcSolverTorchSingleBackTrack(Solver):
 
                 fast_val, fast_sol = self.fast_me.obj_val, torch.tensor(self.fast_me.solution, device=self.device)
                 trajectory_id = self.tree_climb(fast_sol)
+                trajectories.append(trajectory_id)
                 node_climbed = self.get_lower_node_in_trajectory(trajectory_id)
                 if fast_val < node_climbed._val:
                     node_climbed.update_and_backprop(fast_val)
@@ -67,6 +69,8 @@ class UtcSolverTorchSingleBackTrack(Solver):
                         run_val = fast_val
                         run_sol = fast_sol
 
+
+            trajectories = np.array(trajectories)
             self.backtracking_time += time.time() - t
             if run_val < self.obj_val:
                 self.obj_val, self.solution = run_val, run_sol

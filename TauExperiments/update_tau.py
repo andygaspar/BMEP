@@ -23,6 +23,18 @@ from Solvers.UCTSolver.utils.utils_scores import average_score_normalised, max_s
 from check_nni import cn
 
 
+def generate_adj(dim, solver, batch_size=1):
+    adj_mats = torch.tensor(solver.initial_adj_mat(n_problems=batch_size)).to('cpu')
+    for step in range(3, dim):
+        choices = 3 + (step - 3) * 2
+        idxs_list = torch.nonzero(torch.triu(adj_mats)).reshape(batch_size, -1, 3)
+        rand_idxs = random.choices(range(choices), k=batch_size)
+        idxs_list = idxs_list[[range(batch_size)], rand_idxs, :]
+        idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
+        adj_mats = solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=dim)
+
+    return adj_mats
+
 def get_tau_tensor(adj_mat, n_taxa, device):
     sub_adj = adj_mat[:, n_taxa:, n_taxa:]
     Tau = torch.full_like(sub_adj, n_taxa)
@@ -61,39 +73,22 @@ data_set = distances.get_dataset(3)
 
 
 dim = 20
-
-runs = 1
-
-results = np.zeros((runs, 4))
+device = 'cpu'
 
 # random.seed(0)
 # np.random.seed(0)
-iterations = 20
+
 
 d = data_set.get_random_mat(dim)
 solver = RandomSolver(d)
 
 
 batch_size = 1
-adj_mats = torch.tensor(solver.initial_adj_mat(n_problems=batch_size)).to('cpu')
-for step in range(3, dim):
-    choices = 3 + (step - 3) * 2
-    idxs_list = torch.nonzero(torch.triu(adj_mats)).reshape(batch_size, -1, 3)
-    rand_idxs = random.choices(range(choices), k=batch_size)
-    idxs_list = idxs_list[[range(batch_size)], rand_idxs, :]
-    idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
-    adj_mats = solver.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=dim)
-    # T = adj_mat[dim:, dim:]
-    # for _ in range(2, i):
-    #     g= torch.nonzero(T[i - 2])
-    #     a[g] = 1
-    #     T[i - 2, g] = 0
-    #     g= torch.nonzero(T[i - 2])
-    #     b[g] = 1
-    #     T[i - 2, g] = 0
 
 
-device = 'cpu'
+adj_mats = generate_adj(dim, solver, batch_size)
+
+
 
 
 r = time.time()
