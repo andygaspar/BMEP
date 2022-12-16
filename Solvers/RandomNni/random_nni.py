@@ -24,19 +24,17 @@ class RandomNni(Solver):
         for i in range(iterations):
             self.random_solver.solve()
             improved, best_val, best_sol = \
-                run_nni_search(torch.tensor(self.random_solver.solution), self.random_solver.obj_val,
-                                     torch.tensor(self.d), self.n_taxa, self.m, self.powers, self.device)
+                run_nni_search(torch.tensor(self.random_solver.solution, device=self.device), self.random_solver.obj_val,
+                                     torch.tensor(self.d, device=self.device), self.n_taxa, self.m, self.powers, self.device)
 
-            print("init", self.random_solver.obj_val, best_val.item())
             self.fast_me.update_topology(self.random_solver.T)
             self.fast_me.solve()
-            print(self.fast_me.obj_val, "FAST")
             if self.fast_me.obj_val < best_val:
                 best_val, best_sol= self.fast_me.obj_val, self.fast_me.solution
 
         self.solution = best_sol
         self.obj_val = best_val
-        self.T = self.get_tau(self.solution)
+        self.T = self.get_tau(self.solution.to('cpu').numpy())
 
     def solve_parallel(self, iterations):
         d = torch.tensor(self.d, device=self.device)

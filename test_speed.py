@@ -27,7 +27,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 30
+dim = 40
 
 runs = 1
 
@@ -39,15 +39,18 @@ iterations = 1
 
 results = []
 
+
+
 for run in range(runs):
     print(run)
     d = data_set.get_random_mat(dim)
-    it = 10
+    it = 1
 
     guided_rand = GuidedRandSolver(d, it)
     guided_rand.solve_timed()
     print(guided_rand.obj_val, guided_rand.time)
-    print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj')
+    print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj',
+          guided_rand.n_trees, 'trees')
 
     comparison = RandomNni(d, parallel=False)
     comparison.solve_timed(it)
@@ -112,3 +115,6 @@ for run in range(runs):
 # import pandas as pd
 #
 # df = pd.read_csv("testino20.csv")
+
+
+

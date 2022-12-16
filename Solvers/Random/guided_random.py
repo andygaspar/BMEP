@@ -16,7 +16,7 @@ class GuidedRandSolver(RandomSolver):
         self.iterations = iterations
         self.n_nodes = 0
         self.max_depth = 0
-        self.n_trajectories = 0
+        self.n_trajectories, self.n_trees = 0, 0
 
     def solve(self, start=3, adj_mats = None):
         adj_mats, best_val = None, 1000
@@ -67,7 +67,8 @@ class GuidedRandSolver(RandomSolver):
 
             tj = np.array(trajectories)
 
-        self.n_trajectories = len(trajectories)
+        self.n_trajectories = np.unique(trajectories, axis=0).shape[0]
+        self.n_trees = len(trajectories)
 
 
 
