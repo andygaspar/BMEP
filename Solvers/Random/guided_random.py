@@ -21,7 +21,8 @@ class GuidedRandSolver(RandomSolver):
     def solve(self, start=3, adj_mats = None):
         adj_mats, best_val = None, 1000
         trajectories, tj = [], np.array([])
-        for _ in range(self.iterations):
+        ob_vals, iter_list, nni_iter_list, is_best= ([] for _ in range(4))
+        for iter_num in range(self.iterations):
             adj_mats = self.initial_adj_mat(self.device, n_problems=1)
             batch_size = adj_mats.shape[0]
             current_tj = ()
@@ -38,7 +39,15 @@ class GuidedRandSolver(RandomSolver):
             trajectories.append(current_tj)
 
             obj_vals = self.compute_obj_val_batch(adj_mats, self.d, self.powers, self.n_taxa, self.device)
+
+            ob_vals.append(obj_vals.item())
+            iter_list.append(iter_num)
+            nni_iter_list.append(0)
+            is_best.append(False)
+
             run_val = torch.min(obj_vals)
+
+
             print("init val", run_val)
             if run_val < best_val:
                 best_val = run_val
@@ -46,7 +55,12 @@ class GuidedRandSolver(RandomSolver):
 
             sol = adj_mats
             improved = True
+            nni_iteration = 1
+            best_idx = 0
+
             while improved:
+                is_best_run = [False for _ in range(self.m - 4)]
+
                 expl_trees = nni_landscape_batch(sol, self.n_taxa, self.m)
                 expl_trees_batch = expl_trees.view(batch_size * expl_trees.shape[1], self.m, self.m)
                 obj_vals_new = self.compute_obj_val_batch(expl_trees_batch, self.d, self.powers, self.n_taxa, self.device)
@@ -57,12 +71,24 @@ class GuidedRandSolver(RandomSolver):
                     sol = expl_trees[range(batch_size), new_obj_val[1]]
                     for tree in expl_trees_batch:
                         trajectories.append(self.tree_climb(tree))
+                        ob_vals += [val.item() for val in obj_vals_new]
+                        iter_list.append(iter_num)
+                        nni_iter_list.append(nni_iteration)
+                    best_idx = new_obj_val[1]
                     run_val = nni_run_val
                     if run_val < best_val:
                         best_val = run_val
                         print(best_val)
+                        is_best += is_best_run
+
+
                 else:
+                    is_best_run[-(self.m - 4) + best_idx] = True
                     improved = False
+
+                nni_iteration += 1
+
+
 
 
             tj = np.array(trajectories)

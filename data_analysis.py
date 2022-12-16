@@ -27,14 +27,14 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 10
+dim = 8
 
 runs = 1
 
 results = np.zeros((runs, 4))
 
-# random.seed(0)
-# np.random.seed(0)
+random.seed(0)
+np.random.seed(0)
 iterations = 1
 
 results = []
