@@ -47,3 +47,10 @@ for i in range(10):
 
 results = pd.DataFrame({'runs': runs, 'best_iter': best_iter, 'counter': counter, 'obj': obj, 'seed': seeds, 'fast': fast_sol})
 results.to_csv('random_analysis.csv', index_label=False, index=False)
+
+import pandas as pd
+
+df = pd.read_csv('../../DataAnalysis/random_analysis.csv')
+
+for i in range(10):
+    print( df[df.runs==i].best_iter.mean(), df[df.runs==i].best_iter.std())
