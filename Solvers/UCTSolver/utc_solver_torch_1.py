@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from Solvers.UCTSolver.node_torch import NodeTorch
-from Solvers.UCTSolver.utils.utc_utils import run_nni_search
+from Solvers.UCTSolver.utils.utc_utils import run_nni_search, run_nni_search_for_tracking
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy, swa_nni_policy
 from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
 from Solvers.solver import Solver
@@ -10,7 +10,7 @@ from Solvers.solver import Solver
 
 class UtcSolverTorchBackTrack2(Solver):
 
-    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2), nni_iterations=10, nni_tol=0.02):
+    def __init__(self, d: np.array, rollout_, compute_scores, c_initial=2 ** (1 / 2), budget=1000):
         super(UtcSolverTorchBackTrack2, self).__init__(d)
         self.numpy_d = self.d
 
@@ -21,8 +21,7 @@ class UtcSolverTorchBackTrack2(Solver):
         self.init_c = c_initial
         self.n_nodes = 0
 
-        self.nni_iterations = nni_iterations
-        self.nni_tol = 1 + nni_tol
+        self.budget = budget
 
     def solve(self, n_iterations=100):
         # with torch.no_grad():
@@ -31,6 +30,9 @@ class UtcSolverTorchBackTrack2(Solver):
         self.root = NodeTorch(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
                               rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
         self.obj_val, self.solution = self.root.expand(0)
+        best_val, best_solution, trees, obj_vals = run_nni_search_for_tracking(run_sol, run_val, self.d,
+                                                                               self.n_taxa,
+                                                                               self.m, self.powers, self.device)
 
         for iteration in range(n_iterations):
             node = self.root
@@ -39,21 +41,23 @@ class UtcSolverTorchBackTrack2(Solver):
 
             if node.is_terminal():
                 break
-            run_val, run_sol = node.expand(iteration)
-            mixed_run_val, mixed_run_sol = node.second_expand(swa_nni_policy)
+            run_val, run_sol = node.expand_full()
+            best_val, best_solution, trees, obj_vals = run_nni_search_for_tracking(run_sol, run_val, self.d,
+                                                                                   self.n_taxa,
+                                                                                   self.m, self.powers, self.device)
             # print(run_val, torch.min(mixed_run_val))
 
-            if run_val < self.obj_val * self.nni_tol:
-                improved, nni_val, nni_sol = \
-                    run_nni_search(self.nni_iterations, run_sol, self.obj_val, self.d, self.n_taxa, self.m, self.device)
-                if improved:
-                    run_val, run_sol = nni_val, nni_sol
-                    trajectory_id = self.tree_climb(run_sol)
-                    node_climbed = self.get_lower_node_in_trajectory(trajectory_id)
-                    node_climbed.update_and_backprop(run_val)
+            # if run_val < self.obj_val * self.nni_tol:
+            #     improved, nni_val, nni_sol = \
+            #         run_nni_search(self.nni_iterations, run_sol, self.obj_val, self.d, self.n_taxa, self.m, self.device)
+            #     if improved:
+            #         run_val, run_sol = nni_val, nni_sol
+            #         trajectory_id = self.tree_climb(run_sol)
+            #         node_climbed = self.get_lower_node_in_trajectory(trajectory_id)
+            #         node_climbed.update_and_backprop(run_val)
 
-                if run_val < self.obj_val:
-                    self.obj_val, self.solution = run_val, run_sol
+            if run_val < self.obj_val:
+                self.obj_val, self.solution = run_val, run_sol
 
 
 

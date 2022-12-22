@@ -7,6 +7,7 @@ from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.SWA.swa_solver_torch_nni import SwaSolverTorchNni
 from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchSingleBackTrack
+from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorchBackTrack2
 from Solvers.UCTSolver.utils.utils_rollout import random_policy
 from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
 
@@ -33,17 +34,22 @@ results = []
 for run in range(runs):
     print(run)
     d = data_set.get_random_mat(dim)
+
+    mcts_random = UtcSolverTorchBackTrack2(d, random_policy, max_score_normalised)
+    mcts_random.solve_timed(iterations)
+    print(mcts_random)
     it = 1
 
-    guided_rand = GuidedRandSolver(d, it)
-    guided_rand.solve_timed()
-    print(guided_rand.obj_val, guided_rand.time)
-    print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj',
-          guided_rand.n_trees, 'trees')
+    # guided_rand = GuidedRandSolver(d, it)
+    # guided_rand.solve_timed()
+    # print(guided_rand.obj_val, guided_rand.time)
+    # print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj',
+    #       guided_rand.n_trees, 'trees')
 
     comparison = RandomNni(d, parallel=False)
     comparison.solve_timed(it)
     print(comparison.obj_val)
+
 
 
 

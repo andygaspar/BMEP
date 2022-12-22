@@ -25,7 +25,7 @@ iterations = 1000
 
 best_iter, counter, obj, seeds, fast_sol, runs = [], [], [], [], [], []
 
-for i in range(10):
+for i in range(1):
     d = data_set.get_from_idxs(df.idxs_list.iloc[i])
 
     fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True,
@@ -34,7 +34,7 @@ for i in range(10):
     for seed in range(100):
         print(i, seed)
         comparison = RandomNni(d, parallel=False)
-        comparison.solve_sequential(iterations, fast.obj_val, fast.solution)
+        comparison.solve_sequential(iterations, fast.obj_val, fast.solution, count_solutions=True)
 
         best_iter.append(comparison.best_iteration)
         seeds.append(seed)
@@ -47,10 +47,10 @@ for i in range(10):
 
 results = pd.DataFrame({'runs': runs, 'best_iter': best_iter, 'counter': counter, 'obj': obj, 'seed': seeds, 'fast': fast_sol})
 results.to_csv('random_analysis.csv', index_label=False, index=False)
-
-import pandas as pd
-
-df = pd.read_csv('../../DataAnalysis/random_analysis.csv')
-
-for i in range(10):
-    print( df[df.runs==i].best_iter.mean(), df[df.runs==i].best_iter.std())
+#
+# import pandas as pd
+#
+# df = pd.read_csv('../../DataAnalysis/random_analysis.csv')
+#
+# for i in range(10):
+#     print( df[df.runs==i].best_iter.mean(), df[df.runs==i].best_iter.std())

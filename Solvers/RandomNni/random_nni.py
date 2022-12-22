@@ -42,7 +42,8 @@ class RandomNni(Solver):
                         if not new:
                             break
                     if new:
-                        self.counter = self.counter
+                        self.counter += 1
+                        print(self.counter)
                         self.better_solutions.append(self.fast_me.solution)
             if self.fast_me.obj_val < best_val:
                 best_val, best_sol= self.fast_me.obj_val, self.fast_me.solution
