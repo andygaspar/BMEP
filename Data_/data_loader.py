@@ -35,13 +35,18 @@ class DataSet:
             to_ = args[0]
             return self.d[: to_, : to_]
 
-    def get_random_mat(self, dim, from_=None, to_=None):
+    def get_random_mat(self, dim, from_=None, to_=None, return_idxs = False):
         from_ = from_ if from_ is not None else 0
         to_ = to_ if to_ is not None else self.size
         idx = random.sample(range(from_, to_), k=dim)
-        return self.d[idx, :][:, idx]
+        if return_idxs:
+            return self.d[idx, :][:, idx], idx
+        else:
+            return self.d[idx, :][:, idx]
 
 
+    def get_from_idxs(self, idxs):
+        return self.d[idxs, :][:, idxs]
 class DistanceData:
 
     def __init__(self):
@@ -65,6 +70,9 @@ class DistanceData:
             return list(self.data_sets.values())[data_set]
         else:
             return self.data_sets[data_set]
+
+    def get_from_idxs(self, dataset_num, idxs):
+        return self.data_sets[dataset_num].get_from_idxs(idxs)
 
     @staticmethod
     def generate_random(dim, a=0, b=1):

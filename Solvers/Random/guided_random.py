@@ -1,6 +1,7 @@
 import random
 
 import numpy as np
+import pandas as pd
 import torch
 
 from Solvers.Random.random_solver import RandomSolver
@@ -59,7 +60,7 @@ class GuidedRandSolver(RandomSolver):
             best_idx = 0
 
             while improved:
-                is_best_run = [False for _ in range(self.m - 4)]
+
 
                 expl_trees = nni_landscape_batch(sol, self.n_taxa, self.m)
                 expl_trees_batch = expl_trees.view(batch_size * expl_trees.shape[1], self.m, self.m)
@@ -68,22 +69,23 @@ class GuidedRandSolver(RandomSolver):
                 new_obj_val = torch.min(obj_vals_new.view(batch_size, -1), dim=-1)
                 nni_run_val = torch.min(new_obj_val[0])
                 if nni_run_val < run_val:
+                    is_best_run = [False for _ in range(self.m - 4)]
                     sol = expl_trees[range(batch_size), new_obj_val[1]]
                     for tree in expl_trees_batch:
                         trajectories.append(self.tree_climb(tree))
-                        ob_vals += [val.item() for val in obj_vals_new]
                         iter_list.append(iter_num)
                         nni_iter_list.append(nni_iteration)
-                    best_idx = new_obj_val[1]
+                    ob_vals += [val.item() for val in obj_vals_new]
+                    is_best_run[new_obj_val[1]] =  True
+                    is_best += is_best_run
                     run_val = nni_run_val
                     if run_val < best_val:
                         best_val = run_val
                         print(best_val)
-                        is_best += is_best_run
+
 
 
                 else:
-                    is_best_run[-(self.m - 4) + best_idx] = True
                     improved = False
 
                 nni_iteration += 1
@@ -96,7 +98,9 @@ class GuidedRandSolver(RandomSolver):
         self.n_trajectories = np.unique(trajectories, axis=0).shape[0]
         self.n_trees = len(trajectories)
 
-
+        df = pd.DataFrame({'trajectory':trajectories, 'obj_val': ob_vals, 'iteration': iter_list,
+                           'nni_iteration': nni_iter_list, 'is_best': is_best})
+        df.to_csv(str(self.n_taxa) + '_' + str(self.iterations) + '.csv', index_label=False, index=False)
 
         self.obj_val = best_val.item()
 
