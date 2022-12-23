@@ -173,7 +173,7 @@ class Tree:
         self.show(tile, value, save)
 
 
-df = pd.read_csv('DataAnalysis/40_10.csv')
+df = pd.read_csv('DataAnalysis/20_10.csv')
 df['tj'] = df.trajectory.apply(lambda t: literal_eval(t))
 df.rename(columns={"is_best": 'single_run_best'}, inplace=True)
 
@@ -181,9 +181,14 @@ df_ = df[df.iteration == 0]
 
 tree = Tree(df)
 tree.fill_tree()
-tree.make_expanded('exapanded_all_40', 'best', save=True)
+# tree.make_expanded('exapanded_all_40', 'best', save=True)
+# tree.make_graph(value='best', title='40_all_0', save=True)
 
-df = df[df.single_run_best == True]
+
+df1 = df[df.single_run_best == True]
+
+
+
 
 #
 # df_ = df[df.single_run_best == True]

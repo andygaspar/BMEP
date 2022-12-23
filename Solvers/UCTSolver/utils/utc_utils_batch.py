@@ -65,3 +65,40 @@ def run_nni_search_batch(current_adj, best_val, d, n_taxa, m, powers, device):
         iterations += 1
     print(iterations, "iterations", comp_total)
     return improved, best_val, current_adj
+
+
+def run_nni_search_batch_for_tracking(current_adj, best_values, d, n_taxa, m, powers, device):
+    sol = current_adj
+    best_val = torch.clone(best_values)
+    batch_size =  size = current_adj.shape[0]
+    improved = torch.ones(size=(batch_size,), dtype=torch.bool, device=device)
+    idxs = range(batch_size)
+    all_idxs = torch.tensor([idxs, idxs], device=device).T
+    iterations = 0
+
+    comp_total = 0
+
+    trees, objs = [], []
+
+    while sol.shape[0] > 0:
+        improved[:] = False
+        expl_trees = nni_landscape_batch(sol, n_taxa, m)
+        batch_size = expl_trees.shape[0]
+        obj_vals= Solver.compute_obj_val_batch(expl_trees.view(batch_size*expl_trees.shape[1], m , m), d, powers, n_taxa, device)
+
+        trees.append(expl_trees.view(batch_size*expl_trees.shape[1], m , m))
+        objs.append(obj_vals.view(batch_size*expl_trees.shape[1]))
+
+        new_obj_val = torch.min(obj_vals.view(batch_size, -1), dim=-1)
+        sol = expl_trees[range(batch_size), new_obj_val[1]]
+        idxs = torch.argwhere(best_val[all_idxs[:, 1]] > new_obj_val.values).squeeze(1)
+        current_adj[all_idxs[idxs, 1]] =  sol[idxs]
+        best_val[all_idxs[idxs][:, 1]] = new_obj_val.values[idxs]
+        if idxs.shape[0] < size:
+            # print(idxs.shape[0], iterations)
+            size = idxs.shape[0]
+        sol = sol[idxs]
+        all_idxs = torch.tensor([range(idxs.shape[0]), all_idxs[idxs, 1]], device=device).T
+        iterations += 1
+    print(iterations, "iterations", comp_total)
+    return best_val, current_adj, trees, objs

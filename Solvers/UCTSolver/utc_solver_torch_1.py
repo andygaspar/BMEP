@@ -2,7 +2,8 @@ import numpy as np
 import torch
 
 from Solvers.UCTSolver.node_torch import NodeTorch
-from Solvers.UCTSolver.utils.utc_utils import run_nni_search, run_nni_search_for_tracking
+from Solvers.UCTSolver.utils.utc_utils import run_nni_search
+from Solvers.UCTSolver.utils.utc_utils_batch import run_nni_search_batch_for_tracking
 from Solvers.UCTSolver.utils.utils_rollout import swa_policy, swa_nni_policy
 from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
 from Solvers.solver import Solver
@@ -28,11 +29,16 @@ class UtcSolverTorchBackTrack2(Solver):
         self.d = torch.tensor(self.d, requires_grad=False).to(self.device)
         adj_mat = self.initial_adj_mat(device=self.device, n_problems=1)
         self.root = NodeTorch(adj_mat, step_i=3, d=self.d, n_taxa=self.n_taxa, c=self.init_c, parent=None,
-                              rollout_=self.rollout_, compute_scores=self.compute_scores, device=self.device)
-        self.obj_val, self.solution = self.root.expand(0)
-        best_val, best_solution, trees, obj_vals = run_nni_search_for_tracking(run_sol, run_val, self.d,
+                              rollout_=self.rollout_, compute_scores=self.compute_scores, powers=self.powers,
+                              device=self.device)
+        self.obj_val, self.solution, obj_vals, sol_adj_mat = self.root.expand_full()
+        best_val, best_solution, trees, objs = run_nni_search_batch_for_tracking(sol_adj_mat, obj_vals, self.d,
                                                                                self.n_taxa,
                                                                                self.m, self.powers, self.device)
+        b = torch.cat(objs)
+        s = torch.argsort(b)
+        b = b[s]
+        sols = torch.cat(trees, dim=0)[s]
 
         for iteration in range(n_iterations):
             node = self.root
@@ -41,8 +47,8 @@ class UtcSolverTorchBackTrack2(Solver):
 
             if node.is_terminal():
                 break
-            run_val, run_sol = node.expand_full()
-            best_val, best_solution, trees, obj_vals = run_nni_search_for_tracking(run_sol, run_val, self.d,
+            run_val, run_sol, obj_vals, sol_adj_mat = node.expand_full()
+            best_val, best_solution, trees, obj_vals = run_nni_search_batch_for_tracking(sol_adj_mat, obj_vals, self.d,
                                                                                    self.n_taxa,
                                                                                    self.m, self.powers, self.device)
             # print(run_val, torch.min(mixed_run_val))
