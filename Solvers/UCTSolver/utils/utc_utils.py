@@ -34,7 +34,6 @@ def nni_landscape(adj_mat, n_taxa, mat_size):
 
     return new_trees
 
-
 def run_nni_search(best_solution, best_val, d, n_taxa, m, powers, device):
     sol = best_solution
     improved = True

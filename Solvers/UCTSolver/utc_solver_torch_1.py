@@ -65,8 +65,6 @@ class UtcSolverTorchBackTrack2(Solver):
             if run_val < self.obj_val:
                 self.obj_val, self.solution = run_val, run_sol
 
-
-
         self.obj_val = self.obj_val.item()
         self.T = self.get_tau(self.solution.to('cpu').numpy()).astype(np.int8)[:self.n_taxa, :self.n_taxa]
         self.d = self.numpy_d
