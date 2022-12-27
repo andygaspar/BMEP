@@ -69,7 +69,7 @@ def run_nni_search_batch(current_adj, best_val, d, n_taxa, m, powers, device):
 
 def run_nni_search_batch_for_tracking(current_adj, best_values, d, n_taxa, m, powers, device):
     sol = current_adj
-    best_val = torch.clone(best_values)
+    best_val, obj_vals = torch.clone(best_values), None
     batch_size =  size = current_adj.shape[0]
     improved = torch.ones(size=(batch_size,), dtype=torch.bool, device=device)
     idxs = range(batch_size)
@@ -101,4 +101,5 @@ def run_nni_search_batch_for_tracking(current_adj, best_values, d, n_taxa, m, po
         all_idxs = torch.tensor([range(idxs.shape[0]), all_idxs[idxs, 1]], device=device).T
         iterations += 1
     print(iterations, "iterations", comp_total)
-    return best_val, current_adj, trees, objs
+    best_val = torch.min(best_val, dim=-1)
+    return best_val[0], current_adj[1], trees, objs

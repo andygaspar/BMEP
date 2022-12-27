@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 
 from Solvers.FastME.fast_me import FastMeSolver
@@ -9,7 +11,8 @@ from Data_.data_loader import DistanceData
 from Solvers.UCTSolver.utc_solver_torch_ import UtcSolverTorchSingleBackTrack
 from Solvers.UCTSolver.utc_solver_torch_1 import UtcSolverTorchBackTrack2
 from Solvers.UCTSolver.utils.utils_rollout import random_policy
-from Solvers.UCTSolver.utils.utils_scores import max_score_normalised
+from Solvers.UCTSolver.utils.utils_scores import max_score_normalised, max_score_normalised_dict, \
+    average_score_normalised_dict
 
 distances = DistanceData()
 distances.print_dataset_names()
@@ -17,15 +20,15 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 40
+dim = 15
 
 runs = 1
 
 results = np.zeros((runs, 4))
 
-# random.seed(0)
-# np.random.seed(0)
-iterations = 1
+random.seed(0)
+np.random.seed(0)
+iterations = 30
 
 results = []
 
@@ -35,9 +38,9 @@ for run in range(runs):
     print(run)
     d = data_set.get_random_mat(dim)
 
-    mcts_random = UtcSolverTorchBackTrack2(d, random_policy, max_score_normalised)
+    mcts_random = UtcSolverTorchBackTrack2(d, random_policy, average_score_normalised_dict, budget=3)
     mcts_random.solve_timed(iterations)
-    print(mcts_random)
+    print(mcts_random.obj_val)
     it = 1
 
     # guided_rand = GuidedRandSolver(d, it)
