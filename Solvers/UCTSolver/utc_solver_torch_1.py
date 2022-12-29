@@ -25,6 +25,8 @@ class UtcSolverTorchBackTrack2(Solver):
         self.init_c = c_initial
         self.n_nodes = 0
 
+        self.expansion = 0
+
         self.budget = budget
 
     def solve(self, n_iterations=100):
@@ -38,6 +40,8 @@ class UtcSolverTorchBackTrack2(Solver):
         best_val, best_solution, trees, objs = run_nni_search_batch_for_tracking(sol_adj_mat, obj_vals, self.d,
                                                                                self.n_taxa,
                                                                                self.m, self.powers, self.device)
+
+        self.expansion += obj_vals.shape[0]
         if best_val < self.obj_val:
             self.obj_val, self.solution = best_val, best_solution
         self.back_track(trees, objs)
@@ -48,6 +52,7 @@ class UtcSolverTorchBackTrack2(Solver):
             step = 2
             while not node.is_terminal() and node.is_expanded():
                 node = node.best_child()
+                print(node.id)
                 step += 1
                 idxs = torch.nonzero(ad_mat)[node.id].unsqueeze(0).T
                 idxs = tuple([idx for idx in idxs])
@@ -57,6 +62,7 @@ class UtcSolverTorchBackTrack2(Solver):
                 break
 
             run_val, run_sol, obj_vals, sol_adj_mat = node.expand(ad_mat)
+            self.expansion += obj_vals.shape[0]
             best_val, best_solution, trees, obj_vals = run_nni_search_batch_for_tracking(sol_adj_mat, obj_vals, self.d,
                                                                                    self.n_taxa,
                                                                                    self.m, self.powers, self.device)

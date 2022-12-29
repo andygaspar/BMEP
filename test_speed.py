@@ -20,7 +20,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 15
+dim = 40
 
 runs = 1
 
@@ -28,7 +28,7 @@ results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 30
+iterations = 20
 
 results = []
 
@@ -38,10 +38,10 @@ for run in range(runs):
     print(run)
     d = data_set.get_random_mat(dim)
 
-    mcts_random = UtcSolverTorchBackTrack2(d, random_policy, average_score_normalised_dict, budget=3)
+    mcts_random = UtcSolverTorchBackTrack2(d, random_policy, average_score_normalised_dict, budget=10000)
     mcts_random.solve_timed(iterations)
     print(mcts_random.obj_val)
-    it = 1
+    print('expansions', mcts_random.expansion)
 
     # guided_rand = GuidedRandSolver(d, it)
     # guided_rand.solve_timed()
@@ -49,8 +49,8 @@ for run in range(runs):
     # print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj',
     #       guided_rand.n_trees, 'trees')
 
-    comparison = RandomNni(d, parallel=False)
-    comparison.solve_timed(it)
+    comparison = RandomNni(d, parallel=True)
+    comparison.solve_timed(mcts_random.expansion)
     print(comparison.obj_val)
 
 
