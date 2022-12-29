@@ -10,9 +10,9 @@ from Solvers.solver import Solver
 
 
 class RandomNni(Solver):
-    def __init__(self, d, parallel=False):
+    def __init__(self, d, parallel=False, spr=True):
         super().__init__(d)
-        self.fast_me = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True,
+        self.fast_me = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=spr,
                         triangular_inequality=False, logs=False)
         self.random_solver = RandomSolver(d)
         self.parallel = parallel

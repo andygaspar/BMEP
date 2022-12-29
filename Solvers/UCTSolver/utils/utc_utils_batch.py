@@ -63,7 +63,8 @@ def run_nni_search_batch(current_adj, best_val, d, n_taxa, m, powers, device):
         sol = sol[idxs]
         all_idxs = torch.tensor([range(idxs.shape[0]), all_idxs[idxs, 1]], device=device).T
         iterations += 1
-    print(iterations, "iterations", comp_total)
+    best = torch.min(best_val)
+    print(iterations, "iterations", best)
     return improved, best_val, current_adj
 
 

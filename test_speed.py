@@ -1,10 +1,12 @@
 import random
 
 import numpy as np
+import torch
 
 from Solvers.FastME.fast_me import FastMeSolver
 from Solvers.Random.guided_random import GuidedRandSolver
 from Solvers.RandomNni.random_nni import RandomNni
+from Solvers.RandomNni.random_tj import RandomTrajectory
 from Solvers.SWA.swa_solver_torch import SwaSolverTorch
 from Solvers.SWA.swa_solver_torch_nni import SwaSolverTorchNni
 from Data_.data_loader import DistanceData
@@ -20,67 +22,93 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 40
+dim = 60
 
-runs = 1
+runs = 20
 
 results = np.zeros((runs, 4))
 
 random.seed(0)
 np.random.seed(0)
-iterations = 20
+iterations = 10
 
 results = []
 
-
+batch = 20
 
 for run in range(runs):
-    print(run)
+    print('\n', run)
     d = data_set.get_random_mat(dim)
+    rand_tj = RandomTrajectory(d, batch=batch)
+    rand_tj.solve_timed()
+    print(rand_tj.time, "rand", rand_tj.obj_val)
+    # print(rand_tj.tree_climb(torch.tensor(rand_tj.solution).unsqueeze(0)))
 
-    mcts_random = UtcSolverTorchBackTrack2(d, random_policy, average_score_normalised_dict, budget=10000)
-    mcts_random.solve_timed(iterations)
-    print(mcts_random.obj_val)
-    print('expansions', mcts_random.expansion)
-
-    # guided_rand = GuidedRandSolver(d, it)
-    # guided_rand.solve_timed()
-    # print(guided_rand.obj_val, guided_rand.time)
-    # print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj',
-    #       guided_rand.n_trees, 'trees')
-
-    comparison = RandomNni(d, parallel=True)
-    comparison.solve_timed(mcts_random.expansion)
-    print(comparison.obj_val)
+    rand_nni1 = RandomNni(d, parallel=False, spr=True)
+    rand_nni1.solve_timed(rand_tj.iterations)
+    print("rand parallel", rand_nni1.time, rand_nni1.obj_val)
+    # print(rand_tj.tree_climb(torch.tensor(rand_nni1.solution).unsqueeze(0)))
 
 
 
 
-
-    swa = SwaSolverTorch(d)
-    # swa.solve_timed()
-
-
-    swa_nni = SwaSolverTorchNni(d)
-    # swa_nni.solve_timed(3, None, 10, 20,  5, 20)
-    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=swa_nni.T,
-                        triangular_inequality=False, logs=False)
-    # fast.solve_timed()
-    swa_nni.obj_val = fast.obj_val
-
-
-    # nj_i = NjIlp(d)
-    # nj_i.solve(int(np.ceil(mcts.time)))
-    # print(mcts.obj_val, nj_i.obj_val)
-
-    mcts_random = UtcSolverTorchSingleBackTrack(d, random_policy, max_score_normalised, nni_tol=0.02)
-    mcts_random.solve_timed(iterations)
-    print(mcts_random.max_depth)
-
-
-    rand_nni1 = RandomNni(d, parallel=False)
-    rand_nni1.solve_timed(mcts_random.n_nodes)
-    print("rand parallel", mcts_random.n_nodes, rand_nni1.time, rand_nni1.obj_val)
+    # comparison = RandomNni(d, parallel=True)
+    # comparison.solve_timed(iterations*batch)
+    # print(comparison.obj_val)
+    #
+    # mcts_bt = UtcSolverTorchBackTrack2(d, random_policy, average_score_normalised_dict, budget=100)
+    # mcts_bt.solve_timed(iterations)
+    # print(mcts_bt.obj_val)
+    # print('expansions', mcts_bt.expansion)
+    #
+    #
+    #
+    #
+    #
+    # print(mcts_bt.tree_climb(mcts_bt.solution.unsqueeze(0)))
+    #
+    #
+    #
+    # # guided_rand = GuidedRandSolver(d, it)
+    # # guided_rand.solve_timed()
+    # # print(guided_rand.obj_val, guided_rand.time)
+    # # print(guided_rand.n_nodes, 'nodes', guided_rand.max_depth, ' depth', guided_rand.n_trajectories, 'tj',
+    # #       guided_rand.n_trees, 'trees')
+    #
+    # comparison = RandomNni(d, parallel=True)
+    # comparison.solve_timed(mcts_bt.expansion)
+    # print(comparison.obj_val)
+    # print(mcts_bt.tree_climb(torch.tensor(comparison.solution).unsqueeze(0)))
+    #
+    #
+    #
+    #
+    #
+    # swa = SwaSolverTorch(d)
+    # # swa.solve_timed()
+    #
+    #
+    # # swa_nni = SwaSolverTorchNni(d)
+    # # swa_nni.solve_timed(3, None, 10, 20,  5, 20)
+    # # fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, init_topology=swa_nni.T,
+    # #                     triangular_inequality=False, logs=False)
+    # # fast.solve_timed()
+    # # swa_nni.obj_val = fast.obj_val
+    #
+    #
+    # # nj_i = NjIlp(d)
+    # # nj_i.solve(int(np.ceil(mcts.time)))
+    # # print(mcts.obj_val, nj_i.obj_val)
+    #
+    # mcts_random = UtcSolverTorchSingleBackTrack(d, random_policy, max_score_normalised, nni_tol=0.02)
+    # mcts_random.solve_timed(iterations)
+    # print(mcts_random.max_depth)
+    #
+    #
+    # rand_nni1 = RandomNni(d, parallel=False)
+    # rand_nni1.solve_timed(mcts_random.n_nodes)
+    # print("rand parallel", mcts_random.n_nodes, rand_nni1.time, rand_nni1.obj_val)
+    # print(mcts_bt.tree_climb(torch.tensor(rand_nni1.solution).unsqueeze(0)))
 
 
     # mcts_t = UtcSolverTorch(d, mixed_policy, average_score_normalised)
@@ -88,8 +116,9 @@ for run in range(runs):
     #
 
     #
-    # fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
-    # fast.solve()
+    fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
+    fast.solve()
+    print('fast', fast.obj_val)
     # print(swa.obj_val, swa_nni.obj_val, mcts_random.obj_val, fast.obj_val)
     # print(swa.time, swa_nni.time, mcts_random.time, fast.method, '\n')
     #

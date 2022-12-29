@@ -90,17 +90,14 @@ def adjust_matrices(adj_mat, last_inserted_taxa, n_internals, n_taxa):
 
     # reorder matrix according to Pardi
     for step in range(last_inserted_taxa + n_internals, n_taxa, -1):
-        # print(adj_mat[:, 1, step, last_inserted_taxa])
-        # print(adj_mat[:, 1, :, :])
         not_in_position = torch.argwhere(adj_mat[:, 1, step, last_inserted_taxa] == 0).squeeze(1)
         if len(not_in_position)>0:
             a = adj_mat[not_in_position, 1, last_inserted_taxa, :]
             idxs = torch.argwhere(adj_mat[not_in_position, 1, last_inserted_taxa, :] == 1)
             adj_mat = permute(adj_mat, step, not_in_position, idxs)
-        # print(adj_mat[:, 1, :, :])
+
         adj_mat[:, 1, :, last_inserted_taxa] = adj_mat[:, 1, last_inserted_taxa, :] = 0
-        # print(adj_mat[:, 1, :, :])
-        a = adj_mat[:, 1, step, :]
+
         i = torch.nonzero(adj_mat[:, 1, step, :])
         idx = i[:, 1]
         idxs = idx.reshape(-1, 2).T

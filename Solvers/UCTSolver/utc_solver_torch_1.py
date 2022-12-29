@@ -63,7 +63,7 @@ class UtcSolverTorchBackTrack2(Solver):
 
             run_val, run_sol, obj_vals, sol_adj_mat = node.expand(ad_mat)
             self.expansion += obj_vals.shape[0]
-            best_val, best_solution, trees, obj_vals = run_nni_search_batch_for_tracking(sol_adj_mat, obj_vals, self.d,
+            best_val, best_solution, trees, objs = run_nni_search_batch_for_tracking(sol_adj_mat, obj_vals, self.d,
                                                                                    self.n_taxa,
                                                                                    self.m, self.powers, self.device)
             self.back_track(trees, objs)
@@ -93,8 +93,13 @@ class UtcSolverTorchBackTrack2(Solver):
         objs = torch.cat(objs)
         idxs = torch.argsort(objs)
         objs = objs[idxs][:self.budget]
+        print(objs[0].item())
         sols = torch.cat(trees, dim=0)[idxs][:self.budget]
         trajectories = self.tree_climb(sols)
+        mean = trajectories.mean(dim=0, dtype=torch.float)
+        var = trajectories.to(torch.float).var(dim=0)
+        t_stat = torch.vstack([mean, var])
+        print(t_stat)
         for i, tj in enumerate(trajectories):
             self.root.fill(tj,objs[i])
 
