@@ -17,7 +17,7 @@ distances.print_dataset_names()
 data_set = distances.get_dataset(3)
 
 
-dim = 10
+dim = 40
 
 runs = 1
 

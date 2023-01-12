@@ -52,25 +52,6 @@ def run_nni_search(best_solution, best_val, d, n_taxa, m, powers, device):
     return improved, best_val, best_solution
 
 
-def run_nni_search_for_tracking(best_solution, best_val, d, n_taxa, m, powers, device):
-    sol = best_solution
-    improved = True
-    trees, objs = [], []
-    while improved:
-        improved = False
-        expl_trees = nni_landscape(sol, n_taxa, m)
-        obj_vals = Solver.compute_obj_val_batch(expl_trees, d, powers=powers, n_taxa=n_taxa, device=device)
-        trees.append(expl_trees)
-        objs.append(obj_vals)
-        new_obj_val = torch.min(obj_vals)
-        idx = torch.argmin(obj_vals)
-        sol = expl_trees[idx]
-        if best_val > new_obj_val:
-            best_val, best_solution = new_obj_val, sol
-            improved = True
-
-    return best_val, best_solution, trees, objs
-
 
 
 
