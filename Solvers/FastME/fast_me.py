@@ -1,4 +1,5 @@
 import os
+import time
 import warnings
 
 import networkx as nx
@@ -98,6 +99,7 @@ class FastMeSolver(Solver):
         return taxa*internals
 
     def solve_all_flags(self):
+        self.time = time.time()
         best_val, best_sol, best_method = 100, None, None
         for method in ['b', 'o', 'i', 'n', 'u']:
             self.method = method
@@ -105,6 +107,7 @@ class FastMeSolver(Solver):
             # print(method, self.obj_val)
             if self.obj_val < best_val:
                 best_val, best_sol, best_method = self.obj_val, self.solution, method
+        self.time = time.time() - self.time
 
         self.obj_val = best_val
         self.solution = best_sol

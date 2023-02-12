@@ -11,7 +11,7 @@ from Solvers.UCTSolver.utils.utils_rollout import random_policy, adjust_matrices
 from Solvers.solver import Solver
 
 
-class RandomTrajectory(Solver):
+class PhyloGA(Solver):
     def __init__(self, d, batch=10, max_iterations = 25, fast_me=True):
         super().__init__(d)
 
@@ -129,7 +129,7 @@ class RandomTrajectory(Solver):
             idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
             adj_mats = self.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=self.n_taxa)
 
-        print('combs', combs, '\n')
+        print('combs', combs)
 
         obj_vals = self.compute_obj_val_batch(adj_mats, self.d, self.powers, self.n_taxa, self.device)
         return combs, obj_vals, adj_mats
