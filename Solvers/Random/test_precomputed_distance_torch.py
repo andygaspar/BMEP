@@ -22,6 +22,7 @@ class PrecomputeTorch(Solver):
         self.T_new = None
 
     def solve(self, start=3, adj_mat=None):
+        t = time.time()
         adj_mat = self.initial_adj_mat(self.device) if adj_mat is None else adj_mat
         subtrees_mat = self.initial_sub_tree_mat()
         T = self.init_tau()
@@ -38,11 +39,11 @@ class PrecomputeTorch(Solver):
 
         self.subtrees_mat = subtrees_mat
         self.solution = adj_mat
-        self.obj_val = self.compute_obj_val_from_adj_mat(adj_mat, self.d, self.n_taxa)
+        # self.obj_val = self.compute_obj_val_from_adj_mat(adj_mat, self.d, self.n_taxa)
         # print(T[:self.n_taxa, :self.n_taxa])
         # self.T = self.get_tau(self.solution)
         self.T = T
-
+        print('build time', time.time() - t)
         self.subtree_dist = self.compute_dist()
         # self.T_new = T.numpy().astype(np.int32)[:self.n_taxa, :self.n_taxa]
 
@@ -143,7 +144,7 @@ class PrecomputeTorch(Solver):
         pass
 
     def init_tau(self):
-        T = torch.zeros((self.m, self.m), dtype=torch.short, device=self.device)
+        T = torch.zeros((self.m, self.m), dtype=torch.long, device=self.device)
         T[0, 1] = T[0, 2] = T[1, 0] = T[1, 2] = T[2, 0] = T[2, 1] = 2
         T[0, self.n_taxa] = T[1, self.n_taxa] = T[2, self.n_taxa] =  \
             T[self.n_taxa, 0] = T[self.n_taxa, 1] = T[self.n_taxa, 2] = 1
@@ -154,7 +155,7 @@ class PrecomputeTorch(Solver):
         dist_mat = torch.zeros((self.m, self.m), device=self.device)
         # add pre-computation TO DO
         # d = self.d / 2** self.T[:self.n_taxa, :self.n_taxa]
-        d = self.d * self.np_powers[self.T[:self.n_taxa, :self.n_taxa]]
+        d = self.d * self.powers[self.T[:self.n_taxa, :self.n_taxa]]
         for i in range(self.m):
             for j in range(i + 1, self.m):
                 a = torch.nonzero(self.subtrees_mat[i, :, j])[0][0]
