@@ -1,5 +1,6 @@
 import copy
 import random
+import time
 
 import networkx as nx
 import numpy as np
@@ -20,14 +21,13 @@ class Precompute(Solver):
         adj_mat = self.initial_adj_mat() if adj_mat is None else adj_mat
         subtrees_mat = self.initial_sub_tree_mat()
         T = self.init_tau()
-        subtree_dist = self.init_sub_dist()
         for i in range(start, self.n_taxa):
             idxs_list = np.array(np.nonzero(np.triu(adj_mat))).T
             idxs = random.choice(idxs_list)
-            print(adj_mat)
+            # print(adj_mat)
             adj_mat = self.add_node(adj_mat, idxs, i, self.n_taxa)
             self.update_tau(T, subtrees_mat, idxs, i)
-            subtrees_mat = self.add_subtrees(subtrees_mat, i, idxs, adj_mat)
+            subtrees_mat = self.add_subtrees(subtrees_mat, i, idxs)
 
         self.subtrees_mat = subtrees_mat
         self.solution = adj_mat
@@ -50,7 +50,7 @@ class Precompute(Solver):
 
         return  subtree_mat
 
-    def add_subtrees(self, subtree_mat, new_taxon_idx, idx, adj):
+    def add_subtrees(self, subtree_mat, new_taxon_idx, idx):
 
         new_internal_idx = self.n_taxa + new_taxon_idx - 2
 
@@ -143,14 +143,14 @@ class Precompute(Solver):
 random.seed(0)
 np.random.seed(0)
 
-n = 6
+n = 10
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
 
+t = time.time()
 model = Precompute(d)
 model.solve()
+print(time.time() - t)
 print(model.T)
-
-print(model.solution)
 
