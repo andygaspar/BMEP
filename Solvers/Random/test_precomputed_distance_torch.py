@@ -197,4 +197,3 @@ print(time.time() - t)
 #         if torch.nonzero(model.subtrees_mat[i, j]).T.squeeze(0).shape[0] > 0:
 #             print(i, j, torch.nonzero(model.subtrees_mat[i, j]).T.squeeze(0))
 
-# TO DO comment
