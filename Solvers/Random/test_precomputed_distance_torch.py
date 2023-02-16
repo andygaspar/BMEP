@@ -56,7 +56,7 @@ class PrecomputeTorch(Solver):
         print(torch.equal(self.subtree_dist, sub_dist*2))
 
         print(self.subtree_dist)
-        print(sub_dist*2)
+        print(sub_dist*2, 'm')
         # self.T_new = T.numpy().astype(np.int32)[:self.n_taxa, :self.n_taxa]
         for i in range(2*self.m -3):
             for j in range(2 * self.m - 3):
