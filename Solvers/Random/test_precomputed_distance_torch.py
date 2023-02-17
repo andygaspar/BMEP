@@ -1,14 +1,7 @@
-import copy
 import random
 import time
-
-import networkx as nx
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
-from torch.utils.data import DataLoader
-
-# from Data_.Datasets.bmep_dataset import BMEP_Dataset
 from Solvers.solver import Solver
 
 
@@ -16,7 +9,9 @@ class PrecomputeTorch(Solver):
 
     def __init__(self, d, sorted_d=False):
         super(PrecomputeTorch, self).__init__(d, sorted_d)
+        self.device = 'cpu'
         self.d = torch.tensor(self.d, device=self.device)
+        self.powers = self.powers.to('cpu')
         self.subtrees_mat = None
         self.subtree_dist = None
         self.T_new = None
@@ -43,27 +38,28 @@ class PrecomputeTorch(Solver):
         # print(T[:self.n_taxa, :self.n_taxa])
         # self.T = self.get_tau(self.solution)
         self.T = T
+        self.device = 'cuda:0'
         print('build time', time.time() - t)
-        t = time.time()
-        self.subtree_dist = self.compute_dist()
-        print(time.time() - t)
+        # t = time.time()
+        # self.subtree_dist = self.compute_dist()
+        # print(time.time() - t)
         t = time.time()
         subtrees_dist = self.compute_dist_1()
-        print(time.time() - t)
+        print(time.time() - t, 'time cpu old')
         t = time.time()
-        sub_dist = self.compute_dist_2()
-        print(time.time() - t)
-        print(torch.equal(self.subtree_dist, sub_dist*2))
+        self.subtree_dist = self.compute_dist_2()
+        print(time.time() - t, 'time cuda matmul')
 
-        print(self.subtree_dist)
-        print(sub_dist*2, 'm')
-        # self.T_new = T.numpy().astype(np.int32)[:self.n_taxa, :self.n_taxa]
-        for i in range(2*self.m -3):
-            for j in range(2 * self.m - 3):
-                if self.subtree_dist[i,j] != sub_dist[i,j]*2:
-                    print(self.subtree_dist[i,j] , sub_dist[i,j])
+        # t = time.time()
+        # self.subtree_dist = self.compute_dist_3()
+        # print(time.time() - t, 'time cuda matmul for')
+        # print(torch.equal(self.subtree_dist, sub_dist*2))
 
-        # print('equal', np.array_equal(self.T, self.T_new))
+        # for i in range(2*self.m -3):
+        #     for j in range(2 * self.m - 3):
+        #         if self.subtree_dist[i,j] != sub_dist[i,j]*2:
+        #             print((self.subtree_dist[i,j] - sub_dist[i,j]*2).item())
+
 
     def initial_sub_tree_mat(self):
         subtree_mat = torch.zeros((self.m, self.m, self.m), device=self.device, dtype=torch.bool)
@@ -207,15 +203,41 @@ class PrecomputeTorch(Solver):
         return dist_mat
 
     def compute_dist_2(self):
+        self.d = self.d.to(self.device)
+        self.powers = self.powers.to(self.device)
+        self.subtrees_mat = self.subtrees_mat.to(self.device)
+        self.T = self.T.to(self.device)
         d = self.d * self.powers[self.T[:self.n_taxa, :self.n_taxa]]
         edges = torch.nonzero(self.solution)
         # idx_dict = dict(zip([tuple(edge.tolist()) for edge in edges], range(edges.shape[0])))
-        s_mat = self.subtrees_mat[edges[:, 0], edges[:, 1], :].to(torch.int)
+        s_mat = self.subtrees_mat[edges[:, 0], edges[:, 1], :].to(torch.float64)
 
-        a =s_mat.repeat(s_mat.shape[0],1)
+        a = s_mat.repeat(s_mat.shape[0],1)
         b = s_mat.repeat_interleave(s_mat.shape[0], dim=0)
         res = (1 - (a*b).sum(dim=-1))
         res[res<0] = 0
+        s = torch.matmul(s_mat[:, :self.n_taxa].flatten().unsqueeze(1), s_mat[:, :self.n_taxa].flatten().unsqueeze(0))
+        dist = (d.repeat(s_mat.shape[0], s_mat.shape[0]) * s).split(self.n_taxa, dim=-1)
+        dist = torch.stack(dist).view(-1, self.n_taxa, self.n_taxa).transpose(1,2)
+
+        return (dist.reshape(-1, self.n_taxa**2).sum(dim=-1) * res).reshape((s_mat.shape[0], s_mat.shape[0]))
+
+
+    def compute_dist_3(self):
+        self.d = self.d.to(self.device)
+        self.powers = self.powers.to(self.device)
+        self.subtrees_mat = self.subtrees_mat.to(self.device)
+        self.T = self.T.to(self.device)
+        d = self.d * self.powers[self.T[:self.n_taxa, :self.n_taxa]]
+        edges = torch.nonzero(self.solution)
+        # idx_dict = dict(zip([tuple(edge.tolist()) for edge in edges], range(edges.shape[0])))
+        s_mat = self.subtrees_mat[edges[:, 0], edges[:, 1], :].to(torch.float64)
+
+        a = s_mat.repeat(s_mat.shape[0],1)
+        b = s_mat.repeat_interleave(s_mat.shape[0], dim=0)
+        res = (1 - (a*b).sum(dim=-1))
+        res[res<0] = 0
+        z = res.reshape((s_mat.shape[0], s_mat.shape[0]))
         s = torch.matmul(s_mat[:, :self.n_taxa].flatten().unsqueeze(1), s_mat[:, :self.n_taxa].flatten().unsqueeze(0))
         dist = (d.repeat(s_mat.shape[0], s_mat.shape[0]) * s).split(self.n_taxa, dim=-1)
         dist = torch.stack(dist).view(-1, self.n_taxa, self.n_taxa).transpose(1,2)
@@ -226,7 +248,7 @@ torch.set_printoptions(linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 4
+n = 60
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
