@@ -43,17 +43,17 @@ class PrecomputeTorch(Solver):
         # t = time.time()
         # self.subtree_dist = self.compute_dist()
         # print(time.time() - t)
-        t = time.time()
-        subtrees_dist = self.compute_dist_1()
-        print(time.time() - t, 'time cpu old')
-        self.d = torch.tensor(self.d)
-        t = time.time()
-        self.subtree_dist = self.compute_dist_2()
-        print(time.time() - t, 'time cuda matmul')
-
-        t = time.time()
-        self.subtree_dist = self.compute_dist_3()
-        print(time.time() - t, 'time cuda matmul for')
+        # t = time.time()
+        # subtrees_dist = self.compute_dist_1()
+        # print(time.time() - t, 'time cpu old')
+        # self.d = torch.tensor(self.d)
+        # t = time.time()
+        # self.subtree_dist = self.compute_dist_2()
+        # print(time.time() - t, 'time cuda matmul')
+        #
+        # t = time.time()
+        # self.subtree_dist = self.compute_dist_3()
+        # print(time.time() - t, 'time cuda matmul for')
         # print(torch.equal(self.subtree_dist, sub_dist*2))
 
         # for i in range(2*self.m -3):
@@ -244,20 +244,20 @@ class PrecomputeTorch(Solver):
         dist = torch.stack(dist).view(-1, self.n_taxa, self.n_taxa).transpose(1,2)
 
         return (dist.reshape(-1, self.n_taxa**2).sum(dim=-1) * res).reshape((s_mat.shape[0], s_mat.shape[0]))
-torch.set_printoptions(linewidth=150)
-
-random.seed(0)
-np.random.seed(0)
-
-n = 35
-
-d = np.random.uniform(0,1,(n, n))
-d = np.triu(d) + np.triu(d).T
-
-t = time.time()
-model = PrecomputeTorch(d)
-model.solve()
-print(time.time() - t)
+# torch.set_printoptions(linewidth=150)
+#
+# random.seed(0)
+# np.random.seed(0)
+#
+# n = 35
+#
+# d = np.random.uniform(0,1,(n, n))
+# d = np.triu(d) + np.triu(d).T
+#
+# t = time.time()
+# model = PrecomputeTorch(d)
+# model.solve()
+# print(time.time() - t)
 
 
 # for i in range(model.m):

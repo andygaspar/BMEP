@@ -2,6 +2,8 @@ import random
 import time
 import numpy as np
 import torch
+
+from Solvers.Random.test_precomputed_distance_torch import PrecomputeTorch
 from Solvers.solver import Solver
 
 
@@ -252,10 +254,19 @@ n = 400
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
 
+
+t = time.time()
+model = PrecomputeTorch(d)
+model.solve()
+print(time.time() - t)
+
 t = time.time()
 model = PrecomputeTorch2(d)
 model.solve()
 print(time.time() - t)
+
+
+
 # print(model.subtrees_mat)
 
 
