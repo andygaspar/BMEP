@@ -132,22 +132,21 @@ class PrecomputeTorch2(Solver):
         subtree_mat[s_mat_step + 1, self.n_taxa: new_internal_idx + 1] = 1
         subtree_idx_mat[new_taxon_idx, new_internal_idx] = s_mat_step + 1
 
-        # print(subtree_mat)
 
         # update T i->j j->i distance
+        # a = torch.matmul(subtree_mat[subtree_idx_mat[idx[0], idx[1]]].unsqueeze(0).T,
+        #                  subtree_mat[subtree_idx_mat[idx[1], idx[0]]].unsqueeze(0))
+        # T = T + a
+        # T = T + a.T
+
         a = torch.matmul(subtree_mat[subtree_idx_mat[idx[0], idx[1]]].unsqueeze(0).T,
                          subtree_mat[subtree_idx_mat[idx[1], idx[0]]].unsqueeze(0)) == 1
-        print(subtree_mat[subtree_idx_mat[idx[0], idx[1]]])
-        b = subtree_mat[subtree_idx_mat[idx[1], idx[0]]] == 1
-        # print('\n')
-        # print(a)
-        # print(b)
-        # print((a*b).sum())
-        # print(new_internal_idx)
-        # T[subtree_mat[subtree_idx_mat[idx[0], idx[1]]] == 1][:, subtree_mat[subtree_idx_mat[idx[1], idx[0]]] == 1] += 1
-        # T[subtree_mat[subtree_idx_mat[idx[1], idx[0]]] == 1][:, subtree_mat[subtree_idx_mat[idx[0], idx[1]]] == 1] += 1
         T[a] += 1
         T[a.T] += 1
+
+        # T[subtree_mat[subtree_idx_mat[idx[0], idx[1]]] == 1][:, subtree_mat[subtree_idx_mat[idx[1], idx[0]]] == 1] += 1
+        # T[subtree_mat[subtree_idx_mat[idx[1], idx[0]]] == 1][:, subtree_mat[subtree_idx_mat[idx[0], idx[1]]] == 1] += 1
+
 
         T[new_taxon_idx] = T[idx[0]] * subtree_mat[subtree_idx_mat[idx[0], idx[1]]] \
                            + T[idx[1]] * subtree_mat[subtree_idx_mat[idx[1], idx[0]]]
@@ -205,7 +204,7 @@ torch.set_printoptions(linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 10
+n = 400
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -218,8 +217,8 @@ print(time.time() - t)
 # for el in torch.nonzero(model.solution):
 #     print(el, torch.nonzero(model.subtrees_mat[model.subtrees_idx_mat[el[0], el[1]]]).T)
 print(torch.equal(torch.tensor(model.T), model.T_new))
-print(model.T)
-print(model.T_new)
+# print(model.T)
+# print(model.T_new)
 
 
 # t = time.time()
