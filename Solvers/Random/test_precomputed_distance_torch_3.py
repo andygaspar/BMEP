@@ -7,19 +7,19 @@ from Solvers.Random.test_precomputed_distance_torch import PrecomputeTorch
 from Solvers.solver import Solver
 
 
-class PrecomputeTorch2(Solver):
+class PrecomputeTorch3(Solver):
 
     def __init__(self, d, sorted_d=False):
-        super(PrecomputeTorch2, self).__init__(d, sorted_d)
+        super(PrecomputeTorch3, self).__init__(d, sorted_d)
         # self.device = 'cpu'
-        # self.d = torch.tensor(self.d, device=self.device)
+        self.d = torch.tensor(self.d, device=self.device)
         # self.powers = self.powers.to('cpu')
         self.subtrees_mat = None
         self.subtrees_idx_mat = None
         self.subtree_dist = None
         self.T_new = None
 
-        self.sub_mask = torch.zeros((self.m, self.m), dtype=torch.bool)
+        self.k_leaves_dist = torch.zeros(self.n_taxa, dtype=torch.float64, device=self.device)
 
     def solve(self, start=3, adj_mat=None):
         t = time.time()
@@ -34,11 +34,9 @@ class PrecomputeTorch2(Solver):
             rand_idxs = random.choices(range(choices))
             idxs_list = idxs_list[rand_idxs][0]
             adj_mat = self.add_node(adj_mat, idxs_list, step, self.n_taxa)
-            # self.update_tau(T, subtrees_mat, idxs_list, step)
-            # subtrees_mat, subtrees_idx_mat = \
-            #     self.add_subtrees(subtrees_mat, subtrees_idx_mat, step, idxs_list, s_mat_step)
+
             subtrees_mat, subtrees_idx_mat, T, subtrees_dist_mat= \
-                self.add_subtrees_2(subtrees_mat, subtrees_idx_mat, subtrees_dist_mat, step, idxs_list, s_mat_step, T)
+                self.add_subtrees(subtrees_mat, subtrees_idx_mat, subtrees_dist_mat, step, idxs_list, s_mat_step, T)
             s_mat_step += 4
 
         self.subtrees_mat = subtrees_mat
@@ -82,48 +80,16 @@ class PrecomputeTorch2(Solver):
         subtree_idx_mat[1, self.n_taxa] = 4
         subtree_idx_mat[2, self.n_taxa] = 5
 
-        subtrees_dist_mat[0, 3] = (self.d[0, 1] + self.d[0, 2])/2
-        subtrees_dist_mat[1, 4] = (self.d[1, 0] + self.d[1, 2])/2
-        subtrees_dist_mat[2, 5] = (self.d[2, 0] + self.d[2, 1])/2
+        subtrees_dist_mat[0, 3] = (self.d[0, 1] + self.d[0, 2])/4
+        subtrees_dist_mat[1, 4] = (self.d[1, 0] + self.d[1, 2])/4
+        subtrees_dist_mat[2, 5] = (self.d[2, 0] + self.d[2, 1])/4
 
         return  subtree_mat, subtree_idx_mat, subtrees_dist_mat
 
-    def add_subtrees(self, subtree_mat, subtree_idx_mat, new_taxon_idx, idx, s_mat_step):
+    def add_subtrees(self, subtree_mat, subtree_idx_mat, subtrees_dist_mat, new_taxon_idx, idx, s_mat_step, T):
 
         new_internal_idx = self.n_taxa + new_taxon_idx - 2
 
-        # singleton {k}
-        subtree_mat[s_mat_step, new_taxon_idx] = 1
-        subtree_idx_mat[new_internal_idx, new_taxon_idx] = s_mat_step
-
-        # {k} complementary
-        subtree_mat[s_mat_step + 1, :new_taxon_idx] = 1
-        subtree_mat[s_mat_step + 1, new_taxon_idx: new_internal_idx + 1] = 1
-        subtree_idx_mat[new_taxon_idx, new_internal_idx] = s_mat_step + 1
-
-        # i -> j to k -> j
-        subtree_mat[s_mat_step + 2] = subtree_mat[subtree_idx_mat[idx[0], idx[1]]]
-        subtree_idx_mat[new_internal_idx, idx[1]] = s_mat_step + 2
-
-        # j -> i to k -> i
-        subtree_mat[s_mat_step + 3] = subtree_mat[subtree_idx_mat[idx[1], idx[0]]]
-        subtree_idx_mat[new_internal_idx, idx[0]] = s_mat_step + 3
-
-        # add k to previous
-        subtree_mat[:s_mat_step, new_taxon_idx] = \
-            subtree_mat[:s_mat_step, idx[0]] + subtree_mat[:s_mat_step, idx[1]] - \
-            (subtree_mat[:s_mat_step, idx[0]] * subtree_mat[:s_mat_step, idx[1]])
-
-        # adjust idxs
-        subtree_idx_mat[idx[0], new_internal_idx] = subtree_idx_mat[idx[0], idx[1]]
-        subtree_idx_mat[idx[1], new_internal_idx] = subtree_idx_mat[idx[1], idx[0]]
-        subtree_idx_mat[idx[0], idx[1]] = subtree_idx_mat[idx[1], idx[0]] = 0
-
-        return subtree_mat, subtree_idx_mat
-
-    def add_subtrees_2(self, subtree_mat, subtree_idx_mat, subtrees_dist_mat, new_taxon_idx, idx, s_mat_step, T):
-
-        new_internal_idx = self.n_taxa + new_taxon_idx - 2
 
         # singleton {k}
         subtree_mat[s_mat_step, new_taxon_idx] = 1
@@ -136,10 +102,6 @@ class PrecomputeTorch2(Solver):
 
 
         # update T i->j j->i distance *********************
-        # a = torch.matmul(subtree_mat[subtree_idx_mat[idx[0], idx[1]]].unsqueeze(0).T,
-        #                  subtree_mat[subtree_idx_mat[idx[1], idx[0]]].unsqueeze(0))
-        # T = T + a
-        # T = T + a.T
 
         ij = subtree_mat[subtree_idx_mat[idx[0], idx[1]]]
         ji = subtree_mat[subtree_idx_mat[idx[1], idx[0]]]
@@ -147,14 +109,6 @@ class PrecomputeTorch2(Solver):
         T[a] += 1
         T[a.T] += 1
 
-        # self.sub_mask[:new_internal_idx + 1, :new_internal_idx + 1] = \
-        #     torch.matmul(ij[:new_internal_idx + 1].unsqueeze(0).T, ji[:new_internal_idx + 1].unsqueeze(0)) == 1
-        # T[self.sub_mask] += 1
-        # T[self.sub_mask.T] += 1
-
-        # T[ij == 1][:, ji == 1] += 1
-        # T[ji == 1][:, ij == 1] += 1
-        # ****************
 
         T[new_taxon_idx] = T[idx[0]] * ij + T[idx[1]] * ji
 
@@ -188,6 +142,10 @@ class PrecomputeTorch2(Solver):
         subtree_idx_mat[idx[1], new_internal_idx] = subtree_idx_mat[idx[1], idx[0]]
         subtree_idx_mat[idx[0], idx[1]] = subtree_idx_mat[idx[1], idx[0]] = 0
 
+        self.k_leaves_dist = self.d[new_taxon_idx] * self.powers[T[new_taxon_idx, :self.n_taxa]]
+
+
+
         return subtree_mat, subtree_idx_mat, T, subtrees_dist_mat
 
 
@@ -211,13 +169,14 @@ torch.set_printoptions(linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 400
+n = 6
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
+np.fill_diagonal(d, 0)
 
 t = time.time()
-model = PrecomputeTorch2(d)
+model = PrecomputeTorch3(d)
 model.solve()
 print(time.time() - t)
 # print(torch.nonzero(model.solution))
