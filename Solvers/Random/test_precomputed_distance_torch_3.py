@@ -9,11 +9,11 @@ from Solvers.solver import Solver
 
 class PrecomputeTorch3(Solver):
 
-    def __init__(self, d, sorted_d=False):
+    def __init__(self, d, sorted_d=False, device='cuda:0'):
         super(PrecomputeTorch3, self).__init__(d, sorted_d)
-        # self.device = 'cpu'
+        self.device = 'cuda:0'
         self.d = torch.tensor(self.d, device=self.device)
-        # self.powers = self.powers.to('cpu')
+        self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.subtrees_idx_mat = None
         self.subtree_dist = None
@@ -56,7 +56,7 @@ class PrecomputeTorch3(Solver):
     def initial_sub_tree_mat(self):
         subtree_mat = torch.zeros((2*(2*self.n_taxa - 3), self.m), device=self.device, dtype=torch.long)
         subtree_idx_mat = torch.zeros((self.m, self.m), device=self.device, dtype=torch.long)
-        subtrees_dist_mat = torch.zeros((self.m, self.m), device=self.device, dtype=torch.float64)
+        subtrees_dist_mat = torch.zeros((2*(2*self.n_taxa - 3), 2*(2*self.n_taxa - 3)), device=self.device, dtype=torch.float64)
 
         # 0
         subtree_mat[0, 0]  = 1
@@ -67,9 +67,9 @@ class PrecomputeTorch3(Solver):
         subtree_idx_mat[self.n_taxa, 1] = 1
         subtree_idx_mat[self.n_taxa, 2] = 2
 
-        subtrees_dist_mat[0, 1] = self.d[0, 1]/2
-        subtrees_dist_mat[0, 2] = self.d[0, 2]/2
-        subtrees_dist_mat[1, 2] = self.d[1, 2]/2
+        subtrees_dist_mat[0, 1] = subtrees_dist_mat[1, 0] = self.d[0, 1]/2
+        subtrees_dist_mat[0, 2] = subtrees_dist_mat[2, 0] = self.d[0, 2]/2
+        subtrees_dist_mat[1, 2] = subtrees_dist_mat[2, 1] = self.d[1, 2]/2
 
         # 1
         subtree_mat[3, self.n_taxa] = subtree_mat[3, 1] = subtree_mat[3, 2] = 1
@@ -80,9 +80,9 @@ class PrecomputeTorch3(Solver):
         subtree_idx_mat[1, self.n_taxa] = 4
         subtree_idx_mat[2, self.n_taxa] = 5
 
-        subtrees_dist_mat[0, 3] = (self.d[0, 1] + self.d[0, 2])/4
-        subtrees_dist_mat[1, 4] = (self.d[1, 0] + self.d[1, 2])/4
-        subtrees_dist_mat[2, 5] = (self.d[2, 0] + self.d[2, 1])/4
+        subtrees_dist_mat[0, 3] = subtrees_dist_mat[3, 0] = (self.d[0, 1] + self.d[0, 2])/2
+        subtrees_dist_mat[1, 4] = subtrees_dist_mat[4, 1] = (self.d[1, 0] + self.d[1, 2])/2
+        subtrees_dist_mat[2, 5] = subtrees_dist_mat[5, 2] = (self.d[2, 0] + self.d[2, 1])/2
 
         return  subtree_mat, subtree_idx_mat, subtrees_dist_mat
 
@@ -150,7 +150,15 @@ class PrecomputeTorch3(Solver):
         subtree_idx_mat[idx[1], new_internal_idx] = subtree_idx_mat[idx[1], idx[0]]
         subtree_idx_mat[idx[0], idx[1]] = subtree_idx_mat[idx[1], idx[0]] = 0
 
-        self.k_leaves_dist = self.d[new_taxon_idx] * self.powers[T[new_taxon_idx, :self.n_taxa]]
+        # k_leaves_dist = (self.d[new_taxon_idx, :new_taxon_idx] * self.powers[T[new_taxon_idx, :new_taxon_idx]]).unsqueeze(-1)
+        # ll = subtree_mat[:s_mat_step + 3, :new_taxon_idx].to(torch.float64)
+        # oo = torch.matmul(ll, k_leaves_dist)
+        # kk = torch.matmul(ll, k_leaves_dist).squeeze()
+        subtrees_dist_mat[subtree_idx_mat[new_taxon_idx, new_internal_idx], :s_mat_step + 3] = \
+            subtrees_dist_mat[subtree_idx_mat[new_internal_idx, new_taxon_idx], :s_mat_step + 3] = \
+            torch.matmul(subtree_mat[:s_mat_step + 3, :new_taxon_idx].to(torch.float64),
+                         (self.d[new_taxon_idx, :new_taxon_idx] * self.powers[T[new_taxon_idx, :new_taxon_idx]])
+                         .unsqueeze(-1)).squeeze()
 
 
 
@@ -183,14 +191,18 @@ d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
 np.fill_diagonal(d, 0)
 
+device = 'cpu'
+# device = 'cuda:0'
+
 t = time.time()
-model = PrecomputeTorch3(d)
+model = PrecomputeTorch3(d, device=device)
+
 model.solve()
 print(time.time() - t)
 # print(torch.nonzero(model.solution))
 # for el in torch.nonzero(model.solution):
 #     print(el, torch.nonzero(model.subtrees_mat[model.subtrees_idx_mat[el[0], el[1]]]).T)
-print(torch.equal(torch.tensor(model.T), model.T_new))
+# print(torch.equal(torch.tensor(model.T).to('cuda:0'), model.T_new))
 # print(model.T)
 # print(model.T_new)
 
