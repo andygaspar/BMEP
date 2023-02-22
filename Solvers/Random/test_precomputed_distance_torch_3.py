@@ -44,7 +44,7 @@ class PrecomputeTorch3(Solver):
         self.solution = adj_mat
         # self.obj_val = self.compute_obj_val_from_adj_mat(adj_mat, self.d, self.n_taxa)
         # print(T[:self.n_taxa, :self.n_taxa])
-        self.T = self.get_full_tau(self.solution.to('cpu'))
+        # self.T = self.get_full_tau(self.solution.to('cpu'))
         self.T_new = T
         # self.device = 'cuda:0'
         print('build time', time.time() - t)
@@ -54,7 +54,7 @@ class PrecomputeTorch3(Solver):
 
 
     def initial_sub_tree_mat(self):
-        subtree_mat = torch.zeros((2*(2*self.n_taxa - 3), self.m), device=self.device, dtype=torch.float)
+        subtree_mat = torch.zeros((2*(2*self.n_taxa - 3), self.m), device=self.device, dtype=torch.long)
         subtree_idx_mat = torch.zeros((self.m, self.m), device=self.device, dtype=torch.long)
         subtrees_dist_mat = torch.zeros((self.m, self.m), device=self.device, dtype=torch.float64)
 
@@ -103,11 +103,19 @@ class PrecomputeTorch3(Solver):
 
         # update T i->j j->i distance *********************
 
+        # K = T.clone()
+
         ij = subtree_mat[subtree_idx_mat[idx[0], idx[1]]]
         ji = subtree_mat[subtree_idx_mat[idx[1], idx[0]]]
-        a = torch.matmul(ij.unsqueeze(0).T, ji.unsqueeze(0)) == 1
-        T[a] += 1
-        T[a.T] += 1
+        # a = torch.matmul(ij.unsqueeze(0).T, ji.unsqueeze(0)) == 1
+        # T[a] += 1
+        # T[a.T] += 1
+
+        T[ij==1] += ji
+        T[ji == 1] += ij
+
+        # print(torch.equal(K, T))
+
 
 
         T[new_taxon_idx] = T[idx[0]] * ij + T[idx[1]] * ji
@@ -169,7 +177,7 @@ torch.set_printoptions(linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 6
+n = 400
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -182,7 +190,7 @@ print(time.time() - t)
 # print(torch.nonzero(model.solution))
 # for el in torch.nonzero(model.solution):
 #     print(el, torch.nonzero(model.subtrees_mat[model.subtrees_idx_mat[el[0], el[1]]]).T)
-print(torch.equal(torch.tensor(model.T, device='cuda:0'), model.T_new))
+print(torch.equal(torch.tensor(model.T), model.T_new))
 # print(model.T)
 # print(model.T_new)
 
