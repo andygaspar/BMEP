@@ -25,7 +25,7 @@ class PrecomputeTorch3(Solver):
     def solve(self, start=3, adj_mat=None):
         t = time.time()
         adj_mat = self.initial_adj_mat(self.device) if adj_mat is None else adj_mat
-        subtrees_mat, subtrees_idx_mat, subtrees_dist_mat = self.initial_sub_tree_mat()
+        subtrees_mat, subtrees_idx_mat, subtrees_dist_mat, subtrees_list = self.initial_sub_tree_mat()
         T = self.init_tau()
         s_mat_step = 6
         # subtree_dist = self.init_sub_dist()
@@ -37,7 +37,7 @@ class PrecomputeTorch3(Solver):
             adj_mat = self.add_node(adj_mat, idxs_list, step, self.n_taxa)
 
             subtrees_mat, subtrees_idx_mat, T, subtrees_dist_mat= \
-                self.add_subtrees(subtrees_mat, subtrees_idx_mat, subtrees_dist_mat, step, idxs_list, s_mat_step, T)
+                self.add_subtrees(subtrees_mat, subtrees_idx_mat, subtrees_dist_mat, subtrees_list, step, idxs_list, s_mat_step, T)
             s_mat_step += 4
 
         self.subtrees_mat = subtrees_mat
@@ -59,6 +59,8 @@ class PrecomputeTorch3(Solver):
         subtree_mat = torch.zeros((2*(2*self.n_taxa - 3), self.m), device=self.device, dtype=torch.long)
         subtree_idx_mat = torch.zeros((self.m, self.m), device=self.device, dtype=torch.long)
         subtrees_dist_mat = torch.zeros((2*(2*self.n_taxa - 3), 2*(2*self.n_taxa - 3)), device=self.device, dtype=torch.float64)
+        subtrees_list = torch.zeros((2 * (2 * self.n_taxa - 3), 2 * (2 * self.n_taxa - 3)), device=self.device,
+                                        dtype=torch.float64)
 
         # 0
         subtree_mat[0, 0]  = 1
@@ -78,6 +80,7 @@ class PrecomputeTorch3(Solver):
         subtree_mat[4, self.n_taxa] = subtree_mat[4, 0] = subtree_mat[4, 2] = 1
         subtree_mat[5, self.n_taxa] = subtree_mat[5, 0] = subtree_mat[5, 1] = 1
 
+
         subtree_idx_mat[0, self.n_taxa] = 3
         subtree_idx_mat[1, self.n_taxa] = 4
         subtree_idx_mat[2, self.n_taxa] = 5
@@ -86,9 +89,19 @@ class PrecomputeTorch3(Solver):
         subtrees_dist_mat[1, 4] = subtrees_dist_mat[4, 1] = (self.d[1, 0] + self.d[1, 2])/2
         subtrees_dist_mat[2, 5] = subtrees_dist_mat[5, 2] = (self.d[2, 0] + self.d[2, 1])/2
 
-        return  subtree_mat, subtree_idx_mat, subtrees_dist_mat
 
-    def add_subtrees(self, subtree_mat, subtree_idx_mat, subtrees_dist_mat, new_taxon_idx, idx, s_mat_step, T):
+        subtrees_list[0, 0] = 1
+        subtrees_list[1, 1] = 1
+        subtrees_list[2, 2] = 1
+        subtrees_list[3, 1] = subtrees_list[3, 2] = subtrees_list[3, 3] = 1
+        subtrees_list[4, 0] = subtrees_list[4, 2] = subtrees_list[4, 4] = 1
+        subtrees_list[5, 0] = subtrees_list[5, 1] = subtrees_list[5, 5] = 1
+
+
+
+        return  subtree_mat, subtree_idx_mat, subtrees_dist_mat, subtrees_list
+
+    def add_subtrees(self, subtree_mat, subtree_idx_mat, subtrees_dist_mat, subtrees_list, new_taxon_idx, idx, s_mat_step, T):
 
         new_internal_idx = self.n_taxa + new_taxon_idx - 2
 
