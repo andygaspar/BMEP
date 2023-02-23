@@ -105,6 +105,9 @@ class PrecomputeTorch3(Solver):
 
         new_internal_idx = self.n_taxa + new_taxon_idx - 2
 
+        # update subtrees_dist sub i <-> sub j
+        # print(subtrees_dist_mat)
+
 
         # singleton {k}
         subtree_mat[s_mat_step, new_taxon_idx] = 1
@@ -115,6 +118,10 @@ class PrecomputeTorch3(Solver):
         subtree_mat[s_mat_step + 1, self.n_taxa: new_internal_idx + 1] = 1
         subtree_idx_mat[new_taxon_idx, new_internal_idx] = s_mat_step + 1
 
+        # update sublist with k
+        subtrees_list[s_mat_step, s_mat_step] = 1
+        subtrees_list[s_mat_step + 1] = subtrees_list[subtree_idx_mat[idx[0], idx[1]]] \
+                                        + subtrees_list[subtree_idx_mat[idx[1], idx[0]]]
 
         # update T i->j j->i distance *********************
 
@@ -123,14 +130,10 @@ class PrecomputeTorch3(Solver):
         ij = subtree_mat[subtree_idx_mat[idx[0], idx[1]]]
         ji = subtree_mat[subtree_idx_mat[idx[1], idx[0]]]
 
-        T[ij==1] += ji
+        T[ij == 1] += ji
         T[ji == 1] += ij
 
         T[new_taxon_idx] = T[idx[0]] * ij + T[idx[1]] * ji
-
-
-        # update subtrees_dist sub i <-> sub j
-        # print(subtrees_dist_mat)
 
 
         # add distance k and internal k
@@ -146,10 +149,13 @@ class PrecomputeTorch3(Solver):
 
         # i -> j to k -> j
         subtree_mat[s_mat_step + 2] = ij
+        subtrees_list[s_mat_step + 2] = subtrees_list[subtree_idx_mat[idx[0], idx[1]]]
         subtree_idx_mat[new_internal_idx, idx[1]] = s_mat_step + 2
+
 
         # j -> i to k -> i
         subtree_mat[s_mat_step + 3] = ji
+        subtrees_list[s_mat_step + 3] = subtrees_list[subtree_idx_mat[idx[1], idx[0]]]
         subtree_idx_mat[new_internal_idx, idx[0]] = s_mat_step + 3
 
         # add k and new internal to previous
@@ -189,6 +195,7 @@ class PrecomputeTorch3(Solver):
                          (self.d[new_taxon_idx, :new_taxon_idx] * self.powers[T[new_taxon_idx, :new_taxon_idx]])
                          .unsqueeze(-1)).squeeze()
         # print(subtrees_dist_mat)
+
 
 
 
