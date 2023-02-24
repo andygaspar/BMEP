@@ -13,8 +13,8 @@ class PrecomputeTorch3(Solver):
         super(PrecomputeTorch3, self).__init__(d, sorted_d)
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
-        self.powers = torch.tensor(self.powers, device=self.device)
-        # self.powers = self.powers.to(self.device)
+        # self.powers = torch.tensor(self.powers, device=self.device)
+        self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.pointer_subtrees = None
         self.subtrees_idx_mat = None

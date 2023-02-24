@@ -12,7 +12,7 @@ from Solvers.solver import Solver
 
 
 class PhyloGA(Solver):
-    def __init__(self, d, batch=10, max_iterations = 25, fast_me=True):
+    def __init__(self, d, batch=10, max_iterations = 25, fast_me=True, spr=True):
         super().__init__(d)
 
         self.d = torch.tensor(self.d, device=self.device)
@@ -25,7 +25,7 @@ class PhyloGA(Solver):
         self.max_iterations = max_iterations
         self.iterations = None
         self.fast_me_solver = \
-            FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True,triangular_inequality=False, logs=False)
+            FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=spr,triangular_inequality=False, logs=False)
 
     def solve(self):
         self.obj_val = 10**5
@@ -65,7 +65,8 @@ class PhyloGA(Solver):
 
         self.iterations = i * self.batch
 
-        self.T = self.get_tau(self.solution)
+        self.T = self.get_tau(self.solution.to('cpu'))
+        self.d = self.d.to('cpu')
         self.obj_val = self.compute_obj()
 
     def back_track(self, trees, objs):
@@ -129,7 +130,7 @@ class PhyloGA(Solver):
             idxs_list = (idxs_list[:, :, 0], idxs_list[:, :, 1], idxs_list[:, :, 2])
             adj_mats = self.add_nodes(adj_mats, idxs_list, new_node_idx=step, n=self.n_taxa)
 
-        print('combs', combs)
+        # print('combs', combs)
 
         obj_vals = self.compute_obj_val_batch(adj_mats, self.d, self.powers, self.n_taxa, self.device)
         return combs, obj_vals, adj_mats
@@ -139,7 +140,7 @@ class PhyloGA(Solver):
             new_mats = []
             new_vals = []
             for ad_mat in adj_mats:
-                tau = self.get_tau(ad_mat)
+                tau = self.get_tau(ad_mat.to('cpu'))
                 self.fast_me_solver.update_topology(tau)
                 self.fast_me_solver.solve()
                 new_mats.append(self.fast_me_solver.solution)

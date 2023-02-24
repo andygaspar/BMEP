@@ -13,8 +13,8 @@ class PrecomputeTorch3(Solver):
         super(PrecomputeTorch3, self).__init__(d, sorted_d)
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
-        self.powers = torch.tensor(self.powers, device=self.device)
-        # self.powers = self.powers.to(self.device)
+        # self.powers = torch.tensor(self.powers, device=self.device)
+        self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.pointer_subtrees = None
         self.subtrees_idx_mat = None
@@ -173,7 +173,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 4
+n = 40
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -182,14 +182,15 @@ np.fill_diagonal(d, 0)
 device = 'cpu'
 # device = 'cuda:0'
 
-t = time.time()
 model = PrecomputeTorch3(d, device=device)
+t = time.time()
 
 model.solve()
 print(time.time() - t)
 
-# print(model.subtree_dist*10)
-# print(model.check_dist()*10)
+# s = model.subtree_dist * (torch.matmul(model.subtrees_mat.to(torch.float), model.subtrees_mat.to(torch.float).T) == 0)
+# print(torch.allclose(model.check_dist(), s))
+print()
 # sub = model.subtrees_mat
 # sub.repeat((sub.shape[0]), 1)
 # sub_int = sub.repeat_interleave(sub.shape[0], dim=0)

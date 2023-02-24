@@ -28,15 +28,15 @@ dim = 70
 runs = 20
 
 
-# random.seed(0)
-# np.random.seed(0)
+random.seed(0)
+np.random.seed(0)
 max_iterations = 100
 
 results = []
 k = 0
 
 batch = 15
-for dim in [40]:#, 50, 60, 70, 80, 90]:
+for dim in [70]:#, 50, 60, 70, 80, 90]:
     print('*************** ', dim)
     for run in range(runs):
         results.append([])
@@ -45,28 +45,28 @@ for dim in [40]:#, 50, 60, 70, 80, 90]:
         d = data_set.get_random_mat(dim)
         rand_tj = PhyloGA(d, batch=batch, max_iterations=100)
         rand_tj.solve_timed()
-        print(rand_tj.time, "rand", rand_tj.obj_val)
+        print(rand_tj.time, "rand", rand_tj.obj_val, rand_tj.iterations)
         rand_tj_tj = tuple(rand_tj.tree_climb(torch.tensor(rand_tj.solution).unsqueeze(0)).to('cpu').tolist()[0])
-        print(rand_tj_tj)
+        # print(rand_tj_tj)
 
-        rand_tj1 = PhyloGA(d, batch=30, max_iterations=100)
+        rand_tj1 = PhyloGA(d, batch=batch, max_iterations=100, spr=False)
         rand_tj1.solve_timed()
-        print(rand_tj1.time, "rand", rand_tj1.obj_val)
+        print(rand_tj1.time, "rand 30", rand_tj1.obj_val, rand_tj1.iterations)
         rand_tj1_tj = tuple(rand_tj1.tree_climb(torch.tensor(rand_tj1.solution).unsqueeze(0)).to('cpu').tolist()[0])
-        print(rand_tj1_tj)
+        # print(rand_tj1_tj)
 
         rand_nni1 = RandomNni(d, parallel=False, spr=True)
-        rand_nni1.solve_timed(rand_tj.iterations)
+        rand_nni1.solve_timed(rand_tj1.iterations)
         print("rand parallel", rand_nni1.time, rand_nni1.obj_val)
         rand_nni_tj = tuple(rand_tj.tree_climb(torch.tensor(rand_nni1.solution).unsqueeze(0)).to('cpu').tolist()[0])
-        print(rand_nni_tj)
+        # print(rand_nni_tj)
 
         #
         fast = FastMeSolver(d, bme=True, nni=True, digits=17, post_processing=True, triangular_inequality=False, logs=False)
         fast.solve_all_flags()
-        print('fast', fast.obj_val)
+        print('fast', fast.time, fast.obj_val)
         fast_tj = tuple(rand_tj.tree_climb(torch.tensor(fast.solution).unsqueeze(0)).to('cpu').tolist()[0])
-        print(fast_tj)
+        # print(fast_tj)
         results[k] += [fast.obj_val, rand_nni1.obj_val,  rand_tj.obj_val, rand_tj1.obj_val, fast.time, rand_nni1.time,
                        rand_tj.time, rand_tj1.time, fast.method]
         results[k] += [fast_tj, rand_nni_tj, rand_tj_tj, rand_tj1_tj]
