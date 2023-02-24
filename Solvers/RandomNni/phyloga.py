@@ -65,7 +65,7 @@ class PhyloGA(Solver):
 
         self.iterations = i * self.batch
 
-        self.T = self.get_tau(self.solution)
+        self.T = self.get_tau_tensor(self.solution)
         self.obj_val = self.compute_obj()
 
     def back_track(self, trees, objs):
@@ -139,7 +139,7 @@ class PhyloGA(Solver):
             new_mats = []
             new_vals = []
             for ad_mat in adj_mats:
-                tau = self.get_tau(ad_mat)
+                tau = self.get_tau(ad_mat.to('cpu'))
                 self.fast_me_solver.update_topology(tau)
                 self.fast_me_solver.solve()
                 new_mats.append(self.fast_me_solver.solution)
