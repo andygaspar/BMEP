@@ -201,7 +201,11 @@ class PrecomputeTorch3(Solver):
         return dist
 
     def spr(self):
-        intersections = self.intersection
+        intersections = self.intersection.clone()
+
+        # distance subtrees to taxa, useful for h computation
+        sub_to_taxon_idx = torch.nonzero(self.solution[:, :self.n_taxa]).T
+        sub_to_taxon = self.subtree_dist[:, self.adj_to_set[sub_to_taxon_idx[0], sub_to_taxon_idx[1]]]
 
         # delete complementary to each subtree as potential move
         complementary = self.set_to_adj[range(self.n_subtrees)]
@@ -216,17 +220,34 @@ class PrecomputeTorch3(Solver):
             intersections[model.subtrees_mat.sum(dim=-1) == self.m - 1] = False
 
         # neighbor 1
-        l = intersections[self.neighbors[:, 0]]
         inter_1 = intersections * intersections[self.neighbors[:, 0]]
-        regrafts = torch.nonzero(self.intersection)
+        regrafts = torch.nonzero(inter_1)
         x = self.subtrees_mat[regrafts[:, 0], : self.n_taxa]
         b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
-        A = 1 - x
-        # B = self.set_to_adj[regrafts[:, 1]]
-        # AH = torch.nonzero(self.solution[X[:, 0]])
-        print(regrafts.shape)
-        # print(AH)
-        print(x.shape)
+        a = self.subtrees_mat[self.neighbors[regrafts[:, 0], 0], : self.n_taxa]
+
+        dist_ij = self.T[self.set_to_adj[regrafts[:, 0]][:, 0], self.set_to_adj[regrafts[:, 1]][:, 0]]
+
+        h = 1 - x - b - a
+
+        # LT = L(XA) + L(XB) + L(XB)
+        xb = self.subtree_dist[regrafts[:, 0], regrafts[:, 1]]
+        xa = self.subtree_dist[regrafts[:, 0], self.neighbors[regrafts[:, 0], 0]]
+        diff_xb = xb*(1 - 1/ self.powers[dist_ij])
+        diff_xa = xa * (1 - self.powers[dist_ij])
+
+        # diff_bh = bh(1 - 2)
+        diff_bh = -(sub_to_taxon[regrafts[:, 1], :] * h).sum(dim=-1)
+
+        # diff_ah = bh(1 - 1/2)
+        diff_ah = (sub_to_taxon[self.neighbors[regrafts[:, 0], 0]] * h).sum(dim=-1) / 2
+
+        xh = sub_to_taxon[regrafts[:, 0], :] * h
+
+        diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
+                   self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
+        diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        print('x')
 #ll
 
 torch.set_printoptions(precision=2, linewidth=150)
@@ -234,7 +255,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 4
+n = 250
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -247,11 +268,13 @@ model = PrecomputeTorch3(d, device=device)
 t = time.time()
 
 model.solve()
+# model.plot_phylogeny()
 
 print(model.intersection.sum(), model.intersection.shape[0]**2)
 
 model.spr()
 print(time.time() - t)
+
 
 #
 # s = model.subtrees_mat

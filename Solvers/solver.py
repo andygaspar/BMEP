@@ -5,6 +5,7 @@ from abc import abstractmethod
 import networkx as nx
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 
 pippo = 0
 
@@ -174,8 +175,11 @@ class Solver:
         Tau = (Tau_int[idx_int_to_taxa[0], idx_int_to_taxa[1]] + 2).reshape(n_taxa, n_taxa)
         return (d * 2 ** (-Tau[:, :n_taxa, :n_taxa])).reshape(adj_mat.shape[0], -1).sum(dim=-1)
 
-
-
-
-
-
+    def plot_phylogeny(self, labels=None, size=1000, filename=None, show=True):
+        g = nx.from_numpy_matrix(self.solution.numpy())
+        nx.draw(g, node_color=['green' for _ in range(self.n_taxa)] + ['red' for _ in range(self.m - self.n_taxa)],
+                with_labels=True, font_weight='bold', node_size=size)
+        if show:
+            plt.show()
+        if filename is not None:
+            plt.savefig("Plots/" + filename)
