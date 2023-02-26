@@ -202,13 +202,26 @@ class PrecomputeTorch3(Solver):
 
     def spr(self):
         intersections = self.intersection
-        intersections[:, model.subtrees_mat.sum(dim=-1) == self.m - 1] = \
-            intersections[model.subtrees_mat.sum(dim=-1) == self.m - 1] = False
+
+        # delete complementary to each subtree as potential move
+        complementary = self.set_to_adj[range(self.n_subtrees)]
+        intersections[range(self.n_subtrees), self.adj_to_set[complementary[:, 1], complementary[:,0]]] = False
+
+        # delete neighbors as potential move
         intersections[range(self.n_subtrees), self.neighbors[:, 0]] = \
             intersections[range(self.n_subtrees), self.neighbors[:, 1]] = False
+
+        # delete from subtrees all taxa complementary (no spr moves for them)
+        intersections[:, model.subtrees_mat.sum(dim=-1) == self.m - 1] = \
+            intersections[model.subtrees_mat.sum(dim=-1) == self.m - 1] = False
+
+        # neighbor 1
+        l = intersections[self.neighbors[:, 0]]
+        inter_1 = intersections * intersections[self.neighbors[:, 0]]
         regrafts = torch.nonzero(self.intersection)
         x = self.subtrees_mat[regrafts[:, 0], : self.n_taxa]
-        x -= self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
+        b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
+        A = 1 - x
         # B = self.set_to_adj[regrafts[:, 1]]
         # AH = torch.nonzero(self.solution[X[:, 0]])
         print(regrafts.shape)
@@ -221,7 +234,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 400
+n = 4
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
