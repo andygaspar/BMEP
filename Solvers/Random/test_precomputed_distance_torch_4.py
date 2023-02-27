@@ -255,7 +255,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 250
+n = 6
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
