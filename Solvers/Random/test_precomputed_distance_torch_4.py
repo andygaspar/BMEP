@@ -200,7 +200,7 @@ class PrecomputeTorch3(Solver):
                 dist[i, j] = v
         return dist
 
-    @torch.jit.script
+    # @torch.jit.script
     def spr(self):
         # intersections = self.intersection.clone()
         intersections = self.intersection
@@ -292,7 +292,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 6
+n = 250
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
