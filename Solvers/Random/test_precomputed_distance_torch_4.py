@@ -249,7 +249,7 @@ class PrecomputeTorch3(Solver):
 
         diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
                    self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
-        diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        diff_T = diff_xb + diff_xa + diff_bh + diff_xh + diff_ah
         min_first_side_val, min_first_side_idx = diff_T.min(0)
         min_first_side = regrafts[torch.argmin(min_first_side_idx)]
 
@@ -280,7 +280,7 @@ class PrecomputeTorch3(Solver):
 
         diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
                    self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
-        diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        diff_T = diff_xb + diff_xa + diff_bh + diff_xh + diff_ah
         min_second_side_val, min_second_side_idx = diff_T.min(0)
         min_second_side = regrafts[torch.argmin(min_second_side_idx)]
 
