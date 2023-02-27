@@ -17,8 +17,8 @@ class PrecomputeTorch3(Solver):
         self.intersection = None
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
-        self.powers = torch.tensor(self.powers, device=self.device)
-        # self.powers = self.powers.to(self.device)
+        # self.powers = torch.tensor(self.powers, device=self.device)
+        self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.pointer_subtrees = None
         self.adj_to_set = None
@@ -179,7 +179,7 @@ class PrecomputeTorch3(Solver):
 
         final_conversion = torch.stack([attached_to_i[:, 0], adj_to_set[conversion[:, 0], conversion[:, 1]]]).T
 
-        neighbors = torch.zeros((model.n_subtrees, 2), dtype=torch.long)
+        neighbors = torch.zeros((model.n_subtrees, 2), dtype=torch.long, device=self.device)
         f = final_conversion.view((final_conversion.shape[0] // 2, 2, 2))
         neighbors[f[:, 0, 0], 0] = f[:, 0, 1]
         neighbors[f[:, 1, 0], 1] = f[:, 1, 1]
@@ -200,8 +200,11 @@ class PrecomputeTorch3(Solver):
                 dist[i, j] = v
         return dist
 
+    @torch.jit.script
     def spr(self):
-        intersections = self.intersection.clone()
+        # intersections = self.intersection.clone()
+        intersections = self.intersection
+
 
         # distance subtrees to taxa, useful for h computation
         sub_to_taxon_idx = torch.nonzero(self.solution[:, :self.n_taxa]).T
@@ -220,8 +223,8 @@ class PrecomputeTorch3(Solver):
             intersections[model.subtrees_mat.sum(dim=-1) == self.m - 1] = False
 
         # neighbor 1
-        inter_1 = intersections * intersections[self.neighbors[:, 0]]
-        regrafts = torch.nonzero(inter_1)
+        inter_neighbor = intersections * intersections[self.neighbors[:, 0]]
+        regrafts = torch.nonzero(inter_neighbor)
         x = self.subtrees_mat[regrafts[:, 0], : self.n_taxa]
         b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
         a = self.subtrees_mat[self.neighbors[regrafts[:, 0], 0], : self.n_taxa]
@@ -247,6 +250,40 @@ class PrecomputeTorch3(Solver):
         diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
                    self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
         diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        min_first_side_val, min_first_side_idx = diff_T.min(0)
+        min_first_side = regrafts[torch.argmin(min_first_side_idx)]
+
+        # neighbor 2
+        inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
+        regrafts = torch.nonzero(inter_neighbor)
+        x = self.subtrees_mat[regrafts[:, 0], : self.n_taxa]
+        b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
+        a = self.subtrees_mat[self.neighbors[regrafts[:, 0], 0], : self.n_taxa]
+
+        dist_ij = self.T[self.set_to_adj[regrafts[:, 0]][:, 0], self.set_to_adj[regrafts[:, 1]][:, 0]]
+
+        h = 1 - x - b - a
+
+        # LT = L(XA) + L(XB) + L(XB)
+        xb = self.subtree_dist[regrafts[:, 0], regrafts[:, 1]]
+        xa = self.subtree_dist[regrafts[:, 0], self.neighbors[regrafts[:, 0], 0]]
+        diff_xb = xb*(1 - 1/ self.powers[dist_ij])
+        diff_xa = xa * (1 - self.powers[dist_ij])
+
+        # diff_bh = bh(1 - 2)
+        diff_bh = -(sub_to_taxon[regrafts[:, 1], :] * h).sum(dim=-1)
+
+        # diff_ah = bh(1 - 1/2)
+        diff_ah = (sub_to_taxon[self.neighbors[regrafts[:, 0], 0]] * h).sum(dim=-1) / 2
+
+        xh = sub_to_taxon[regrafts[:, 0], :] * h
+
+        diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
+                   self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
+        diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        min_second_side_val, min_second_side_idx = diff_T.min(0)
+        min_second_side = regrafts[torch.argmin(min_second_side_idx)]
+
         print('x')
 #ll
 
