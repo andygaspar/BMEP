@@ -299,7 +299,7 @@ d = np.triu(d) + np.triu(d).T
 np.fill_diagonal(d, 0)
 
 device = 'cpu'
-# device = 'cuda:0'
+device = 'cuda:0'
 
 model = PrecomputeTorch3(d, device=device)
 t = time.time()
