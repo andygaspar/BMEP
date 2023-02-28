@@ -17,8 +17,8 @@ class PrecomputeTorch3(Solver):
         self.intersection = None
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
-        self.powers = torch.tensor(self.powers, device=self.device)
-        # self.powers = self.powers.to(self.device)
+        # self.powers = torch.tensor(self.powers, device=self.device)
+        self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.pointer_subtrees = None
         self.adj_to_set = None
@@ -294,8 +294,9 @@ class PrecomputeTorch3(Solver):
         a = self.set_to_adj[self.neighbors[selected_move[0], a_side_idx]]
 
         # detach  a and x
-        other_neighbor = self.set_to_adj[self.neighbors[selected_move[0], 1 - a_side_idx]]
-        self.solution[other_neighbor[0], other_neighbor[1]] = self.solution[other_neighbor[1], other_neighbor[0]] = 0
+        x_a_other_neighbor = self.set_to_adj[self.neighbors[selected_move[0], 1 - a_side_idx]]
+        self.solution[x_a_other_neighbor[0], x_a_other_neighbor[1]] = \
+            self.solution[x_a_other_neighbor[1], x_a_other_neighbor[0]] = 0
         self.solution[a[0], a[1]] = self.solution[a[1], a[0]] = 0
 
         # self.plot_phylogeny()
@@ -305,7 +306,7 @@ class PrecomputeTorch3(Solver):
         # self.plot_phylogeny()
 
         # reattach a
-        self.solution[other_neighbor[1], a[1]] = self.solution[ a[1], other_neighbor[1]] =1
+        self.solution[x_a_other_neighbor[1], a[1]] = self.solution[ a[1], x_a_other_neighbor[1]] =1
         # self.plot_phylogeny()
 
         # reattach x
@@ -313,6 +314,9 @@ class PrecomputeTorch3(Solver):
 
         # reattach b
         self.solution[b[1], x[0]] = self.solution[x[0], b[1]] = 1
+
+        x_a_other_neighbor_complementary = self.neighbors[self.adj_to_set[x_a_other_neighbor[1], x_a_other_neighbor[0]]]
+        print(self.set_to_adj[x_a_other_neighbor_complementary[0]], self.set_to_adj[x_a_other_neighbor_complementary[1]])
 
 
 
@@ -326,7 +330,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 9
+n = 6
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
