@@ -17,8 +17,8 @@ class PrecomputeTorch3(Solver):
         self.intersection = None
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
-        # self.powers = torch.tensor(self.powers, device=self.device)
-        self.powers = self.powers.to(self.device)
+        self.powers = torch.tensor(self.powers, device=self.device)
+        # self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.pointer_subtrees = None
         self.adj_to_set = None
@@ -200,7 +200,6 @@ class PrecomputeTorch3(Solver):
                 dist[i, j] = v
         return dist
 
-    @torch.jit.script
     def spr(self):
         # intersections = self.intersection.clone()
         intersections = self.intersection
@@ -249,9 +248,9 @@ class PrecomputeTorch3(Solver):
 
         diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
                    self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
-        diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        diff_T = diff_xb + diff_xa + diff_bh + diff_xh + diff_ah
         min_first_side_val, min_first_side_idx = diff_T.min(0)
-        min_first_side = regrafts[torch.argmin(min_first_side_idx)]
+        min_first_side = regrafts[min_first_side_idx]
 
         # neighbor 2
         inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
@@ -280,11 +279,46 @@ class PrecomputeTorch3(Solver):
 
         diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
                    self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
-        diff_T = diff_xb + diff_xa + diff_bh + diff_xh
+        diff_T = diff_xb + diff_xa + diff_bh + diff_xh + diff_ah
         min_second_side_val, min_second_side_idx = diff_T.min(0)
-        min_second_side = regrafts[torch.argmin(min_second_side_idx)]
+        min_second_side = regrafts[min_second_side_idx]
 
-        print('x')
+        min_side = torch.argmin(torch.stack([min_first_side_val, min_second_side_val], dim=-1)) # a side idx
+        min_idxs = torch.cat([min_first_side.unsqueeze(0), min_second_side.unsqueeze(0)])
+
+        return min_idxs[min_side], min_side
+
+    def move(self, selected_move, a_side_idx):
+        x = self.set_to_adj[selected_move[0]]
+        b = self.set_to_adj[selected_move[1]]
+        a = self.set_to_adj[self.neighbors[selected_move[0], a_side_idx]]
+
+        # detach  a and x
+        other_neighbor = self.set_to_adj[self.neighbors[selected_move[0], 1 - a_side_idx]]
+        self.solution[other_neighbor[0], other_neighbor[1]] = self.solution[other_neighbor[1], other_neighbor[0]] = 0
+        self.solution[a[0], a[1]] = self.solution[a[1], a[0]] = 0
+
+        # self.plot_phylogeny()
+
+        # detach b
+        self.solution[b[0], b[1]] = self.solution[b[1], b[0]] = 0
+        # self.plot_phylogeny()
+
+        # reattach a
+        self.solution[other_neighbor[1], a[1]] = self.solution[ a[1], other_neighbor[1]] =1
+        # self.plot_phylogeny()
+
+        # reattach x
+        self.solution[b[0], x[0]] = self.solution[x[0], b[0]] = 1
+
+        # reattach b
+        self.solution[b[1], x[0]] = self.solution[x[0], b[1]] = 1
+
+
+
+
+        p= 0
+
 #ll
 
 torch.set_printoptions(precision=2, linewidth=150)
@@ -292,7 +326,7 @@ torch.set_printoptions(precision=2, linewidth=150)
 random.seed(0)
 np.random.seed(0)
 
-n = 6
+n = 9
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -305,11 +339,16 @@ model = PrecomputeTorch3(d, device=device)
 t = time.time()
 
 model.solve()
-# model.plot_phylogeny()
+# print(model.set_to_adj)
+model.plot_phylogeny()
 
 print(model.intersection.sum(), model.intersection.shape[0]**2)
 
-model.spr()
+selected_move, a = model.spr()
+
+model.move(selected_move, a)
+print(model.set_to_adj[selected_move[0]], model.set_to_adj[selected_move[1]])
+model.plot_phylogeny()
 print(time.time() - t)
 
 
