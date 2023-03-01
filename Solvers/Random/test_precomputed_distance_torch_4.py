@@ -229,8 +229,9 @@ class PrecomputeTorch3(Solver):
         b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
         a = self.subtrees_mat[self.neighbors[regrafts[:, 0], 0], : self.n_taxa]
         diff = []
+        diff_new = []
         for i in range(regrafts.shape[0]):
-            self.test_diff(regrafts[i], 0)
+            diff_new.append(self.test_diff(regrafts[i], 0))
             new_adj = self.move(regrafts[i], 0, self.solution.clone())
             T = self.get_tau(new_adj)
             diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
@@ -260,7 +261,7 @@ class PrecomputeTorch3(Solver):
         min_first_side = regrafts[min_first_side_idx]
 
         for i in range(regrafts.shape[0]):
-            print(diff_T[i].item(), diff[i], regrafts[i])
+            print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
 
         # neighbor 2
         inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
@@ -301,58 +302,85 @@ class PrecomputeTorch3(Solver):
         return min_idxs[min_side], min_side
 
     def test_diff(self, selected_move, a_side_idx):
-        x = self.set_to_adj[selected_move[0]]
-        b = self.set_to_adj[selected_move[1]]
-        a = self.neighbors[selected_move[0], a_side_idx]
+        x = selected_move[0]
+        x_adj = self.set_to_adj[x]
+        x_c = self.adj_to_set[x_adj[1], x_adj[0]]
+
+        b = selected_move[1]
+        b_adj = self.set_to_adj[b]
+        b_c = self.adj_to_set[b_adj[1], b_adj[0]]
+
+        a = self.neighbors[x, a_side_idx]
+        a_adj = self.set_to_adj[a]
+        a_c = self.adj_to_set[a_adj[1], a_adj[0]]
+
+        ab = self.subtree_dist[a, b]
+
 
         #test
-        h =  1 - self.subtrees_mat[selected_move[0]] - self.subtrees_mat[selected_move[1]] - self.subtrees_mat[a]
+        h =  1 - self.subtrees_mat[x] - self.subtrees_mat[b] - self.subtrees_mat[a]
         h = h[:self.n_taxa]
 
+        hx = self.h_dist(x, h)
+        ah = self.h_dist(a, h)
+        hb = self.h_dist(b, h)
+
         # LT = L(XA) + L(XB) + L(XB)
-        xb = self.subtree_dist[selected_move[0], selected_move[1]] #ok
-        dist_xb = self.subset_dist(selected_move[0], selected_move[1])
+        xb = self.subtree_dist[x, b] #ok
+        dist_xb = self.subset_dist(x, b)
 
-        xa = self.subtree_dist[selected_move[0], self.neighbors[selected_move[0], 0]] #ok
-        dist_xa = self.subset_dist(selected_move[0], selected_move[1])
+        xa = self.subtree_dist[x, a] #ok
+        dist_xa = self.subset_dist(x, b)
 
-        dist_ij = self.T[self.set_to_adj[selected_move[0], 0], self.set_to_adj[selected_move[1], 0]] #ok
+        dist_ij = self.T[self.set_to_adj[x, 0], self.set_to_adj[b, 0]]
         diff_xb = xb * (1 - 1/self.powers[dist_ij])
         diff_xa = xa * (1 - self.powers[dist_ij])
 
-        # diff_bh = bh(1 - 1/2),  bh = b<->b_c - xb - xa
-        diff_bh = (self.subtree_dist[selected_move[1], self.adj_to_set[b[1], b[0]]] - xb - xa)/2
+        # diff_bh = bh(1 - 1/2),  bh = b<->b_c - xb - ba
+        diff_bh = (self.subtree_dist[b, b_c] - xb - self.subtree_dist[a, b])/2
+        bh = self.subtree_dist[b, b_c] - xb - self.subtree_dist[a, b]
+        k = bh.item()
+        kk = hb.item()
 
         # diff_ah = ah(1 - 2), ah = a<->a_c - ab - xa
-        diff_ah = -(self.subtree_dist[a, self.adj_to_set[a[1], a[0]]]
-                    - self.subtree_dist[self.neighbors[selected_move[0], a_side_idx], selected_move[1]] - xa)
+        diff_ah = -(self.subtree_dist[a, a_c] - self.subtree_dist[a, b] - xa)
 
 
         # xh = x<->x_c - xa - xb
-        xh = self.subtree_dist[selected_move[0], self.adj_to_set[x[1], x[0]]] - xa - xb
-        xxxg = xh.item()
-        x_set_idx = torch.nonzero(self.subtrees_mat[selected_move[0], :self.n_taxa]).flatten()
-        ddd  = self.d[x_set_idx]
-        xxhh = self.powers[self.T[x_set_idx, :self.n_taxa]] * self.d[x_set_idx] * h
-        xxxgg = (xxhh.sum()*2).item()
+        xh = self.subtree_dist[x, x_c] - xa - xb
+        x_set_idx = torch.nonzero(self.subtrees_mat[x, :self.n_taxa]).flatten()
 
-        p = self.set_to_adj[selected_move[1]][1]
-        oo = self.T[self.set_to_adj[selected_move[1]][1], :self.n_taxa]
-        ii = self.powers[self.T[self.set_to_adj[selected_move[1]][1], :self.n_taxa]] * self.d[x_set_idx]* h
-        pp = (self.powers[self.T[self.set_to_adj[selected_move[1]][1], :self.n_taxa]] * self.d[x_set_idx]* h).sum(dim=-1)
+        l = self.subset_len(a) + self.subset_len(b) + self.subset_len(x) + self.h_len(h) \
+            + ab + xa + ah + xh + xb + hb
+        l = l.item()
 
-        diff_xh = xh - (self.powers[self.T[self.set_to_adj[selected_move[1]][1], :self.n_taxa]] * self.d[x_set_idx] * h).sum(dim=-1)
+        diff_xh = xh - (self.powers[self.T[b_adj[1], :self.n_taxa]] * self.d[x_set_idx] * h).sum()
+        print('diff', diff_xh)
         diff_T = (diff_xb + diff_xa + diff_bh + diff_xh + diff_ah).item()
         # -0.06689979168715987
-        l = 0
+        return diff_T
 
     def subset_dist(self, set_v, set_w):
         vw = torch.matmul(self.subtrees_mat[set_v, :self.n_taxa].to(torch.float64),
                             self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
         return torch.matmul(vw, self.subtrees_mat[set_w, :self.n_taxa].to(torch.float64)) * 2
 
+    def h_dist(self, subtree, h):
+        vw = torch.matmul(self.subtrees_mat[subtree, :self.n_taxa].to(torch.float64),
+                          self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
+        return torch.matmul(vw, h.to(torch.float64)) * 2
+
     def subset_len(self, s):
-        return self.subset_dist(s, s)
+        return self.subset_dist(s, s)/2
+
+    def tree_len(self):
+        full_set = torch.ones(self.n_taxa, dtype=torch.float64)
+        self_len = torch.matmul(full_set, self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
+        return  torch.matmul(self_len, full_set)
+
+    def h_len(self, h):
+        self_len = torch.matmul(h.to(torch.float64), self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
+        return torch.matmul(self_len, h.to(torch.float64))
 
     def move(self, selected_move, a_side_idx, adj_mat):
         x = self.set_to_adj[selected_move[0]]
