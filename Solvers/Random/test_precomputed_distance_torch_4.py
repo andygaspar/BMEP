@@ -125,7 +125,6 @@ class PrecomputeTorch3(Solver):
         T[new_taxon_idx, new_internal_idx] = T[new_internal_idx, new_taxon_idx] = 1
 
 
-
         # i -> j to k -> j
         subtree_mat[s_mat_step + 2] = ij
         adj_to_set[new_internal_idx, idx[1]] = s_mat_step + 2
@@ -216,6 +215,8 @@ class PrecomputeTorch3(Solver):
         complementary = self.set_to_adj[range(self.n_subtrees)]
         intersections[range(self.n_subtrees), self.adj_to_set[complementary[:, 1], complementary[:,0]]] = False
 
+        del(complementary)
+
         # delete neighbors as potential move
         intersections[range(self.n_subtrees), self.neighbors[:, 0]] = \
             intersections[range(self.n_subtrees), self.neighbors[:, 1]] = False
@@ -228,58 +229,54 @@ class PrecomputeTorch3(Solver):
 
         # neighbor 1
 
-
         max_first_side_val, max_first_side_move, diff_T = self.spr_side(intersections, sub_to_taxon, a_side=0)
 
-        inter_neighbor = intersections * intersections[self.neighbors[:, 0]]
-        regrafts = torch.nonzero(inter_neighbor)
+        # inter_neighbor = intersections * intersections[self.neighbors[:, 0]]
+        # regrafts = torch.nonzero(inter_neighbor)
+        #
+        # diff = []
+        # diff_new = []
+        # d_xh = []
+        # for i in range(regrafts.shape[0]):
+        #     d_result, dxh = self.test_diff(regrafts[i], a_side_idx=0)
+        #     diff_new.append(d_result)
+        #     d_xh.append(dxh)
+        #     new_adj = self.move(regrafts[i], a_side_idx=0, adj_mat=self.solution.clone())
+        #     T = self.get_tau(new_adj)
+        #     diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
+        # d_xh = torch.tensor(d_xh)
+        #
+        # for i in range(regrafts.shape[0]):
+        #     print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
 
-        diff = []
-        diff_new = []
-        d_xh = []
-        for i in range(regrafts.shape[0]):
-            d_result, dxh = self.test_diff(regrafts[i], a_side_idx=0)
-            diff_new.append(d_result)
-            d_xh.append(dxh)
-            new_adj = self.move(regrafts[i], a_side_idx=0, adj_mat=self.solution.clone())
-            T = self.get_tau(new_adj)
-            diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
-        d_xh = torch.tensor(d_xh)
-
-        for i in range(regrafts.shape[0]):
-            print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
-
-        # neightboor 2
-
-
+        # neightbor 2
 
         max_second_side_val, max_second_side_move, diff_T = self.spr_side(intersections, sub_to_taxon, a_side=1)
 
-        inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
-        regrafts = torch.nonzero(inter_neighbor)
-        diff = []
-        diff_new = []
-        d_xh = []
-        for i in range(regrafts.shape[0]):
-            d_result, dxh = self.test_diff(regrafts[i], a_side_idx=1)
-            diff_new.append(d_result)
-            d_xh.append(dxh)
-            new_adj = self.move(regrafts[i], a_side_idx=1, adj_mat=self.solution.clone())
-            T = self.get_tau(new_adj)
-            diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
-        d_xh = torch.tensor(d_xh)
-
-        # neightboor 2
-        print("side 2")
-        for i in range(regrafts.shape[0]):
-            print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
-
+        # inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
+        # regrafts = torch.nonzero(inter_neighbor)
+        # diff = []
+        # diff_new = []
+        # d_xh = []
+        # for i in range(regrafts.shape[0]):
+        #     d_result, dxh = self.test_diff(regrafts[i], a_side_idx=1)
+        #     diff_new.append(d_result)
+        #     d_xh.append(dxh)
+        #     new_adj = self.move(regrafts[i], a_side_idx=1, adj_mat=self.solution.clone())
+        #     T = self.get_tau(new_adj)
+        #     diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
+        # d_xh = torch.tensor(d_xh)
+        #
+        # # neightbor 2
+        # print("side 2")
+        # for i in range(regrafts.shape[0]):
+        #     print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
 
 
         max_side = torch.argmax(torch.stack([max_first_side_val, max_second_side_val], dim=-1)) # a side idx
-        max_idxs = torch.cat([max_first_side_val.unsqueeze(0), max_first_side_val.unsqueeze(0)])
+        best_move = torch.cat([max_first_side_move.unsqueeze(0), max_second_side_move.unsqueeze(0)])
 
-        return max_idxs[max_side], max_side
+        return best_move[max_side], max_side
 
 
     def spr_side(self, intersections, sub_to_taxon, a_side):
@@ -290,8 +287,6 @@ class PrecomputeTorch3(Solver):
         x = regrafts[:, 0]
         b = regrafts[:, 1]
         a = self.neighbors[x, a_side]
-
-        x_adj = self.set_to_adj[x]
 
         b_adj = self.set_to_adj[b]
         b_c = self.adj_to_set[b_adj[:, 1], b_adj[:, 0]]
@@ -327,7 +322,7 @@ class PrecomputeTorch3(Solver):
 
         max_side_move = regrafts[max_side_idx]
 
-        return max_side_val, max_side_move, diff_T
+        return max_side_val, max_side_move , diff_T
 
     def test_diff(self, selected_move, a_side_idx):
         x = selected_move[0]
@@ -387,109 +382,6 @@ class PrecomputeTorch3(Solver):
         # -0.06689979168715987
         return diff_T, diff_xh.item()
 
-    def spr_old(self):
-        # intersections = self.intersection.clone()
-        intersections = self.intersection
-
-
-        # distance subtrees to taxa, useful for h computation
-        sub_to_taxon_idx = torch.nonzero(self.solution[:, :self.n_taxa]).T
-        sub_to_taxon = self.subtree_dist[:, self.adj_to_set[sub_to_taxon_idx[0], sub_to_taxon_idx[1]]]
-
-        # delete complementary to each subtree as potential move
-        complementary = self.set_to_adj[range(self.n_subtrees)]
-        intersections[range(self.n_subtrees), self.adj_to_set[complementary[:, 1], complementary[:,0]]] = False
-
-        # delete neighbors as potential move
-        intersections[range(self.n_subtrees), self.neighbors[:, 0]] = \
-            intersections[range(self.n_subtrees), self.neighbors[:, 1]] = False
-
-        # delete from subtrees all taxa complementary (no spr moves for them)
-        intersections[:, model.subtrees_mat.sum(dim=-1) == self.m - 1] = \
-            intersections[model.subtrees_mat.sum(dim=-1) == self.m - 1] = False
-
-        # neighbor 1
-        inter_neighbor = intersections * intersections[self.neighbors[:, 0]]
-        regrafts = torch.nonzero(inter_neighbor)
-        x = self.subtrees_mat[regrafts[:, 0], : self.n_taxa]
-        b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
-        a = self.subtrees_mat[self.neighbors[regrafts[:, 0], 0], : self.n_taxa]
-        diff = []
-        diff_new = []
-        for i in range(regrafts.shape[0]):
-            diff_new.append(self.test_diff(regrafts[i], 0))
-            new_adj = self.move(regrafts[i], 0, self.solution.clone())
-            T = self.get_tau(new_adj)
-            diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
-
-        dist_ij = self.T[self.set_to_adj[regrafts[:, 0]][:, 0], self.set_to_adj[regrafts[:, 1]][:, 0]]
-
-        h = 1 - x - b - a
-
-        # LT = L(XA) + L(XB) + L(XB)
-        xb = self.subtree_dist[regrafts[:, 0], regrafts[:, 1]]
-        xa = self.subtree_dist[regrafts[:, 0], self.neighbors[regrafts[:, 0], 0]]
-        diff_xb = xb*(1 - 1/ self.powers[dist_ij])
-        diff_xa = xa * (1 - self.powers[dist_ij])
-
-        # diff_bh = bh(1 - 1/2)
-        diff_bh = (sub_to_taxon[regrafts[:, 1], :] * h).sum(dim=-1)/ 2
-
-        # diff_ah = ah(1 - 2)
-        diff_ah = -(sub_to_taxon[self.neighbors[regrafts[:, 0], 0]] * h).sum(dim=-1)
-        # self.neighbors[selected_move[0], a_side_idx]
-        xh = sub_to_taxon[regrafts[:, 0], :] * h
-
-        diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
-                   self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
-        diff_T = diff_xb + diff_xa + diff_bh + diff_xh + diff_ah
-        min_first_side_val, min_first_side_idx = diff_T.min(0)
-        min_first_side = regrafts[min_first_side_idx]
-
-        for i in range(regrafts.shape[0]):
-            print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
-
-
-
-        # neighbor 2
-        inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
-        regrafts = torch.nonzero(inter_neighbor)
-        x = self.subtrees_mat[regrafts[:, 0], : self.n_taxa]
-        b = self.subtrees_mat[regrafts[:, 1], : self.n_taxa]
-        a = self.subtrees_mat[self.neighbors[regrafts[:, 0], 1], : self.n_taxa]
-
-        dist_ij = self.T[self.set_to_adj[regrafts[:, 0]][:, 0], self.set_to_adj[regrafts[:, 1]][:, 0]]
-
-        h = 1 - x - b - a
-
-        # LT = L(XA) + L(XB) + L(XB)
-        xb = self.subtree_dist[regrafts[:, 0], regrafts[:, 1]]
-        xa = self.subtree_dist[regrafts[:, 0], self.neighbors[regrafts[:, 0], 0]]
-        diff_xb = xb*(1 - 1/ self.powers[dist_ij])
-        diff_xa = xa * (1 - self.powers[dist_ij])
-
-        # diff_bh = bh(1 - 1/2)
-        diff_bh = (sub_to_taxon[regrafts[:, 1], :] * h).sum(dim=-1)/2
-
-        # diff_ah = ah(1 - 1/2)
-        diff_ah = -(sub_to_taxon[self.neighbors[regrafts[:, 0], 0]] * h).sum(dim=-1)
-
-        xh = sub_to_taxon[regrafts[:, 0], :] * h
-
-        diff_xh = ((xh/(self.powers[self.T[self.set_to_adj[regrafts[:, 0]][:, 0], :self.n_taxa]])) *
-                   self.powers[self.T[self.set_to_adj[regrafts[:, 1]][:, 0], :self.n_taxa]] * h).sum(dim=-1)
-        diff_T = diff_xb + diff_xa + diff_bh + diff_xh + diff_ah
-        min_second_side_val, min_second_side_idx = diff_T.min(0)
-        min_second_side = regrafts[min_second_side_idx]
-
-        print(min_first_side_val.item(), min_second_side_val.item())
-
-        min_side = torch.argmin(torch.stack([min_first_side_val, min_second_side_val], dim=-1)) # a side idx
-        min_idxs = torch.cat([min_first_side.unsqueeze(0), min_second_side.unsqueeze(0)])
-
-        return min_idxs[min_side], min_side
-
-
     def subset_dist(self, set_v, set_w):
         vw = torch.matmul(self.subtrees_mat[set_v, :self.n_taxa].to(torch.float64),
                             self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
@@ -513,39 +405,70 @@ class PrecomputeTorch3(Solver):
         return torch.matmul(self_len, h.to(torch.float64))
 
     def move(self, selected_move, a_side_idx, adj_mat):
-        x = self.set_to_adj[selected_move[0]]
-        b = self.set_to_adj[selected_move[1]]
-        a = self.set_to_adj[self.neighbors[selected_move[0], a_side_idx]]
-        # detach  a and x
-        x_a_other_neighbor = self.set_to_adj[self.neighbors[selected_move[0], 1 - a_side_idx]]
+        x = selected_move[0]
+        b = selected_move[1]
+        a = self.neighbors[x, a_side_idx]
+        x_adj = self.set_to_adj[x]
+        b_adj = self.set_to_adj[b]
+        a_adj = self.set_to_adj[a]
 
-        adj_mat[x_a_other_neighbor[0], x_a_other_neighbor[1]] = \
-            adj_mat[x_a_other_neighbor[1], x_a_other_neighbor[0]] = 0
-        adj_mat[a[0], a[1]] = adj_mat[a[1], a[0]] = 0
+        # detach  a and x
+        x_a_other_neighbor = self.neighbors[x, 1 - a_side_idx]
+        x_a_other_neighbor_idx = self.set_to_adj[self.neighbors[x, 1 - a_side_idx]]
+
+        adj_mat[x_a_other_neighbor_idx[0], x_a_other_neighbor_idx[1]] = \
+            adj_mat[x_a_other_neighbor_idx[1], x_a_other_neighbor_idx[0]] = 0
+        adj_mat[a_adj[0], a_adj[1]] = adj_mat[a_adj[1], a_adj[0]] = 0
 
         # self.plot_phylogeny()
 
         # detach b
-        adj_mat[b[0], b[1]] = adj_mat[b[1], b[0]] = 0
+        adj_mat[b_adj[0], b_adj[1]] = adj_mat[b_adj[1], b_adj[0]] = 0
         # self.plot_phylogeny()
 
         # reattach a
-        adj_mat[x_a_other_neighbor[1], a[1]] = adj_mat[ a[1], x_a_other_neighbor[1]] =1
-        # self.plot_phylogeny()
+        adj_mat[x_a_other_neighbor_idx[1], a_adj[1]] = adj_mat[ a_adj[1], x_a_other_neighbor_idx[1]] = 1
+        self.plot_phylogeny(adj_mat)
+        self.adj_to_set[x_a_other_neighbor_idx[1], a_adj[1]] = a
+        self.adj_to_set[a_adj[1], x_a_other_neighbor_idx[1]] = self.adj_to_set[a_adj[1], a_adj[0]]
+        self.set_to_adj[a] = torch.tensor([x_a_other_neighbor_idx[1], a_adj[1]], device=self.device)
+        self.set_to_adj[self.adj_to_set[a_adj[1], a_adj[0]]] = torch.tensor([a_adj[1], x_a_other_neighbor_idx[1]], device=self.device)
 
         # reattach x
-        adj_mat[b[0], x[0]] = adj_mat[x[0], b[0]] = 1
-        # self.plot_phylogeny()
+        adj_mat[b_adj[0], x_adj[0]] = adj_mat[x_adj[0], b_adj[0]] = 1
+        self.adj_to_set[b_adj[0], x_adj[0]] = x
+        self.adj_to_set[x_adj[0], b_adj[0]] = self.adj_to_set[x_adj[1], x_adj[0]]
+        self.set_to_adj[x] = torch.tensor([x_adj[0], b_adj[0]], device=self.device)
+        self.set_to_adj[self.adj_to_set[x_adj[1], x_adj[0]]] = torch.tensor([x_adj[0], b_adj[0]], device=self.device)
+
+        self.plot_phylogeny(adj_mat)
 
         # reattach b
-        adj_mat[b[1], x[0]] = adj_mat[x[0], b[1]] = 1
+        adj_mat[b_adj[1], x_adj[0]] = adj_mat[x_adj[0], b_adj[1]] = 1
+        self.adj_to_set[b_adj[1], x_adj[0]] = b
+        self.adj_to_set[x_adj[0], b_adj[1]] = self.adj_to_set[b_adj[1], b_adj[0]]
+        self.set_to_adj[b] = torch.tensor([x_adj[0], b_adj[1]], device=self.device)
+        self.set_to_adj[self.adj_to_set[b_adj[1], b_adj[0]]] = torch.tensor([x_adj[0], b_adj[1]], device=self.device)
+
         # self.plot_phylogeny(adj_mat)
 
-        x_a_other_neighbor_complementary = self.neighbors[self.adj_to_set[x_a_other_neighbor[1], x_a_other_neighbor[0]]]
+
+
+        #x_a_other_neighbor_complementary = self.neighbors[self.adj_to_set[x_a_other_neighbor[1], x_a_other_neighbor[0]]]
         # print(self.set_to_adj[x_a_other_neighbor_complementary[0]], self.set_to_adj[x_a_other_neighbor_complementary[1]])
 
         return adj_mat
 
+    def update_sub_mat(self, selected_move):
+        x = self.subtrees_mat[selected_move[0]]
+        including = torch.matmul(self.subtrees_mat, x) - x.sum() >= 0
+        including[selected_move[0]] = False
+        self.subtrees_mat[including] -= x
+        ppp = torch.nonzero(including).flatten()
+        including_idxs = self.set_to_adj[torch.nonzero(including).flatten()]
+        including_c = self.adj_to_set[including_idxs[:, 1], including_idxs[:, 0]]
+        self.subtrees_mat[including_c] += x
+        p=0
 #ll
 
 torch.set_printoptions(precision=2, linewidth=150)
@@ -567,18 +490,24 @@ t = time.time()
 
 model.solve()
 # print(model.set_to_adj)
-# model.plot_phylogeny()
+model.plot_phylogeny()
 
 # print(model.intersection.sum(), model.intersection.shape[0]**2)
 
-s_move, a = model.spr()
-
-new_adj = model.move(s_move, a, model.solution.clone())
+s_move, side = model.spr()
+print(time.time() - t)
+new_adj = model.move(s_move, side, model.solution.clone())
 T = model.get_tau(new_adj)
 print('new obj', (model.powers[torch.tensor(T)]*model.d).sum().item())
 print(model.set_to_adj[s_move[0]], model.set_to_adj[s_move[1]])
-# model.plot_phylogeny()
-print(time.time() - t)
+
+model.solution = new_adj
+
+model.plot_phylogeny()
+
+model.update_sub_mat(s_move)
+
+
 
 
 #
