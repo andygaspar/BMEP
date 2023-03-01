@@ -452,10 +452,7 @@ class PrecomputeTorch3(Solver):
 
         # self.plot_phylogeny(adj_mat)
 
-
-
-        #x_a_other_neighbor_complementary = self.neighbors[self.adj_to_set[x_a_other_neighbor[1], x_a_other_neighbor[0]]]
-        # print(self.set_to_adj[x_a_other_neighbor_complementary[0]], self.set_to_adj[x_a_other_neighbor_complementary[1]])
+        # mettere nuovo subtree da a a b
 
         return adj_mat
 
@@ -466,6 +463,7 @@ class PrecomputeTorch3(Solver):
         self.subtrees_mat[including] -= x
         ppp = torch.nonzero(including).flatten()
         including_idxs = self.set_to_adj[torch.nonzero(including).flatten()]
+        o = including_idxs
         including_c = self.adj_to_set[including_idxs[:, 1], including_idxs[:, 0]]
         self.subtrees_mat[including_c] += x
         p=0
@@ -496,6 +494,8 @@ model.plot_phylogeny()
 
 s_move, side = model.spr()
 print(time.time() - t)
+
+model.update_sub_mat(s_move)
 new_adj = model.move(s_move, side, model.solution.clone())
 T = model.get_tau(new_adj)
 print('new obj', (model.powers[torch.tensor(T)]*model.d).sum().item())
@@ -505,7 +505,7 @@ model.solution = new_adj
 
 model.plot_phylogeny()
 
-model.update_sub_mat(s_move)
+
 
 
 
