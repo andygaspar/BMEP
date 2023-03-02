@@ -177,8 +177,10 @@ class Solver:
 
     def plot_phylogeny(self, adj_mat=None, labels=None, size=1000, filename=None, show=True):
 
-        g = nx.from_numpy_matrix(self.solution.numpy()) if adj_mat is None else nx.from_numpy_matrix(adj_mat.numpy())
+        adj_mat = adj_mat if adj_mat is not None else self.solution
 
+        adj_mat = adj_mat.to('cpu').numpy() if self.device == 'cuda:0' else adj_mat.numpy()
+        g = nx.from_numpy_matrix(adj_mat)
         nx.draw(g, node_color=['green' for _ in range(self.n_taxa)] + ['red' for _ in range(self.m - self.n_taxa)],
                 with_labels=True, font_weight='bold', node_size=size)
         if show:
