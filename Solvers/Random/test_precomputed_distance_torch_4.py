@@ -18,6 +18,7 @@ class PrecomputeTorch3(Solver):
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
         self.powers = torch.tensor(self.powers, device=self.device)
+        self.adj_mat = None
         # self.powers = self.powers.to(self.device)
         self.subtrees_mat = None
         self.pointer_subtrees = None
@@ -28,13 +29,21 @@ class PrecomputeTorch3(Solver):
         self.mask = torch.zeros(self.n_subtrees, dtype=torch.bool, device=self.device)
 
     def solve(self, start=3, adj_mat=None):
+        self.init_tree()
+        s_move, side, stop = self.spr()
+        self.plot_phylogeny(self.adj_mat)
+
+        self.update_sub_mat(s_move)
+        new_adj = self.move(s_move, side, self.adj_mat.clone())
+        self.adj_mat = new_adj
+    def init_tree(self):
         t = time.time()
-        adj_mat = self.initial_adj_mat(self.device) if adj_mat is None else adj_mat
+        adj_mat = self.initial_adj_mat(self.device)
         subtrees_mat, adj_to_set  = self.initial_sub_tree_mat()
         T = self.init_tau()
         s_mat_step = 6
         # subtree_dist = self.init_sub_dist()
-        for step in range(start, self.n_taxa):
+        for step in range(3, self.n_taxa):
             choices = 3 + (step - 3) * 2
             idxs_list = torch.nonzero(torch.triu(adj_mat))
             rand_idxs = random.choices(range(choices))
@@ -46,19 +55,20 @@ class PrecomputeTorch3(Solver):
             s_mat_step += 4
 
         s = subtrees_mat[:, :self.n_taxa].to(torch.float64)
+        self.T = T
         print('build time', time.time() - t)
-        self.subtree_dist = torch.matmul(torch.matmul(s, self.d * self.powers[T[:n, :n]]), s.T) * 2
+        self.subtree_dist = self.compute_subtrees_dist(s)
         self.intersection = torch.matmul(s, s.T) == 0
         self.subtree_dist *= self.intersection
         self.subtrees_mat = subtrees_mat
         self.adj_to_set = adj_to_set
-        self.solution = adj_mat
-        self.T = T
-        idxs = torch.nonzero(self.solution).T
+        self.adj_mat = adj_mat
+
+        idxs = torch.nonzero(self.adj_mat).T
         order = torch.argsort(self.adj_to_set[idxs[0], idxs[1]])
         self.set_to_adj = idxs.T[order]
         print('s dist', time.time() - t)
-        self.neighbors = self.compute_neighbors(self.set_to_adj, self.adj_to_set, self.solution)
+        self.neighbors = self.compute_neighbors(self.set_to_adj, self.adj_to_set, self.adj_mat)
         # self.device = 'cuda:0'
         print('full build time', time.time() - t)
         self.obj_val = (self.powers[self.T[:self.n_taxa, :self.n_taxa]]*self.d).sum().item()
@@ -67,6 +77,8 @@ class PrecomputeTorch3(Solver):
 
         # print(time.time() - t)
 
+    def compute_subtrees_dist(self, s):
+        return torch.matmul(torch.matmul(s, self.d * self.powers[self.T[:n, :n]]), s.T) * 2
 
     def initial_sub_tree_mat(self):
         subtree_mat = torch.zeros((self.n_subtrees, self.m), device=self.device, dtype=torch.long)
@@ -207,7 +219,7 @@ class PrecomputeTorch3(Solver):
 
 
         # distance subtrees to taxa, useful for h computation
-        sub_to_taxon_idx = torch.nonzero(self.solution[:, :self.n_taxa]).T
+        sub_to_taxon_idx = torch.nonzero(self.adj_mat[:, :self.n_taxa]).T
         _, order = torch.sort(sub_to_taxon_idx[1])
         sub_to_taxon_idx = self.adj_to_set[sub_to_taxon_idx[0], sub_to_taxon_idx[1]][order]
         sub_to_taxon = self.subtree_dist[:, sub_to_taxon_idx]
@@ -242,7 +254,7 @@ class PrecomputeTorch3(Solver):
         #     d_result, dxh = self.test_diff(regrafts[i], a_side_idx=0)
         #     diff_new.append(d_result)
         #     d_xh.append(dxh)
-        #     new_adj = self.move(regrafts[i], a_side_idx=0, adj_mat=self.solution.clone())
+        #     new_adj = self.move(regrafts[i], a_side_idx=0, adj_mat=self.adj_mat.clone())
         #     T = self.get_tau(new_adj)
         #     diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
         # d_xh = torch.tensor(d_xh)
@@ -263,7 +275,7 @@ class PrecomputeTorch3(Solver):
         #     d_result, dxh = self.test_diff(regrafts[i], a_side_idx=1)
         #     diff_new.append(d_result)
         #     d_xh.append(dxh)
-        #     new_adj = self.move(regrafts[i], a_side_idx=1, adj_mat=self.solution.clone())
+        #     new_adj = self.move(regrafts[i], a_side_idx=1, adj_mat=self.adj_mat.clone())
         #     T = self.get_tau(new_adj)
         #     diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
         # d_xh = torch.tensor(d_xh)
@@ -484,6 +496,7 @@ class PrecomputeTorch3(Solver):
         self.subtrees_mat[including] += x
 
     def update_tau(self, x, b, a):
+        pass
 
 
 #ll
@@ -506,70 +519,7 @@ model = PrecomputeTorch3(d, device=device)
 t = time.time()
 
 model.solve()
-# print(model.set_to_adj)
-# model.plot_phylogeny()
 
-# print(model.intersection.sum(), model.intersection.shape[0]**2)
-
-s_move, side = model.spr()
 print(time.time() - t)
+model.plot_phylogeny()
 
-model.update_sub_mat(s_move)
-new_adj = model.move(s_move, side, model.solution.clone())
-
-# T = model.get_tau(new_adj)
-# print('new obj', (model.powers[torch.tensor(T)]*model.d).sum().item())
-# print(model.set_to_adj[s_move[0]], model.set_to_adj[s_move[1]])
-
-model.solution = new_adj
-print(time.time() - t)
-# model.plot_phylogeny()
-
-# for i in range(model.subtrees_mat.shape[0]):
-#     print(model.set_to_adj[i], model.subtrees_mat[i])
-
-
-
-
-
-
-#
-# s = model.subtrees_mat
-# inter = model.intersection
-# adj = model.solution
-# set_adj = model.set_to_adj
-# adj_set = model.subtrees_idx_mat
-#
-# mask = torch.zeros_like(s)
-# # get self pointing index of subtrees
-# mask[range(model.n_subtrees), set_adj[:,1]] = 1
-# neigh = torch.nonzero(adj[set_adj[:,0]] - mask)
-# neigh = neigh.view((neigh.shape[0]//2, 2, 2))
-# n = torch.nonzero(adj[set_adj[:,0]] - mask)
-# neighbors = torch.zeros((model.n_subtrees, 2), dtype=torch.long)
-# neighbors[neigh[:, 0, 0], 0] = neigh[:, 0, 1]
-# neighbors[neigh[:, 1, 0], 1] = neigh[:, 1, 1]
-#
-# j = set_adj[:,1]
-# i = set_adj[:,0]
-#
-# mask_j = torch.zeros_like(s)
-# # get self pointing index of subtrees
-# mask_j[range(model.n_subtrees), set_adj[:,1]] = 1
-# attached_to_i = torch.nonzero(adj[i] - mask_j)
-#
-# conversion = torch.zeros_like(attached_to_i)
-# k = set_adj[attached_to_i[:, 0], 0]
-# conversion[:, 0] = k
-# conversion[:, 1] = attached_to_i[:, 1]
-#
-# final_conversion = torch.stack([attached_to_i[:, 0], adj_set[conversion[:, 0], conversion[:, 1]]]).T
-#
-# neighbors = torch.zeros((model.n_subtrees, 2), dtype=torch.long)
-# f = final_conversion.view((final_conversion.shape[0]//2, 2, 2))
-# neighbors[f[:, 0, 0], 0] = f[:, 0, 1]
-# neighbors[f[:, 1, 0], 1] = f[:, 1, 1]
-#
-# f[:, 0, 0]
-# f[:, 0, 1]
-# neighbors
