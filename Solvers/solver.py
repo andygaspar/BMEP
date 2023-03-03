@@ -103,6 +103,18 @@ class Solver:
         return Tau[:n_taxa, :n_taxa]
 
     @staticmethod
+    def get_full_tau_tensor(adj_mat, n_taxa):
+        Tau = torch.full_like(adj_mat, n_taxa)
+        Tau[adj_mat > 0] = 1
+        diag = torch.eye(adj_mat.shape[1]).bool()
+        Tau[diag] = 0  # diagonal elements should be zero
+        for i in range(adj_mat.shape[1]):
+            # The second term has the same shape as Tau due to broadcasting
+            Tau = torch.minimum(Tau, Tau[ i, :].unsqueeze(0)
+                                + Tau[:, i].unsqueeze(1))
+        return Tau[:n_taxa, :n_taxa]
+
+    @staticmethod
     def add_node(adj_mat, idxs, new_node_idx, n):
         adj_mat[idxs[0], idxs[1]] = adj_mat[idxs[1], idxs[0]] = 0  # detach selected
         adj_mat[idxs[0], n + new_node_idx - 2] = adj_mat[n + new_node_idx - 2, idxs[0]] = 1  # reattach selected to new
@@ -126,6 +138,9 @@ class Solver:
     def compute_obj(self):
         return np.sum(
             [self.d[i, j] * self.np_powers[self.T[i, j]] for i in range(self.n_taxa) for j in range(self.n_taxa)])
+
+    def compute_obj_tensor(self):
+        return (self.d * self.powers[self.T[:self.n_taxa, :self.n_taxa]]).sum()
 
     def compute_obj_val_from_adj_mat(self, adj_mat, d, n_taxa):
         T = np.full(adj_mat.shape, n_taxa)
