@@ -504,40 +504,32 @@ class PrecomputeTorch3(Solver):
         x = selected_move[0]
         b = selected_move[1]
         a = self.neighbors[x, a_side_idx]
+
         x_adj = self.set_to_adj[x].clone()
         b_adj = self.set_to_adj[b].clone()
         a_adj = self.set_to_adj[a].clone()
 
+        x_sub = self.subtrees_mat[x]
+        b_sub = self.subtrees_mat[b]
+        a_sub = self.subtrees_mat[a]
 
-        x_sub = self.subtrees_mat[x][:self.n_taxa]
-        b_sub = self.subtrees_mat[b][:self.n_taxa]
-        a_sub = self.subtrees_mat[a][:self.n_taxa]
+        a_in, a_out = a_sub == 1, a_sub == 0
+        self.T[a_in, a_out] -= 1
+        self.T[a_out, a_in] -= 1
+
+        b_in, b_out = b_sub == 1, b_sub == 0
+        self.T[b_in, b_out] += 1
+        self.T[b_out, b_in] += 1
+
+        x_in, x_out = x_sub == 1, x_sub == 0
+
+        p = self.T[x_in, x_adj[0]]
+        pp = self.T[b_adj[0], x_out]
+        # inner dist to self root + from b root anywhere else
+        self.T[x_in, x_out] = self.T[x_out, x_in] = self.T[x_in, x_adj[0]] + self.T[b_adj[0], x_out] + 1
+        print(self.T)
 
 
-        # self.T[a_sub == 1, :] = self.T[:, a_sub == 1] = self.T[a_sub == 1, :] * (1 - self.T[a_sub == 1, :])
-        # self.T[~mask, mask] -= 1
-        #
-        # mask[:self.n_taxa] = b_sub == 1
-        # self.T[mask, ~mask]  += 1
-        # self.T[~mask, mask] += 1
-        #
-        # mask[:self.n_taxa] = x_sub==1
-        # self.T[mask, ~mask] = self.T[~mask, mask] = self.T[mask, x_adj[0]] + self.T[b_adj[0], ~mask] + 1
-        #
-        # self.T[b_adj[0], ~mask] = self.T[~mask, b_adj[0]] =
-        #
-        # mask = torch.zeros(self.m, dtype=torch.bool)
-        # mask[:self.n_taxa] = a_sub == 1
-        # self.T[mask, ~mask] -= 1
-        # self.T[~mask, mask] -= 1
-        #
-        # mask[:self.n_taxa] = b_sub == 1
-        # self.T[mask, ~mask]  += 1
-        # self.T[~mask, mask] += 1
-        #
-        # mask[:self.n_taxa] = x_sub==1
-        # self.T[mask, ~mask] = self.T[~mask, mask] = self.T[mask, x_adj[0]] + self.T[b_adj[0], ~mask] + 1
-        #
         # self.T[b_adj[0], ~mask] = self.T[~mask, b_adj[0]] =
 
         p = 0
