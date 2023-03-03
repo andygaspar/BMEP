@@ -17,8 +17,8 @@ class PrecomputeTorch3(Solver):
         self.intersection = None
         self.device = device
         self.d = torch.tensor(self.d, device=self.device)
-        # self.powers = torch.tensor(self.powers, device=self.device)
-        self.powers = self.powers.to(self.device)
+        self.powers = torch.tensor(self.powers, device=self.device)
+        # self.powers = self.powers.to(self.device)
         self.adj_mat = None
 
         self.subtrees_mat = None
@@ -106,7 +106,7 @@ class PrecomputeTorch3(Solver):
         # print(time.time() - t)
 
     def compute_subtrees_dist(self, s):
-        return torch.matmul(torch.matmul(s, self.d * self.powers[self.T[:n, :n]]), s.T) * 2
+        return torch.matmul(torch.matmul(s, self.d * self.powers[self.T[:self.n_taxa, :self.n_taxa]]), s.T) * 2
 
     def initial_sub_tree_mat(self):
         subtree_mat = torch.zeros((self.n_subtrees, self.m), device=self.device, dtype=torch.long)
@@ -364,86 +364,6 @@ class PrecomputeTorch3(Solver):
 
         return max_side_val, max_side_move , diff_T
 
-    def test_diff(self, selected_move, a_side_idx):
-        x = selected_move[0]
-        x_adj = self.set_to_adj[x]
-        x_c = self.adj_to_set[x_adj[1], x_adj[0]]
-
-        b = selected_move[1]
-        b_adj = self.set_to_adj[b]
-        b_c = self.adj_to_set[b_adj[1], b_adj[0]]
-
-        a = self.neighbors[x, a_side_idx]
-        a_adj = self.set_to_adj[a]
-        a_c = self.adj_to_set[a_adj[1], a_adj[0]]
-
-        ab = self.subtree_dist[a, b]
-
-
-        #test
-        h =  1 - self.subtrees_mat[x] - self.subtrees_mat[b] - self.subtrees_mat[a]
-        h = h[:self.n_taxa]
-
-        hx = self.h_dist(x, h)
-        ah = self.h_dist(a, h)
-        hb = self.h_dist(b, h)
-
-        # LT = L(XA) + L(XB) + L(XB)
-        xb = self.subtree_dist[x, b] #ok
-        dist_xb = self.subset_dist(x, b)
-
-        xa = self.subtree_dist[x, a] #ok
-        dist_xa = self.subset_dist(x, b)
-
-        dist_ij = self.T[self.set_to_adj[x, 0], self.set_to_adj[b, 0]]
-        diff_xb = xb * (1 - 1/self.powers[dist_ij])
-        diff_xa = xa * (1 - self.powers[dist_ij])
-
-        # diff_bh = bh(1 - 1/2),  bh = b<->b_c - xb - ba
-        diff_bh = (self.subtree_dist[b, b_c] - xb - self.subtree_dist[a, b])/2
-        bh = self.subtree_dist[b, b_c] - xb - self.subtree_dist[a, b]
-        k = bh.item()
-        kk = hb.item()
-
-        # diff_ah = ah(1 - 2), ah = a<->a_c - ab - xa
-        diff_ah = -(self.subtree_dist[a, a_c] - self.subtree_dist[a, b] - xa)
-
-
-        # xh = x<->x_c - xa - xb
-        xh = self.subtree_dist[x, x_c] - xa - xb
-        x_set_idx = torch.nonzero(self.subtrees_mat[x, :self.n_taxa]).flatten()
-
-        l = self.subset_len(a) + self.subset_len(b) + self.subset_len(x) + self.h_len(h) \
-            + ab + xa + ah + xh + xb + hb
-        l = l.item()
-
-        diff_xh = xh - (self.powers[self.T[b_adj[1], :self.n_taxa]] * self.d[x_set_idx] * h).sum()
-        diff_T = (diff_xb + diff_xa + diff_bh + diff_xh + diff_ah).item()
-        # -0.06689979168715987
-        return diff_T, diff_xh.item()
-
-    def subset_dist(self, set_v, set_w):
-        vw = torch.matmul(self.subtrees_mat[set_v, :self.n_taxa].to(torch.float64),
-                            self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
-        return torch.matmul(vw, self.subtrees_mat[set_w, :self.n_taxa].to(torch.float64)) * 2
-
-    def h_dist(self, subtree, h):
-        vw = torch.matmul(self.subtrees_mat[subtree, :self.n_taxa].to(torch.float64),
-                          self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
-        return torch.matmul(vw, h.to(torch.float64)) * 2
-
-    def subset_len(self, s):
-        return self.subset_dist(s, s)/2
-
-    def tree_len(self):
-        full_set = torch.ones(self.n_taxa, dtype=torch.float64)
-        self_len = torch.matmul(full_set, self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
-        return  torch.matmul(self_len, full_set)
-
-    def h_len(self, h):
-        self_len = torch.matmul(h.to(torch.float64), self.powers[self.T[:self.n_taxa, :self.n_taxa]] * self.d)
-        return torch.matmul(self_len, h.to(torch.float64))
-
     def move(self, selected_move, a_side_idx, adj_mat):
         x = selected_move[0]
         b = selected_move[1]
@@ -452,12 +372,12 @@ class PrecomputeTorch3(Solver):
         b_adj = self.set_to_adj[b].clone()
         a_adj = self.set_to_adj[a].clone()
 
-        p = self.adj_to_set[x_adj[0], b_adj[0]]
+        new_ = self.adj_to_set[x_adj[0], b_adj[0]]
         pp = self.adj_to_set[b_adj[0], x_adj[0]]
 
         # detach  a and x
         x_a_other_neighbor = self.neighbors[x, 1 - a_side_idx]
-        x_a_other_neighbor_idx = self.set_to_adj[self.neighbors[x, 1 - a_side_idx]]
+        x_a_other_neighbor_idx = self.set_to_adj[x_a_other_neighbor]
         new_subtree_root = b_adj[0]
 
         adj_mat[x_a_other_neighbor_idx[0], x_a_other_neighbor_idx[1]] = \
@@ -473,8 +393,8 @@ class PrecomputeTorch3(Solver):
         self.adj_to_set[x_a_other_neighbor_idx[1], a_adj[1]] = a
         self.adj_to_set[a_adj[1], x_a_other_neighbor_idx[1]] = self.adj_to_set[a_adj[1], a_adj[0]]
         self.set_to_adj[a] = torch.tensor([x_a_other_neighbor_idx[1], a_adj[1]], device=self.device)
-        self.set_to_adj[self.adj_to_set[a_adj[1], a_adj[0]]] = torch.tensor([a_adj[1], x_a_other_neighbor_idx[1]], device=self.device)
-
+        self.set_to_adj[self.adj_to_set[a_adj[1], a_adj[0]]] = \
+            torch.tensor([a_adj[1], x_a_other_neighbor_idx[1]], device=self.device)
 
         # reattach x
         adj_mat[b_adj[0], x_adj[0]] = adj_mat[x_adj[0], b_adj[0]] = 1
@@ -513,22 +433,33 @@ class PrecomputeTorch3(Solver):
         x[self.set_to_adj[selected_move[0]][0]] = 1 # adding x internal node
         x_idx = self.set_to_adj[selected_move[0]]
 
-        b = self.subtrees_mat[selected_move[1]]
+        b = self.subtrees_mat[selected_move[1]].clone()
+        b[self.set_to_adj[selected_move[1]][0]] = 1 # adding x internal node
         b_idx = self.set_to_adj[selected_move[1]]
+        for i in range(self.subtrees_mat.shape[0]):
+            print(self.set_to_adj[i],self.subtrees_mat[i] )
 
+        including_x = torch.matmul(self.subtrees_mat.to(torch.float64), x.to(torch.float64)) - x.sum() == 0
+        including_b = torch.matmul(self.subtrees_mat.to(torch.float64), b.to(torch.float64)) - b.sum() == 0
 
-        p = self.adj_to_set[b_idx[1], b_idx[0]]
-        # all but subtrees including x
-        including = torch.matmul(self.subtrees_mat.to(torch.float64), x.to(torch.float64)) - x.sum() == 0
-        including[selected_move[0]] = including[self.adj_to_set[b_idx[1], b_idx[0]]] = False
-        self.subtrees_mat[including] -= x
+        x_side_trees = including_x * ~including_b
+        b_side_trees = ~including_x * including_b
+        b_side_trees[self.adj_to_set[b_idx[1], b_idx[0]]] = True
+        self.subtrees_mat[x_side_trees] -= x
+        self.subtrees_mat[b_side_trees] += x
 
-
-        including = torch.matmul(self.subtrees_mat.to(torch.float64), b.to(torch.float64)) - b.sum() == 0
-        including[selected_move[1]] =  False
-
-        including[self.adj_to_set[x_idx[1], x_idx[0]]] = False # x complementary
-        self.subtrees_mat[including] += x
+        # p = self.adj_to_set[b_idx[1], b_idx[0]]
+        # # all but subtrees including x
+        # including = torch.matmul(self.subtrees_mat.to(torch.float64), x.to(torch.float64)) - x.sum() == 0
+        # including[selected_move[0]] = including[self.adj_to_set[b_idx[1], b_idx[0]]] = False
+        # self.subtrees_mat[including] -= x
+        #
+        #
+        # including = torch.matmul(self.subtrees_mat.to(torch.float64), b.to(torch.float64)) - b.sum() == 0
+        # including[selected_move[1]] =  False
+        #
+        # including[self.adj_to_set[x_idx[1], x_idx[0]]] = False # x complementary
+        # self.subtrees_mat[including] += x
 
     def update_tau_(self, selected_move, a_side_idx):
         x = selected_move[0]
@@ -579,8 +510,8 @@ d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
 np.fill_diagonal(d, 0)
 
-# device = 'cpu'
-device = 'cuda:0'
+device = 'cpu'
+# device = 'cuda:0'
 
 model = PrecomputeTorch3(d, device=device)
 t = time.time()
