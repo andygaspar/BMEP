@@ -466,7 +466,8 @@ class PrecomputeTorch3(Solver):
             torch.tensor([x_adj[0], new_subtree_root], device=self.device)
 
 
-        x = self.subtrees_mat[selected_move[0]]
+        x = self.subtrees_mat[selected_move[0]].clone()
+        x[x_adj[0]] = 1
         b = self.subtrees_mat[selected_move[1]]
 
         # new sets
@@ -477,19 +478,24 @@ class PrecomputeTorch3(Solver):
         return adj_mat
 
     def update_sub_mat(self, selected_move):
-        self.subtrees_mat = self.subtrees_mat[:, :self.n_taxa]
-        x = self.subtrees_mat[selected_move[0]]
-        b = self.subtrees_mat[selected_move[1]]
-        x_idx = self.set_to_adj[selected_move[0]]
+        self.subtrees_mat = self.subtrees_mat #[:, :self.n_taxa]
+        x = self.subtrees_mat[selected_move[0]].clone()
+        x[self.set_to_adj[selected_move[0]][0]] = 1
+        x_idx = self.set_to_adj[selected_move[0]]# adding x internal node
 
-        # all but subtrees
+        b = self.subtrees_mat[selected_move[1]]
+        b_idx = self.set_to_adj[selected_move[1]]
+
+
+        p = self.adj_to_set[b_idx[1], b_idx[0]]
+        # all but subtrees including x
         including = torch.matmul(self.subtrees_mat.to(torch.float64), x.to(torch.float64)) - x.sum() >= 0
-        including[selected_move[0]] = False
+        including[selected_move[0]] = including[self.adj_to_set[b_idx[1], b_idx[0]]] = False
         self.subtrees_mat[including] -= x
 
 
         including = torch.matmul(self.subtrees_mat.to(torch.float64), b.to(torch.float64)) - b.sum() >= 0
-        including[selected_move[1]] = False
+        including[selected_move[1]] =  False
 
         including[self.adj_to_set[x_idx[1], x_idx[0]]] = False # x complementary
         self.subtrees_mat[including] += x
@@ -559,5 +565,8 @@ t = time.time()
 model.solve()
 
 print(time.time() - t)
-model.plot_phylogeny()
+model.plot_phylogeny(model.adj_mat)
+
+for i in range(model.subtrees_mat.shape[0]):
+    print(model.set_to_adj[i], model.subtrees_mat[i])
 
