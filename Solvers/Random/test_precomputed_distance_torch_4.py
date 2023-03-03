@@ -33,11 +33,15 @@ class PrecomputeTorch3(Solver):
         s_move, side, stop = self.spr()
         self.plot_phylogeny(self.adj_mat)
 
-        self.update_tau(s_move, side)
+        # self.update_tau(s_move, side)
+
         self.update_sub_mat(s_move)
         new_adj = self.move(s_move, side, self.adj_mat.clone())
         self.adj_mat = new_adj
+        self.T = self.update_tau(self.adj_mat)
 
+    def update_tau(self, adj_mat):
+        return self.get_full_tau(adj_mat)
     def init_tree(self):
         t = time.time()
         adj_mat = self.initial_adj_mat(self.device)
@@ -500,7 +504,7 @@ class PrecomputeTorch3(Solver):
         including[self.adj_to_set[x_idx[1], x_idx[0]]] = False # x complementary
         self.subtrees_mat[including] += x
 
-    def update_tau(self, selected_move, a_side_idx):
+    def update_tau_(self, selected_move, a_side_idx):
         x = selected_move[0]
         b = selected_move[1]
         a = self.neighbors[x, a_side_idx]
