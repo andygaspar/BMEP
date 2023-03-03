@@ -33,9 +33,11 @@ class PrecomputeTorch3(Solver):
         s_move, side, stop = self.spr()
         self.plot_phylogeny(self.adj_mat)
 
+        self.update_tau(s_move, side)
         self.update_sub_mat(s_move)
         new_adj = self.move(s_move, side, self.adj_mat.clone())
         self.adj_mat = new_adj
+
     def init_tree(self):
         t = time.time()
         adj_mat = self.initial_adj_mat(self.device)
@@ -104,6 +106,7 @@ class PrecomputeTorch3(Solver):
         adj_to_set[2, self.n_taxa] = 5
 
         return  subtree_mat, adj_to_set
+
     def add_subtrees(self, subtree_mat, adj_to_set, new_taxon_idx, idx, s_mat_step, T):
 
         new_internal_idx = self.n_taxa + new_taxon_idx - 2
@@ -160,7 +163,6 @@ class PrecomputeTorch3(Solver):
         adj_to_set[idx[0], idx[1]] = adj_to_set[idx[1], idx[0]] = 0
 
         return subtree_mat, adj_to_set, T
-
 
     def init_sub_dist(self):
         subtree_dist = torch.zeros((self.m, self.m), device=self.device, dtype=torch.bool)
@@ -286,11 +288,10 @@ class PrecomputeTorch3(Solver):
         #     print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
 
 
-        max_side = torch.argmax(torch.stack([max_first_side_val, max_second_side_val], dim=-1)) # a side idx
+        max_val, max_side = torch.max(torch.stack([max_first_side_val, max_second_side_val], dim=-1), 0) # a side idx
         best_move = torch.cat([max_first_side_move.unsqueeze(0), max_second_side_move.unsqueeze(0)])
 
-        return best_move[max_side], max_side
-
+        return best_move[max_side], max_side, max_val.item() > 0
 
     def spr_side(self, intersections, sub_to_taxon, a_side):
 
@@ -425,7 +426,6 @@ class PrecomputeTorch3(Solver):
         b_adj = self.set_to_adj[b].clone()
         a_adj = self.set_to_adj[a].clone()
 
-        # self.plot_phylogeny()
 
         # detach  a and x
         x_a_other_neighbor = self.neighbors[x, 1 - a_side_idx]
@@ -435,7 +435,6 @@ class PrecomputeTorch3(Solver):
         adj_mat[x_a_other_neighbor_idx[0], x_a_other_neighbor_idx[1]] = \
             adj_mat[x_a_other_neighbor_idx[1], x_a_other_neighbor_idx[0]] = 0
         adj_mat[a_adj[0], a_adj[1]] = adj_mat[a_adj[1], a_adj[0]] = 0
-
 
 
         # detach b
@@ -495,8 +494,47 @@ class PrecomputeTorch3(Solver):
         including[self.adj_to_set[x_idx[1], x_idx[0]]] = False # x complementary
         self.subtrees_mat[including] += x
 
-    def update_tau(self, x, b, a):
-        pass
+    def update_tau(self, selected_move, a_side_idx):
+        x = selected_move[0]
+        b = selected_move[1]
+        a = self.neighbors[x, a_side_idx]
+        x_adj = self.set_to_adj[x].clone()
+        b_adj = self.set_to_adj[b].clone()
+        a_adj = self.set_to_adj[a].clone()
+
+
+        x_sub = self.subtrees_mat[x][:self.n_taxa]
+        b_sub = self.subtrees_mat[b][:self.n_taxa]
+        a_sub = self.subtrees_mat[a][:self.n_taxa]
+
+
+        # self.T[a_sub == 1, :] = self.T[:, a_sub == 1] = self.T[a_sub == 1, :] * (1 - self.T[a_sub == 1, :])
+        # self.T[~mask, mask] -= 1
+        #
+        # mask[:self.n_taxa] = b_sub == 1
+        # self.T[mask, ~mask]  += 1
+        # self.T[~mask, mask] += 1
+        #
+        # mask[:self.n_taxa] = x_sub==1
+        # self.T[mask, ~mask] = self.T[~mask, mask] = self.T[mask, x_adj[0]] + self.T[b_adj[0], ~mask] + 1
+        #
+        # self.T[b_adj[0], ~mask] = self.T[~mask, b_adj[0]] =
+        #
+        # mask = torch.zeros(self.m, dtype=torch.bool)
+        # mask[:self.n_taxa] = a_sub == 1
+        # self.T[mask, ~mask] -= 1
+        # self.T[~mask, mask] -= 1
+        #
+        # mask[:self.n_taxa] = b_sub == 1
+        # self.T[mask, ~mask]  += 1
+        # self.T[~mask, mask] += 1
+        #
+        # mask[:self.n_taxa] = x_sub==1
+        # self.T[mask, ~mask] = self.T[~mask, mask] = self.T[mask, x_adj[0]] + self.T[b_adj[0], ~mask] + 1
+        #
+        # self.T[b_adj[0], ~mask] = self.T[~mask, b_adj[0]] =
+
+        p = 0
 
 
 #ll
