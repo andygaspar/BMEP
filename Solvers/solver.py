@@ -112,7 +112,7 @@ class Solver:
             # The second term has the same shape as Tau due to broadcasting
             Tau = torch.minimum(Tau, Tau[ i, :].unsqueeze(0)
                                 + Tau[:, i].unsqueeze(1))
-        return Tau[:n_taxa, :n_taxa]
+        return Tau
 
     @staticmethod
     def add_node(adj_mat, idxs, new_node_idx, n):
