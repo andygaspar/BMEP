@@ -5,6 +5,7 @@ import torch
 
 from Solvers.Random.test_correctness import Tester
 from Solvers.Random.test_precomputed_distance_torch import PrecomputeTorch
+from Solvers.Random.test_subtrees import Subtrees
 from Solvers.solver import Solver
 
 
@@ -35,9 +36,9 @@ class PrecomputeTorch3(Solver):
     def solve(self, start=3, adj_mat=None, test=False):
         self.init_tree()
         self.plot_phylogeny(self.adj_mat)
-        for i in range(self.subtrees_mat.shape[0]):
-            print(self.set_to_adj[i], self.set_to_adj[self.neighbors[i][0]], self.set_to_adj[self.neighbors[i][1]],
-                  self.subtrees_mat[i])
+        # for i in range(self.subtrees_mat.shape[0]):
+        #     print(self.set_to_adj[i], self.set_to_adj[self.neighbors[i][0]], self.set_to_adj[self.neighbors[i][1]],
+        #           self.subtrees_mat[i])
         to_be_continued = True
         while to_be_continued:
             s_move, side, to_be_continued = self.spr(test)
@@ -50,6 +51,7 @@ class PrecomputeTorch3(Solver):
                 self.update_sub_mat(s_move)
                 new_adj = self.move(s_move, side, self.adj_mat.clone())
                 self.adj_mat = new_adj
+                self.plot_phylogeny(self.adj_mat)
                 # self.T = self.update_tau(self.adj_mat).to(torch.long)
                 self.T = self.get_full_tau_tensor(self.adj_mat, self.n_taxa).to(torch.long)
                 s = self.subtrees_mat[:, :self.n_taxa].to(torch.float64)
@@ -57,7 +59,9 @@ class PrecomputeTorch3(Solver):
                 self.non_intersecting = torch.matmul(s, s.T) == 0
                 self.subtree_dist *= self.non_intersecting
                 self.neighbors = self.compute_neighbors(self.set_to_adj, self.adj_to_set, self.adj_mat)
-                self.plot_phylogeny(self.adj_mat)
+
+                sub = Subtrees(self.adj_mat.clone(), self.subtrees_mat, self.n_taxa, self.m, self.device)
+
 
 
                 print(self.compute_obj_tensor().item())
@@ -386,15 +390,12 @@ class PrecomputeTorch3(Solver):
         b = self.subtrees_mat[selected_move[1]]
 
         # new sets
-        p = self.adj_to_set[x_adj[0], b_adj[0]]
-        pp = self.adj_to_set[b_adj[0], x_adj[0]]
         self.subtrees_mat[self.adj_to_set[x_adj[0], b_adj[0]]] = 1 - x - b
         self.subtrees_mat[self.adj_to_set[b_adj[0], x_adj[0]]] = x + b
-        self.plot_phylogeny(adj_mat)
 
-        for i in range(self.subtrees_mat.shape[0]):
-            idx_ = self.set_to_adj[i]
-            print(self.set_to_adj[i], self.adj_to_set[idx_[0], idx_[1]], self.subtrees_mat[i])
+        # for i in range(self.subtrees_mat.shape[0]):
+        #     idx_ = self.set_to_adj[i]
+        #     print(self.set_to_adj[i], self.adj_to_set[idx_[0], idx_[1]], self.subtrees_mat[i])
 
 
         return adj_mat
@@ -462,7 +463,7 @@ class PrecomputeTorch3(Solver):
 
 torch.set_printoptions(precision=2, linewidth=150)
 
-seed = 3
+seed = 6
 random.seed(seed)
 np.random.seed(seed)
 

@@ -2,20 +2,6 @@ import numpy as np
 import torch
 
 
-class Node:
-
-    def __init__(self, idx, parent=None, l_child=None, r_child=None):
-        self.idx = idx
-        self.parent = parent
-        self.l_child = l_child
-        self.r_child = r_child
-        self.is_leaf = False
-
-
-class Tree:
-    def __init__(self, adj_mat):
-        self.subtrees_mat = np.zeros()
-
 class Tester:
 
     def __init__(self, d, powers):
@@ -46,17 +32,16 @@ class Tester:
         inter_neighbor = intersections * intersections[neighbors[:, a_side_idx]]
         regrafts = torch.nonzero(inter_neighbor)
 
-        diff = []
-        diff_new = []
-        d_xh = []
+        diff = torch.zeros_like(diff_tree)
         for i in range(regrafts.shape[0]):
-            obj_val = (self.powers[T_test[:self.n_taxa, :self.n_taxa]] * self.d).sum().item()
+            obj_val = (self.powers[T_test[:self.n_taxa, :self.n_taxa]] * self.d).sum()
             new_adj = self.move(regrafts[i], a_side_idx, adj_mat.clone(), neighbors, set_to_adj)
             T_new = self.get_full_tau_tensor(new_adj, self.n_taxa)[:self.n_taxa, :self.n_taxa]
-            diff.append(obj_val - (self.powers[T_new] * self.d).sum().item())
+            diff[i] = obj_val - (self.powers[T_new] * self.d).sum()
 
-        for i in range(regrafts.shape[0]):
-            print(diff_tree[i].item(), diff[i], regrafts[i]) #, diff_new[i])
+        print(' spr computation ', torch.allclose(diff, diff_tree))
+        # for i in range(regrafts.shape[0]):
+        #     print(diff_tree[i].item(), diff[i].item(), regrafts[i]) #, diff_new[i])
 
     def test_diff(self, selected_move, a_side_idx, T, set_to_adj, adj_to_set, neighbors, subtrees_mat, subtrees_dist):
         x = selected_move[0]
