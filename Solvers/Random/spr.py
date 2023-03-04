@@ -3,6 +3,7 @@ import time
 import numpy as np
 import torch
 
+from Solvers.Random.test_correctness import Tester
 from Solvers.Random.test_precomputed_distance_torch import PrecomputeTorch
 from Solvers.solver import Solver
 
@@ -27,9 +28,11 @@ class PrecomputeTorch3(Solver):
         self.subtree_dist = None
         self.T_new = None
 
+        self.tester = Tester(self.d, self.powers)
+
         self.mask = torch.zeros(self.n_subtrees, dtype=torch.bool, device=self.device)
 
-    def solve(self, start=3, adj_mat=None):
+    def solve(self, start=3, adj_mat=None, test=False):
         self.init_tree()
         self.plot_phylogeny(self.adj_mat)
         for i in range(self.subtrees_mat.shape[0]):
@@ -37,7 +40,7 @@ class PrecomputeTorch3(Solver):
                   self.subtrees_mat[i])
         to_be_continued = True
         while to_be_continued:
-            s_move, side, to_be_continued = self.spr()
+            s_move, side, to_be_continued = self.spr(test)
             # self.plot_phylogeny(self.adj_mat)
             print(self.set_to_adj[s_move[0]], '->', self.set_to_adj[s_move[1]])
 
@@ -47,18 +50,19 @@ class PrecomputeTorch3(Solver):
                 self.update_sub_mat(s_move)
                 new_adj = self.move(s_move, side, self.adj_mat.clone())
                 self.adj_mat = new_adj
-                self.T = self.update_tau(self.adj_mat).to(torch.long)
+                # self.T = self.update_tau(self.adj_mat).to(torch.long)
+                self.T = self.get_full_tau_tensor(self.adj_mat, self.n_taxa).to(torch.long)
                 s = self.subtrees_mat[:, :self.n_taxa].to(torch.float64)
                 self.subtree_dist = self.compute_subtrees_dist(s)
                 self.intersection = torch.matmul(s, s.T) == 0
                 self.subtree_dist *= self.intersection
                 self.neighbors = self.compute_neighbors(self.set_to_adj, self.adj_to_set, self.adj_mat)
                 self.plot_phylogeny(self.adj_mat)
-                for i in range(self.subtrees_mat.shape[0]):
-                    idx_ = self.set_to_adj[i]
-                    print(self.set_to_adj[i], self.adj_to_set[idx_[0], idx_[1]], self.subtrees_mat[i])
+
 
                 print(self.compute_obj_tensor().item())
+            else:
+                to_be_continued = False
 
         self.solution = self.adj_mat
 
@@ -209,7 +213,7 @@ class PrecomputeTorch3(Solver):
         # get self pointing index of subtrees
         j = set_to_adj[:,1]
         i = set_to_adj[:,0]
-        mask_j[range(model.n_subtrees), j] = 1
+        mask_j[range(self.n_subtrees), j] = 1
 
         attached_to_i = torch.nonzero(adj[i] - mask_j)
 
@@ -220,7 +224,7 @@ class PrecomputeTorch3(Solver):
 
         final_conversion = torch.stack([attached_to_i[:, 0], adj_to_set[conversion[:, 0], conversion[:, 1]]]).T
 
-        neighbors = torch.zeros((model.n_subtrees, 2), dtype=torch.long, device=self.device)
+        neighbors = torch.zeros((self.n_subtrees, 2), dtype=torch.long, device=self.device)
         f = final_conversion.view((final_conversion.shape[0] // 2, 2, 2))
         neighbors[f[:, 0, 0], 0] = f[:, 0, 1]
         neighbors[f[:, 1, 0], 1] = f[:, 1, 1]
@@ -229,22 +233,10 @@ class PrecomputeTorch3(Solver):
 
         return neighbors
 
-    def check_dist(self):
-        val = self.d * self.powers[self.T_new[:self.n_taxa, :self.n_taxa]]
-        dist = torch.zeros_like(self.subtree_dist)
-        for i in range(self.subtree_dist.shape[0]):
-            for j in range(self.subtree_dist.shape[0]):
-                a = self.subtrees_mat[i, :self.n_taxa].float()
-                b = self.subtrees_mat[j, :self.n_taxa].float()
-                idx = torch.matmul(a.unsqueeze(0).T, b.unsqueeze(0)).to(torch.long)==1
-                v = val[idx].flatten().sum() * (1 - (self.subtrees_mat[i] * self.subtrees_mat[j]).sum()>0)*2
-                dist[i, j] = v
-        return dist
 
-    def spr(self):
+    def spr(self, test):
         # intersections = self.intersection.clone()
         intersections = self.intersection
-
 
         # distance subtrees to taxa, useful for h computation
         sub_to_taxon_idx = torch.nonzero(self.adj_mat[:, :self.n_taxa]).T
@@ -263,63 +255,33 @@ class PrecomputeTorch3(Solver):
             intersections[range(self.n_subtrees), self.neighbors[:, 1]] = False
 
         # delete from subtrees all taxa complementary (no spr moves for them)
-        intersections[:, model.subtrees_mat.sum(dim=-1) == self.m - 1] = \
-            intersections[model.subtrees_mat.sum(dim=-1) == self.m - 1] = False
-
-
+        intersections[:, self.subtrees_mat.sum(dim=-1) == self.m - 1] = \
+            intersections[self.subtrees_mat.sum(dim=-1) == self.m - 1] = False
 
         # neighbor 1
+        a_side = 0
+        max_first_side_val, max_first_side_move, diff_T = self.spr_side(intersections, sub_to_taxon, a_side, test)
 
-        max_first_side_val, max_first_side_move, diff_T = self.spr_side(intersections, sub_to_taxon, a_side=0)
+        if test:
+            self.tester.test_spr(self.adj_mat, self.T, intersections.clone(), a_side, self.obj_val, diff_T, self.set_to_adj,
+                                 self.adj_to_set, self.neighbors, self.subtrees_mat, self.subtree_dist)
 
-        # inter_neighbor = intersections * intersections[self.neighbors[:, 0]]
-        # regrafts = torch.nonzero(inter_neighbor)
-        #
-        # diff = []
-        # diff_new = []
-        # d_xh = []
-        # for i in range(regrafts.shape[0]):
-        #     d_result, dxh = self.test_diff(regrafts[i], a_side_idx=0)
-        #     diff_new.append(d_result)
-        #     d_xh.append(dxh)
-        #     new_adj = self.move(regrafts[i], a_side_idx=0, adj_mat=self.adj_mat.clone())
-        #     T = self.get_tau(new_adj)
-        #     diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
-        # d_xh = torch.tensor(d_xh)
-
-        # for i in range(regrafts.shape[0]):
-        #     print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
 
         # neightbor 2
-
-        max_second_side_val, max_second_side_move, diff_T = self.spr_side(intersections, sub_to_taxon, a_side=1)
-
-        # inter_neighbor = intersections * intersections[self.neighbors[:, 1]]
-        # regrafts = torch.nonzero(inter_neighbor)
-        # diff = []
-        # diff_new = []
-        # d_xh = []
-        # for i in range(regrafts.shape[0]):
-        #     d_result, dxh = self.test_diff(regrafts[i], a_side_idx=1)
-        #     diff_new.append(d_result)
-        #     d_xh.append(dxh)
-        #     new_adj = self.move(regrafts[i], a_side_idx=1, adj_mat=self.adj_mat.clone())
-        #     T = self.get_tau(new_adj)
-        #     diff.append(self.obj_val - (self.powers[torch.tensor(T)]*self.d).sum().item())
-        # d_xh = torch.tensor(d_xh)
-        #
-        # # neightbor 2
-        # print("side 2")
-        # for i in range(regrafts.shape[0]):
-        #     print(diff_T[i].item(), diff[i], regrafts[i], diff_new[i])
+        a_side = 1
+        max_second_side_val, max_second_side_move, diff_T = self.spr_side(intersections, sub_to_taxon, a_side, test)
 
 
         max_val, max_side = torch.max(torch.stack([max_first_side_val, max_second_side_val], dim=-1), 0) # a side idx
         best_move = torch.cat([max_first_side_move.unsqueeze(0), max_second_side_move.unsqueeze(0)])
 
+        if test:
+            self.tester.test_spr(self.adj_mat, self.T, intersections, a_side, self.obj_val, diff_T, self.set_to_adj,
+                                 self.adj_to_set, self.neighbors, self.subtrees_mat, self.subtree_dist)
+
         return best_move[max_side], max_side, max_val.item() > 0
 
-    def spr_side(self, intersections, sub_to_taxon, a_side):
+    def spr_side(self, intersections, sub_to_taxon, a_side, test):
 
         inter_neighbor = intersections * intersections[self.neighbors[:, a_side]]
         regrafts = torch.nonzero(inter_neighbor)
@@ -362,26 +324,33 @@ class PrecomputeTorch3(Solver):
 
         max_side_move = regrafts[max_side_idx]
 
-        return max_side_val, max_side_move , diff_T
+        if not test:
+            diff_T = None
+
+        return max_side_val, max_side_move, diff_T
 
     def move(self, selected_move, a_side_idx, adj_mat):
-        x = selected_move[0]
-        b = selected_move[1]
-        a = self.neighbors[x, a_side_idx]
+        x = selected_move[0].clone()
+        b = selected_move[1].clone()
+        a = self.neighbors[x, a_side_idx].clone()
+        x_neighbor = self.neighbors[x, 1 - a_side_idx]
+
         x_adj = self.set_to_adj[x].clone()
         b_adj = self.set_to_adj[b].clone()
         a_adj = self.set_to_adj[a].clone()
+        x_neighbor_idx = self.set_to_adj[x_neighbor].clone()
 
-        new_ = self.adj_to_set[x_adj[0], b_adj[0]]
-        pp = self.adj_to_set[b_adj[0], x_adj[0]]
+        x_c = self.adj_to_set[x_adj[1], x_adj[0]].clone()
+        b_c = self.adj_to_set[b_adj[1], b_adj[0]].clone()
+        a_c = self.adj_to_set[a_adj[1], a_adj[0]].clone()
+        x_c_neighbor = self.adj_to_set[x_neighbor_idx[1], x_neighbor_idx[0]].clone()
 
         # detach  a and x
-        x_a_other_neighbor = self.neighbors[x, 1 - a_side_idx]
-        x_a_other_neighbor_idx = self.set_to_adj[x_a_other_neighbor]
-        new_subtree_root = b_adj[0]
 
-        adj_mat[x_a_other_neighbor_idx[0], x_a_other_neighbor_idx[1]] = \
-            adj_mat[x_a_other_neighbor_idx[1], x_a_other_neighbor_idx[0]] = 0
+        new_subtree_root = b_adj[0].clone()
+
+        adj_mat[x_neighbor_idx[0], x_neighbor_idx[1]] = \
+            adj_mat[x_neighbor_idx[1], x_neighbor_idx[0]] = 0
         adj_mat[a_adj[0], a_adj[1]] = adj_mat[a_adj[1], a_adj[0]] = 0
 
 
@@ -389,12 +358,11 @@ class PrecomputeTorch3(Solver):
         adj_mat[b_adj[0], b_adj[1]] = adj_mat[b_adj[1], b_adj[0]] = 0
 
         # reattach a
-        adj_mat[x_a_other_neighbor_idx[1], a_adj[1]] = adj_mat[ a_adj[1], x_a_other_neighbor_idx[1]] = 1
-        self.adj_to_set[x_a_other_neighbor_idx[1], a_adj[1]] = a
-        self.adj_to_set[a_adj[1], x_a_other_neighbor_idx[1]] = self.adj_to_set[a_adj[1], a_adj[0]]
-        self.set_to_adj[a] = torch.tensor([x_a_other_neighbor_idx[1], a_adj[1]], device=self.device)
-        self.set_to_adj[self.adj_to_set[a_adj[1], a_adj[0]]] = \
-            torch.tensor([a_adj[1], x_a_other_neighbor_idx[1]], device=self.device)
+        adj_mat[x_neighbor_idx[1], a_adj[1]] = adj_mat[ a_adj[1], x_neighbor_idx[1]] = 1
+        self.adj_to_set[x_neighbor_idx[1], a_adj[1]] = a
+        self.adj_to_set[a_adj[1], x_neighbor_idx[1]] = a_c
+        self.set_to_adj[a] = torch.tensor([x_neighbor_idx[1], a_adj[1]], device=self.device)
+        self.set_to_adj[a_c] = torch.tensor([a_adj[1], x_neighbor_idx[1]], device=self.device)
 
         # reattach x
         adj_mat[b_adj[0], x_adj[0]] = adj_mat[x_adj[0], b_adj[0]] = 1
@@ -402,16 +370,15 @@ class PrecomputeTorch3(Solver):
         # reattach b
         adj_mat[b_adj[1], x_adj[0]] = adj_mat[x_adj[0], b_adj[1]] = 1
         self.adj_to_set[x_adj[0], b_adj[1]] = b
-        self.adj_to_set[b_adj[1], x_adj[0]] = self.adj_to_set[b_adj[1], b_adj[0]]
+        self.adj_to_set[b_adj[1], x_adj[0]] = b_c
         self.set_to_adj[b] = torch.tensor([x_adj[0], b_adj[1]], device=self.device)
-        self.set_to_adj[self.adj_to_set[b_adj[1], b_adj[0]]] = torch.tensor([b_adj[1], x_adj[0]], device=self.device)
+        self.set_to_adj[b_c] = torch.tensor([b_adj[1], x_adj[0]], device=self.device)
 
         # new subtree (x + b) ad its comp stored in x_a_other neighbor and its comp
-        self.adj_to_set[new_subtree_root, x_adj[0]] = x_a_other_neighbor
-        self.adj_to_set[x_adj[0], new_subtree_root] = self.adj_to_set[x_a_other_neighbor_idx[1], x_a_other_neighbor_idx[0]]
-        self.set_to_adj[x_a_other_neighbor] = torch.tensor([new_subtree_root, x_adj[0]], device=self.device)
-        self.set_to_adj[self.adj_to_set[x_a_other_neighbor_idx[1], x_a_other_neighbor_idx[0]]] = \
-            torch.tensor([x_adj[0], new_subtree_root], device=self.device)
+        self.adj_to_set[new_subtree_root, x_adj[0]] = x_neighbor
+        self.adj_to_set[x_adj[0], new_subtree_root] = x_c_neighbor
+        self.set_to_adj[x_neighbor] = torch.tensor([new_subtree_root, x_adj[0]], device=self.device)
+        self.set_to_adj[x_c_neighbor] = torch.tensor([x_adj[0], new_subtree_root], device=self.device)
 
 
         x = self.subtrees_mat[selected_move[0]].clone()
@@ -423,43 +390,38 @@ class PrecomputeTorch3(Solver):
         pp = self.adj_to_set[b_adj[0], x_adj[0]]
         self.subtrees_mat[self.adj_to_set[x_adj[0], b_adj[0]]] = 1 - x - b
         self.subtrees_mat[self.adj_to_set[b_adj[0], x_adj[0]]] = x + b
+        self.plot_phylogeny(adj_mat)
+
+        for i in range(self.subtrees_mat.shape[0]):
+            idx_ = self.set_to_adj[i]
+            print(self.set_to_adj[i], self.adj_to_set[idx_[0], idx_[1]], self.subtrees_mat[i])
 
 
         return adj_mat
 
     def update_sub_mat(self, selected_move):
 
-        x = self.subtrees_mat[selected_move[0]].clone()
-        x[self.set_to_adj[selected_move[0]][0]] = 1 # adding x internal node
-        x_idx = self.set_to_adj[selected_move[0]]
+        x = selected_move[0]
+        x_subset = self.subtrees_mat[x].clone()
+        x_subset[self.set_to_adj[x][0]] = 1 # adding x internal node
+        x_idx = self.set_to_adj[x]
 
-        b = self.subtrees_mat[selected_move[1]].clone()
-        b[self.set_to_adj[selected_move[1]][0]] = 1 # adding x internal node
-        b_idx = self.set_to_adj[selected_move[1]]
-        for i in range(self.subtrees_mat.shape[0]):
-            print(self.set_to_adj[i],self.subtrees_mat[i] )
+        b = selected_move[1]
+        b_subset = self.subtrees_mat[b].clone()
+        b_subset[self.set_to_adj[b][0]] = 1 # adding b internal node
+        b_idx = self.set_to_adj[b]
+        b_c = self.adj_to_set[b_idx[1], b_idx[0]]
 
-        including_x = torch.matmul(self.subtrees_mat.to(torch.float64), x.to(torch.float64)) - x.sum() == 0
-        including_b = torch.matmul(self.subtrees_mat.to(torch.float64), b.to(torch.float64)) - b.sum() == 0
+        including_x = torch.matmul(self.subtrees_mat.to(torch.float64), x_subset.to(torch.float64)) - x_subset.sum() == 0
+        including_b = torch.matmul(self.subtrees_mat.to(torch.float64), b_subset.to(torch.float64)) - b_subset.sum() == 0
 
-        x_side_trees = including_x * ~including_b
-        b_side_trees = ~including_x * including_b
-        b_side_trees[self.adj_to_set[b_idx[1], b_idx[0]]] = True
-        self.subtrees_mat[x_side_trees] -= x
-        self.subtrees_mat[b_side_trees] += x
 
-        # p = self.adj_to_set[b_idx[1], b_idx[0]]
-        # # all but subtrees including x
-        # including = torch.matmul(self.subtrees_mat.to(torch.float64), x.to(torch.float64)) - x.sum() == 0
-        # including[selected_move[0]] = including[self.adj_to_set[b_idx[1], b_idx[0]]] = False
-        # self.subtrees_mat[including] -= x
-        #
-        #
-        # including = torch.matmul(self.subtrees_mat.to(torch.float64), b.to(torch.float64)) - b.sum() == 0
-        # including[selected_move[1]] =  False
-        #
-        # including[self.adj_to_set[x_idx[1], x_idx[0]]] = False # x complementary
-        # self.subtrees_mat[including] += x
+        x_side_trees = including_x * self.intersection[b]
+        x_side_trees[b_c] = True
+        b_side_trees = including_b * self.intersection[x]
+        b_side_trees[b_c] = True
+        self.subtrees_mat[x_side_trees, :] -= x_subset
+        self.subtrees_mat[b_side_trees] += x_subset
 
     def update_tau_(self, selected_move, a_side_idx):
         x = selected_move[0]
@@ -516,7 +478,7 @@ device = 'cpu'
 model = PrecomputeTorch3(d, device=device)
 t = time.time()
 
-model.solve()
+model.solve(test=True)
 
 print(time.time() - t)
 print('final obj', model.compute_obj_tensor().item())
