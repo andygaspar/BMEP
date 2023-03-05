@@ -420,7 +420,6 @@ class PrecomputeTorch3(Solver):
         x_side_trees = including_x * self.non_intersecting[b]
         x_side_trees[b_c] = False
         b_side_trees = including_b * self.non_intersecting[x]
-        b_side_trees[b_c] = True
         b_side_trees[x_c] = False
         self.subtrees_mat[x_side_trees, :] -= x_subset
         self.subtrees_mat[b_side_trees, :] += x_subset
