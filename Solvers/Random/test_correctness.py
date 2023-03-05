@@ -166,7 +166,14 @@ class Tester:
 
     def check_tau(self, adj_mat, Tau):
         T = self.get_full_tau_tensor(adj_mat, self.n_taxa).to(torch.long)
-        print('tau check', torch.equal(T, Tau))
+        equal = torch.equal(T, Tau)
+        print('tau check', equal)
+        if not equal:
+            print(torch.nonzero(Tau - T))
+
+            raise Exception("Tau test failed")
+
+
 
     @staticmethod
     def get_full_tau_tensor(adj_mat, n_taxa):

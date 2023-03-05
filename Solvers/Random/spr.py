@@ -36,24 +36,25 @@ class PrecomputeTorch3(Solver):
     def solve(self, start=3, adj_mat=None, test=False, log=False):
         self.init_tree()
         iteration = 0
-        # self.plot_phylogeny(self.adj_mat)
+        self.plot_phylogeny(self.adj_mat)
 
         to_be_continued = True
         while to_be_continued:
-            s_move, side, to_be_continued = self.spr(test)
-            # self.plot_phylogeny(self.adj_mat)
-            # print(self.set_to_adj[s_move[0]], '->', self.set_to_adj[s_move[1]])
+            s_move, a_side, to_be_continued = self.spr(test)
+            print(self.set_to_adj[s_move[0]], '->', self.set_to_adj[s_move[1]])
 
             # self.update_tau(s_move, side)
             if to_be_continued:
                 iteration += 1
 
+                self.update_tau_(s_move, a_side)
+
                 self.update_sub_mat(s_move)
-                new_adj, x_adj, b_adj = self.move(s_move, side, self.adj_mat.clone())
+                new_adj, x_adj, b_adj = self.move(s_move, a_side, self.adj_mat.clone())
                 self.adj_mat = new_adj
+                self.plot_phylogeny(self.adj_mat)
                 self.add_new_trees(s_move, x_adj, b_adj)
 
-                self.T = self.update_tau(self.adj_mat).to(torch.long)
                 if test:
                     self.tester.check_tau(self.adj_mat, self.T)
                 s = self.subtrees_mat[:, :self.n_taxa].to(torch.float64)
@@ -241,7 +242,6 @@ class PrecomputeTorch3(Solver):
 
         return neighbors
 
-
     def spr(self, test):
         intersections = self.non_intersecting.clone()
 
@@ -397,8 +397,6 @@ class PrecomputeTorch3(Solver):
         self.subtrees_mat[self.adj_to_set[x_adj[0], b_adj[0]]] = 1 - x - b
         self.subtrees_mat[self.adj_to_set[b_adj[0], x_adj[0]]] = x + b
 
-
-
     def update_sub_mat(self, selected_move):
 
         x = selected_move[0]
@@ -428,37 +426,35 @@ class PrecomputeTorch3(Solver):
         b = selected_move[1]
         a = self.neighbors[x, a_side_idx]
 
-        x_adj = self.set_to_adj[x].clone()
-        b_adj = self.set_to_adj[b].clone()
-        a_adj = self.set_to_adj[a].clone()
+        x_internal = self.set_to_adj[x][0]
+        b_old_internal = self.set_to_adj[b][0]
 
-        x_sub = self.subtrees_mat[x]
+        x_sub = self.subtrees_mat[x].clone()
+        x_sub[self.set_to_adj[x][0]] = 1 # adding internal to x
         b_sub = self.subtrees_mat[b]
         a_sub = self.subtrees_mat[a]
 
-        a_in, a_out = a_sub == 1, a_sub == 0
-        self.T[a_in, a_out] -= 1
-        self.T[a_out, a_in] -= 1
+        a_in = torch.nonzero(a_sub).flatten()
+        self.T[a_in] = self.T[a_in] - 1 + a_sub.repeat(a_in.shape[0], 1)
+        self.T[:, a_in] = self.T[a_in].T
 
-        b_in, b_out = b_sub == 1, b_sub == 0
-        self.T[b_in, b_out] += 1
-        self.T[b_out, b_in] += 1
+        b_in = torch.nonzero(b_sub).flatten()
+        self.T[b_in] = self.T[b_in] + 1 - b_sub.repeat(b_in.shape[0], 1)
+        self.T[:, b_in] = self.T[b_in].T
 
-        x_in, x_out = x_sub == 1, x_sub == 0
+        x_in = torch.nonzero(x_sub).flatten()
 
-        p = self.T[x_in, x_adj[0]]
-        pp = self.T[b_adj[0], x_out]
-        # inner dist to self root + from b root anywhere else
-        self.T[x_in, x_out] = self.T[x_out, x_in] = self.T[x_in, x_adj[0]] + self.T[b_adj[0], x_out] + 1
-        print(self.T)
+        # inner dist to x_internal + from b_old_internal to anywhere else
+        self.T[x_in] = (self.T[x_in, x_internal].unsqueeze(0).T.repeat(1,self.m)
+                        + self.T[b_old_internal].repeat(x_in.shape[0], 1) + 1 - 2 * b_sub.repeat(x_in.shape[0], 1))\
+                       *(1 - x_sub.repeat(x_in.shape[0], 1)) + self.T[x_in]*x_sub.repeat(x_in.shape[0], 1)
+        # print(self.T)
+        self.T[:, x_in] = self.T[x_in].T
+
+        # setting x_internal dist to b_old_internal to 1
+        self.T[x_internal, b_old_internal] = self.T[b_old_internal, x_internal] = 1
 
 
-        # self.T[b_adj[0], ~mask] = self.T[~mask, b_adj[0]] =
-
-        p = 0
-
-
-#ll
 
 torch.set_printoptions(precision=2, linewidth=150)
 
@@ -466,7 +462,7 @@ seed = 0
 random.seed(seed)
 np.random.seed(seed)
 
-n = 90
+n = 9
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -478,7 +474,7 @@ device = 'cpu'
 model = PrecomputeTorch3(d, device=device)
 t = time.time()
 
-model.solve(test=False, log=True)
+model.solve(test=True, log=True)
 
 print(time.time() - t)
 print('final obj', model.compute_obj_tensor().item())
