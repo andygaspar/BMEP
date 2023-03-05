@@ -66,7 +66,7 @@ class PrecomputeTorch3(Solver):
                     Subtrees(self.adj_mat.clone(), self.subtrees_mat, self.n_taxa, self.m, self.device)
 
                 if log:
-                    print('iteration', self.compute_obj_tensor().item())
+                    print('iteration', iteration, self.compute_obj_tensor().item())
             else:
                 to_be_continued = False
 
@@ -466,7 +466,7 @@ seed = 0
 random.seed(seed)
 np.random.seed(seed)
 
-n = 80
+n = 90
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
