@@ -164,6 +164,10 @@ class Tester:
 
         return adj_mat
 
+    def check_tau(self, adj_mat, Tau):
+        T = self.get_full_tau_tensor(adj_mat, self.n_taxa).to(torch.long)
+        print('tau check', torch.equal(T, Tau))
+
     @staticmethod
     def get_full_tau_tensor(adj_mat, n_taxa):
         Tau = torch.full_like(adj_mat, n_taxa)

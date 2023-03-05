@@ -33,7 +33,7 @@ class PrecomputeTorch3(Solver):
 
         self.mask = torch.zeros(self.n_subtrees, dtype=torch.bool, device=self.device)
 
-    def solve(self, start=3, adj_mat=None, test=False):
+    def solve(self, start=3, adj_mat=None, test=False, log=False):
         self.init_tree()
         iteration = 0
         # self.plot_phylogeny(self.adj_mat)
@@ -52,9 +52,10 @@ class PrecomputeTorch3(Solver):
                 new_adj, x_adj, b_adj = self.move(s_move, side, self.adj_mat.clone())
                 self.adj_mat = new_adj
                 self.add_new_trees(s_move, x_adj, b_adj)
-                # self.plot_phylogeny(self.adj_mat)
-                # self.T = self.update_tau(self.adj_mat).to(torch.long)
-                self.T = self.get_full_tau_tensor(self.adj_mat, self.n_taxa).to(torch.long)
+
+                self.T = self.update_tau(self.adj_mat).to(torch.long)
+                if test:
+                    self.tester.check_tau(self.adj_mat, self.T)
                 s = self.subtrees_mat[:, :self.n_taxa].to(torch.float64)
                 self.subtree_dist = self.compute_subtrees_dist(s)
                 self.non_intersecting = self.compute_non_intersecting(s)
@@ -64,7 +65,8 @@ class PrecomputeTorch3(Solver):
                 if test:
                     Subtrees(self.adj_mat.clone(), self.subtrees_mat, self.n_taxa, self.m, self.device)
 
-                print('iteration', self.compute_obj_tensor().item())
+                if log:
+                    print('iteration', self.compute_obj_tensor().item())
             else:
                 to_be_continued = False
 
@@ -464,7 +466,7 @@ seed = 0
 random.seed(seed)
 np.random.seed(seed)
 
-n = 90
+n = 80
 
 d = np.random.uniform(0,1,(n, n))
 d = np.triu(d) + np.triu(d).T
@@ -476,7 +478,7 @@ device = 'cpu'
 model = PrecomputeTorch3(d, device=device)
 t = time.time()
 
-model.solve(test=False)
+model.solve(test=False, log=True)
 
 print(time.time() - t)
 print('final obj', model.compute_obj_tensor().item())
