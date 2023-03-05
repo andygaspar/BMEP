@@ -173,4 +173,4 @@ class Subtrees:
             if not found_subtree:
                 print('subtree not found', i)
             equal = equal and found_subtree
-        print(equal)
+        print('subtree equivalence', equal)
