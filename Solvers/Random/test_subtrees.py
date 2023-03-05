@@ -168,7 +168,7 @@ class Subtrees:
         for i in self.subtrees_mat:
             found_subtree = False
             for j in self.computed_subtrees_mat:
-                if torch.equal(i, j):
+                if torch.equal(i[:self.n_taxa], j[:self.n_taxa]):
                     found_subtree = True
             if not found_subtree:
                 print('subtree not found', i)

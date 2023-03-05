@@ -56,7 +56,7 @@ class PrecomputeTorch3(Solver):
                 self.T = self.get_full_tau_tensor(self.adj_mat, self.n_taxa).to(torch.long)
                 s = self.subtrees_mat[:, :self.n_taxa].to(torch.float64)
                 self.subtree_dist = self.compute_subtrees_dist(s)
-                self.non_intersecting = torch.matmul(s, s.T) == 0
+                self.non_intersecting = self.compute_non_intersecting(s)
                 self.subtree_dist *= self.non_intersecting
                 self.neighbors = self.compute_neighbors(self.set_to_adj, self.adj_to_set, self.adj_mat)
 
@@ -94,7 +94,7 @@ class PrecomputeTorch3(Solver):
         self.T = T
         print('build time', time.time() - t)
         self.subtree_dist = self.compute_subtrees_dist(s)
-        self.non_intersecting = torch.matmul(s, s.T) == 0
+        self.non_intersecting = self.compute_non_intersecting(s)
         self.subtree_dist *= self.non_intersecting
         self.subtrees_mat = subtrees_mat
         self.adj_to_set = adj_to_set
@@ -112,7 +112,8 @@ class PrecomputeTorch3(Solver):
         # t = time.time()
 
         # print(time.time() - t)
-
+    def compute_non_intersecting(self, s):
+        return torch.matmul(s[:, :self.n_taxa], s[:, :self.n_taxa].T) == 0
     def compute_subtrees_dist(self, s):
         return torch.matmul(torch.matmul(s, self.d * self.powers[self.T[:self.n_taxa, :self.n_taxa]]), s.T) * 2
 
@@ -239,8 +240,7 @@ class PrecomputeTorch3(Solver):
 
 
     def spr(self, test):
-        # intersections = self.intersection.clone()
-        intersections = self.non_intersecting
+        intersections = self.non_intersecting.clone()
 
         # distance subtrees to taxa, useful for h computation
         sub_to_taxon_idx = torch.nonzero(self.adj_mat[:, :self.n_taxa]).T
@@ -393,9 +393,9 @@ class PrecomputeTorch3(Solver):
         self.subtrees_mat[self.adj_to_set[x_adj[0], b_adj[0]]] = 1 - x - b
         self.subtrees_mat[self.adj_to_set[b_adj[0], x_adj[0]]] = x + b
 
-        # for i in range(self.subtrees_mat.shape[0]):
-        #     idx_ = self.set_to_adj[i]
-        #     print(self.set_to_adj[i], self.adj_to_set[idx_[0], idx_[1]], self.subtrees_mat[i])
+        for i in range(self.subtrees_mat.shape[0]):
+            idx_ = self.set_to_adj[i]
+            print(self.set_to_adj[i], self.adj_to_set[idx_[0], idx_[1]], self.subtrees_mat[i])
 
 
         return adj_mat
@@ -404,8 +404,9 @@ class PrecomputeTorch3(Solver):
 
         x = selected_move[0]
         x_subset = self.subtrees_mat[x].clone()
-        x_subset[self.set_to_adj[x][0]] = 1 # adding x internal node
+        x_subset[self.set_to_adj[x][0]] = 1
         x_idx = self.set_to_adj[x]
+        x_c = self.adj_to_set[x_idx[1], x_idx[0]]# adding x internal node
 
         b = selected_move[1]
         b_subset = self.subtrees_mat[b].clone()
@@ -416,13 +417,15 @@ class PrecomputeTorch3(Solver):
         including_x = torch.matmul(self.subtrees_mat.to(torch.float64), x_subset.to(torch.float64)) - x_subset.sum() == 0
         including_b = torch.matmul(self.subtrees_mat.to(torch.float64), b_subset.to(torch.float64)) - b_subset.sum() == 0
 
-
         x_side_trees = including_x * self.non_intersecting[b]
-        x_side_trees[b_c] = True
+        x_side_trees[b_c] = False
         b_side_trees = including_b * self.non_intersecting[x]
         b_side_trees[b_c] = True
+        b_side_trees[x_c] = False
         self.subtrees_mat[x_side_trees, :] -= x_subset
-        self.subtrees_mat[b_side_trees] += x_subset
+        self.subtrees_mat[b_side_trees, :] += x_subset
+
+        print(self.subtrees_mat)
 
     def update_tau_(self, selected_move, a_side_idx):
         x = selected_move[0]
